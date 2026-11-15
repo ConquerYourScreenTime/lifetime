@@ -116,6 +116,7 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
             log(d, "today's total reset (build 21 counted idle time)")
         }
         let center = DeviceActivityCenter()
+        log(d, "restarting counter (" + reason + ")")
         center.stopMonitoring([.daily])
         try center.startMonitoring(.daily, during: schedule, events: events)
         log(d, "counter started, picked categories + apps (" + reason + ")")
@@ -145,21 +146,25 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         part("all", all: true, upTo: 480)
         // TestFlight test counter "relay": one fresh 5-minute threshold that the monitor re-arms each time it fires (see
         // MonitorExtension.armRelay). Never restarted here while it runs: a restart throws away up to 5 minutes of progress.
-        if #available(iOS 17.4, *), !center.activities.contains(DeviceActivityName("relay")) {
+        if #available(iOS 17.4, *), center.activities.contains(DeviceActivityName("relay")) {
+            log(d, "relay already running")
+        } else if #available(iOS 17.4, *) {
             let now = Date(), cal = Calendar.current, dayStart = cal.startOfDay(for: now)
             if let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart), dayEnd.timeIntervalSince(now) > 16 * 60 {
-                let from = max(dayStart, now.addingTimeInterval(-60))
-                let once = DeviceActivitySchedule(intervalStart: cal.dateComponents([.hour, .minute, .second], from: from),
-                                                  intervalEnd: DateComponents(hour: 23, minute: 59, second: 59), repeats: false)
+                log(d, "relay arming")
+                // Full dates: with repeats false, a bare time of day already past could be read as tomorrow.
+                let full: Set<Calendar.Component> = [.year, .month, .day, .hour, .minute, .second]
+                let once = DeviceActivitySchedule(intervalStart: cal.dateComponents(full, from: now),
+                                                  intervalEnd: cal.dateComponents(full, from: dayEnd.addingTimeInterval(-1)), repeats: false)
                 let ev = DeviceActivityEvent(applications: selection.applicationTokens, categories: selection.categoryTokens, webDomains: [],
                                              threshold: DateComponents(minute: 5), includesPastActivity: false)
                 do {
                     try center.startMonitoring(DeviceActivityName("relay"), during: once, events: [DeviceActivityEvent.Name("r5"): ev])
                     d?.set(now.timeIntervalSince1970, forKey: "relay-armed"); d?.set(0, forKey: "relay-early")
-                    log(d, "relay started")
+                    log(d, center.activities.contains(DeviceActivityName("relay")) ? "relay started" : "relay started but not listed by iOS")
                 } catch { log(d, "relay watcher failed: " + error.localizedDescription) }
-            }
-        }
+            } else { log(d, "relay not armed: too close to midnight") }
+        } else { log(d, "relay needs iOS 17.4") }
         log(d, d?.bool(forKey: "entireCategory") == true ? "whole categories incl. websites: on" : "whole categories incl. websites: OFF (re-pick in Change what counts)")
     }
 
@@ -326,7 +331,7 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         // The player's own Blip, drawn by the app (only sent when the look changes).
         var newArt = false
         if let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Self.group) {
-            for name in ["faceHappy", "faceGlum", "faceNeutral", "bodyHappy", "bodyGlum"] {
+            for name in ["faceHappy", "faceGlum", "faceNeutral", "bodyHappy", "bodyGlum", "lineHappy", "lineGlum", "lineNeutral"] {
                 if let b64 = call.getString(name), let data = Data(base64Encoded: b64) {
                     try? data.write(to: dir.appendingPathComponent("widget-" + name + ".png"), options: .atomic)
                     newArt = true

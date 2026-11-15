@@ -711,7 +711,7 @@ function widgetSync(){
   const p = nativePlugin('ScreenTime'); if (!p || !p.widget) return;
   const send = art => { try { const r = p.widget(Object.assign({goal: S.goal, name: S.name, age: S.age, streak: S.streak, skin: S.skin, hair: S.hair, girl: !!S.girl}, art || {})); if (r && r.catch) r.catch(() => {}); } catch(e) {} };
   // The widget draws the player's own Blip with the app's art: pictures are made here and only re-sent when the look changes.
-  const look = JSON.stringify([stage(S.age), S.skin, S.hair, !!S.girl, S.s >= 70, S.h < 35, myWear(), 2]);
+  const look = JSON.stringify([stage(S.age), S.skin, S.hair, !!S.girl, S.s >= 70, S.h < 35, myWear(), 3]);
   let old = null; try { old = localStorage.getItem('blip-widget-look'); } catch(e) {}
   if (old === look) return send();
   widgetArt().then(art => { send(art); try { localStorage.setItem('blip-widget-look', look); } catch(e) {} }).catch(() => send());
@@ -731,7 +731,28 @@ function widgetArt(){
   return Promise.all([
     png(head(svg('happy')), 240, 240), png(head(svg('sad', {mouth: true, face: glum})), 240, 240), png(head(svg('happy', {mouth: true, face: flat})), 240, 240),
     png(svg('happy'), 250, 300), png(svg('sad', {mouth: true, face: glum}), 250, 300)
-  ]).then(a => ({faceHappy: a[0], faceGlum: a[1], faceNeutral: a[2], bodyHappy: a[3], bodyGlum: a[4]}));
+  ]).then(a => Promise.all([lineArt(a[0], S.skin), lineArt(a[1], S.skin), lineArt(a[2], S.skin)]).then(l =>
+    ({faceHappy: a[0], faceGlum: a[1], faceNeutral: a[2], bodyHappy: a[3], bodyGlum: a[4], lineHappy: l[0], lineGlum: l[1], lineNeutral: l[2]})));
+}
+// The lock screen shows one tint only, so it gets a white version of the same head: hair, hat and features solid, skin
+// faint, blush a little stronger, with a thin gap beside the dark outlines so the shapes stay readable.
+function lineArt(b64, skin){
+  return new Promise((ok, no) => { const img = new Image(); img.onerror = no; img.onload = () => {
+    const W = img.width, H = img.height, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const x = cv.getContext('2d'); x.drawImage(img, 0, 0);
+    const p = x.getImageData(0, 0, W, H).data, o = x.createImageData(W, H), q = o.data;
+    const sk = [1, 3, 5].map(i => parseInt(String(skin || '#f0c08a').slice(i, i + 2), 16));
+    const dist = (i, c) => Math.abs(p[i] - c[0]) + Math.abs(p[i+1] - c[1]) + Math.abs(p[i+2] - c[2]);
+    const cls = new Uint8Array(W * H); // 0 empty, 1 skin, 2 blush, 3 solid
+    for (let k = 0; k < W * H; k++) { const i = k * 4; if (p[i+3] < 90) continue;
+      const ds = dist(i, sk); cls[k] = ds < 45 ? 1 : (p[i] > 170 && p[i] > p[i+1] + 40 && p[i+2] > 110 && p[i+2] > p[i+1] - 10 && ds < 170) ? 2 : 3; }
+    const lum = k => p[k*4] + p[k*4+1] + p[k*4+2], R = Math.max(2, Math.round(W / 80));
+    for (let y = 0; y < H; y++) for (let X = 0; X < W; X++) { const k = y * W + X, c = cls[k]; let a = c === 1 ? 70 : c === 2 ? 125 : c === 3 ? 255 : 0;
+      if (c === 3) for (let dy = -R; dy <= R && a; dy++) for (let dx = -R; dx <= R; dx++) { const yy = y + dy, xx = X + dx;
+        if (yy < 0 || xx < 0 || yy >= H || xx >= W) continue; const m = yy * W + xx;
+        if (cls[m] === 3 && dist(k*4, [p[m*4], p[m*4+1], p[m*4+2]]) > 120 && lum(m) < 260 && lum(k) > lum(m) + 60) { a = 0; break; } }
+      const i = k * 4; q[i] = q[i+1] = q[i+2] = 255; q[i+3] = a; }
+    x.putImageData(o, 0, 0); ok(cv.toDataURL('image/png').split(',')[1]); }; img.src = 'data:image/png;base64,' + b64; });
 }
 
 // ============ PHONE APP (App Store / Google Play version) ============

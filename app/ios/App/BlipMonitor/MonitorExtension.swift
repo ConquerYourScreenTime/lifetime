@@ -31,16 +31,18 @@ class MonitorExtension: DeviceActivityMonitor {
 
     override func intervalDidEnd(for activity: DeviceActivityName) {
         super.intervalDidEnd(for: activity)
-        if activity == Self.relay { return } // re-arms every 5 minutes: keep it out of the log
+        if activity == Self.relay { log("relay interval ended"); return }
         log(activity.rawValue + " end")
     }
 
     override func intervalDidStart(for activity: DeviceActivityName) {
         super.intervalDidStart(for: activity)
         if activity == Self.relay { return }
-        log(activity.rawValue + " start")
+        log(activity.rawValue + " start (monitor)")
         // New day (or a restart): make sure the TestFlight "relay" test counter is running.
-        if activity == DeviceActivityName("daily"), !DeviceActivityCenter().activities.contains(Self.relay) { armRelay() }
+        if activity == DeviceActivityName("daily") {
+            if DeviceActivityCenter().activities.contains(Self.relay) { log("relay already running") } else { armRelay() }
+        }
         let key = "minutes-" + today()
         if defaults?.object(forKey: key) == nil { defaults?.set(0, forKey: key) }
         purgeOld()
@@ -72,7 +74,11 @@ class MonitorExtension: DeviceActivityMonitor {
         var rec = defaults?.dictionary(forKey: atKey) as? [String: Double] ?? [:]
         let lastM = rec["m"] ?? 0
         let lastT = rec["t"] ?? Calendar.current.startOfDay(for: Date()).timeIntervalSince1970
-        if Double(m) > lastM + (now - lastT) / 60 + 5 {
+        // Logged-only watchers (picked, all, web: 15-minute steps) re-send a whole day's steps after a restart, out of order,
+        // so for them the cap is the minutes since midnight. The scored counter ("daily") keeps the strict rule.
+        let sinceMidnight = (now - Calendar.current.startOfDay(for: Date()).timeIntervalSince1970) / 60
+        let cap = name == "daily" ? lastM + (now - lastT) / 60 + 5 : max(lastM + (now - lastT) / 60 + 15, sinceMidnight + 5)
+        if Double(m) > cap {
             let minute = floor(now / 60)
             if rec["warned"] != minute { rec["warned"] = minute; defaults?.set(rec, forKey: atKey); log(name + " jump to \(m)m ignored (faster than the clock)") }
             return false
@@ -100,19 +106,20 @@ class MonitorExtension: DeviceActivityMonitor {
     private func armRelay() {
         guard #available(iOS 17.4, *) else { return }
         guard let data = defaults?.data(forKey: "selection"),
-              let selection = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) else { return }
+              let selection = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) else { log("relay not armed: no selection"); return }
         let now = Date(), cal = Calendar.current, dayStart = cal.startOfDay(for: now)
-        guard let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart), dayEnd.timeIntervalSince(now) > 16 * 60 else { return }
-        let from = max(dayStart, now.addingTimeInterval(-60))
+        guard let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart), dayEnd.timeIntervalSince(now) > 16 * 60 else { log("relay not armed: too close to midnight"); return }
+        // Full dates (not just a time of day): with repeats false, a bare time already past today could be read as tomorrow.
         let schedule = DeviceActivitySchedule(
-            intervalStart: cal.dateComponents([.hour, .minute, .second], from: from),
-            intervalEnd: DateComponents(hour: 23, minute: 59, second: 59),
+            intervalStart: cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: now),
+            intervalEnd: cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: dayEnd.addingTimeInterval(-1)),
             repeats: false)
         let ev = DeviceActivityEvent(applications: selection.applicationTokens, categories: selection.categoryTokens, webDomains: [],
                                      threshold: DateComponents(minute: 5), includesPastActivity: false)
         do {
             try DeviceActivityCenter().startMonitoring(Self.relay, during: schedule, events: [DeviceActivityEvent.Name("r5"): ev])
             defaults?.set(now.timeIntervalSince1970, forKey: "relay-armed")
+            if !DeviceActivityCenter().activities.contains(Self.relay) { log("relay armed but not listed by iOS") }
         } catch { log("relay re-arm failed: " + error.localizedDescription) }
     }
 

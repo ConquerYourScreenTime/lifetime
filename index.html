@@ -842,6 +842,7 @@ function showStCheck(){
     const report = () => {
       const lines = ['Blip Screen Time check, '+day+' '+new Date().toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}),
         'iPhone Screen Time now: '+($('iphNow') ? $('iphNow').value || '?' : '?'),
+        'iPhone categories added up: '+($('iphCats') ? $('iphCats').value || '?' : '?'),
         'Blip counter (categories + apps): '+(stToday == null ? 'none' : fmtTime(stToday)),
         'With websites (build 20 way): '+ft(dg.picked), 'No filter (build 21 way): '+ft(dg.all), 'Websites only: '+ft(dg.web), 'Relay (re-arming 5m test): '+ft(dg.relay),
         'Picked: '+(r.categories || 0)+' categories, '+(r.apps || 0)+' apps, '+(r.webDomains || 0)+' websites. Watching: '+(r.watching || []).join(', ')];
@@ -856,6 +857,7 @@ function showStCheck(){
       (hourRows.length ? '<div style="margin-top:8px;padding:8px;background:#f3efff;border-radius:10px"><b>Minutes per hour</b><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:2px 6px;font-size:12px"><span></span><b>Counter</b><b>No filter</b><b>Relay</b>'+
         hourRows.map(x => '<span>'+hName(x[0])+'</span><span>'+x[1]+'</span><span>'+x[2]+'</span><span>'+x[3]+'</span>').join('')+'</div></div>' : '')+
       '<label style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px">iPhone Screen Time now <input id="iphNow" placeholder="e.g. 1h 10m" value="'+esc(iph.now || '')+'" style="width:110px"></label>'+
+      '<label style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px">iPhone categories added up <input id="iphCats" placeholder="optional" value="'+esc(iph.cats || '')+'" style="width:110px"></label>'+
       (qtOn ? '<div style="margin-top:10px;padding:8px;background:#fff3d6;border-radius:10px"><b>Quick test</b> since '+qtAt+' ('+ago+' min)<br>'+
         row('Counter', ft(qt.counter))+row('With websites', ft(qt.web))+row('No filter', ft(qt.all))+row('Categories only', ft(qt.cats))+
         '<label style="display:flex;justify-content:space-between;align-items:center;gap:8px">iPhone at start <input id="iphStart" placeholder="e.g. 1h 10m" value="'+esc(iph.start || '')+'" style="width:110px"></label></div>' : '')+
@@ -863,8 +865,9 @@ function showStCheck(){
       '<button class="btn ghost" id="stqt" style="margin-top:8px">⏱️ '+(qtOn ? 'Restart' : 'Start')+' quick test</button>'+
       '<p class="muted small" style="margin:6px 0">Quick test: type iPhone\'s Screen Time total, tap Start, use your phone (Safari, YouTube, anything) for 10–15 minutes, come back, type iPhone\'s new total, tap Copy and paste it to Claude.</p>'+
       '<button class="btn ghost" data-close>Close</button>');
-    const keep = () => { try { localStorage.setItem('blip-stcheck', JSON.stringify({now: $('iphNow') ? $('iphNow').value : '', start: $('iphStart') ? $('iphStart').value : (iph.start || '')})); } catch(e) {} };
+    const keep = () => { try { localStorage.setItem('blip-stcheck', JSON.stringify({now: $('iphNow') ? $('iphNow').value : '', cats: $('iphCats') ? $('iphCats').value : '', start: $('iphStart') ? $('iphStart').value : (iph.start || '')})); } catch(e) {} };
     if ($('iphNow')) $('iphNow').oninput = keep;
+    if ($('iphCats')) $('iphCats').oninput = keep;
     if ($('iphStart')) $('iphStart').oninput = keep;
     $('stcopy').onclick = () => { keep(); const t = report();
       const done = () => { $('stcopy').textContent = '✓ Copied. Paste it in your chat with Claude'; };

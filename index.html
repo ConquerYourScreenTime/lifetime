@@ -809,7 +809,10 @@ function showStCheck(){
   // If the phone doesn't answer in 6 seconds, say so instead of doing nothing.
   Promise.race([p.checkLog({day}), new Promise((_, no) => setTimeout(() => no(new Error('the phone took too long to answer')), 12000))]).then(r => {
     r = r || {};
-    const log = r.log || [], dg = r.diag || {}, qt = r.qt || {};
+    const log = r.log || [], dg = r.diag || {}, qt = r.qt || {}, hrs = r.hours || {};
+    // Hour by hour: minutes each counter gained in that hour, to compare with the hourly bars in iPhone Settings > Screen Time.
+    const hourRows = []; for (let h = 0; h < 24; h++) { const a = hrs['daily-'+h] || 0, b = hrs['all-'+h] || 0, c = hrs['relay-'+h] || 0; if (a || b || c) hourRows.push([h, a, b, c]); }
+    const hName = h => (h % 12 || 12)+(h < 12 ? 'am' : 'pm');
     let iph = {}; try { iph = JSON.parse(localStorage.getItem('blip-stcheck') || '{}'); } catch(e) {}
     const qtOn = r.qtStart > 0 && Date.now()/1000 - r.qtStart < 4*3600;
     const ago = qtOn ? Math.floor((Date.now()/1000 - r.qtStart) / 60) : 0;
@@ -819,15 +822,18 @@ function showStCheck(){
       const lines = ['Blip Screen Time check, '+day+' '+new Date().toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}),
         'iPhone Screen Time now: '+($('iphNow') ? $('iphNow').value || '?' : '?'),
         'Blip counter (categories + apps): '+(stToday == null ? 'none' : fmtTime(stToday)),
-        'With websites (build 20 way): '+ft(dg.picked), 'No filter (build 21 way): '+ft(dg.all), 'Websites only: '+ft(dg.web),
+        'With websites (build 20 way): '+ft(dg.picked), 'No filter (build 21 way): '+ft(dg.all), 'Websites only: '+ft(dg.web), 'Relay (re-arming 5m test): '+ft(dg.relay),
         'Picked: '+(r.categories || 0)+' categories, '+(r.apps || 0)+' apps, '+(r.webDomains || 0)+' websites. Watching: '+(r.watching || []).join(', ')];
       if (qtOn) lines.push('', 'Quick test since '+qtAt+' ('+ago+' min ago), iPhone at start: '+($('iphStart') ? $('iphStart').value || '?' : '?'),
         'counter '+ft(qt.counter)+' | with websites '+ft(qt.web)+' | no filter '+ft(qt.all)+' | categories only '+ft(qt.cats));
+      if (hourRows.length) lines.push('', 'Minutes gained per hour (counter | no filter | relay):', ...hourRows.map(x => hName(x[0])+': '+x[1]+' | '+x[2]+' | '+x[3]));
       return lines.concat(['', 'Log (newest first):'], log.slice(-150).reverse()).join('\n');
     };
     const row = (k, v) => '<div style="display:flex;justify-content:space-between;gap:8px"><span>'+k+'</span><b>'+v+'</b></div>';
     modal('<h2>🔍 Screen Time check</h2><div class="small" style="text-align:left;line-height:1.6">'+
-      row('Blip counter', stToday == null ? 'none' : fmtTime(stToday))+row('With websites (build 20)', ft(dg.picked))+row('No filter (build 21)', ft(dg.all))+row('Websites only', ft(dg.web))+
+      row('Blip counter', stToday == null ? 'none' : fmtTime(stToday))+row('With websites (build 20)', ft(dg.picked))+row('No filter (build 21)', ft(dg.all))+row('Websites only', ft(dg.web))+row('Relay (new test)', ft(dg.relay))+
+      (hourRows.length ? '<div style="margin-top:8px;padding:8px;background:#f3efff;border-radius:10px"><b>Minutes per hour</b><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:2px 6px;font-size:12px"><span></span><b>Counter</b><b>No filter</b><b>Relay</b>'+
+        hourRows.map(x => '<span>'+hName(x[0])+'</span><span>'+x[1]+'</span><span>'+x[2]+'</span><span>'+x[3]+'</span>').join('')+'</div></div>' : '')+
       '<label style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px">iPhone Screen Time now <input id="iphNow" placeholder="e.g. 1h 10m" value="'+esc(iph.now || '')+'" style="width:110px"></label>'+
       (qtOn ? '<div style="margin-top:10px;padding:8px;background:#fff3d6;border-radius:10px"><b>Quick test</b> since '+qtAt+' ('+ago+' min)<br>'+
         row('Counter', ft(qt.counter))+row('With websites', ft(qt.web))+row('No filter', ft(qt.all))+row('Categories only', ft(qt.cats))+

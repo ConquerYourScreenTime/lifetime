@@ -50,6 +50,9 @@ declined."; store description and What's New lead with managing your own screen 
 Never make an analytics event depend on the day's verdict.
 Before submission also (Lawyer 2026-11-06): remove the TestFlight "picked", "web", "all" watchers, the
 diag- keys, and the Screen Time check log. (The picker stays: the no-filter counter failed.)
+Also remove (added 2026-11-15, TestFlight only): the "relay" test counter (plugin arm + MonitorExtension.armRelay and its
+event branch, keys relay-armed, relay-early), the per-hour tallies (addHour, "hours-" keys, "hours" in checkLog) and the
+"Minutes per hour" table and Relay rows in the Screen Time check.
 
 Shop review note (add to the App Review note): "Style items (bow, tiara, dresses, Style starter set)
 appear in Shop > Style when the Blip is a girl (choose Girl at setup). Baby clothes appear in Shop >

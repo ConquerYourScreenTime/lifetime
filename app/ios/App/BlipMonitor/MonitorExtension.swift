@@ -1,4 +1,5 @@
 import DeviceActivity
+import FamilyControls
 import WidgetKit
 import Foundation
 
@@ -30,12 +31,16 @@ class MonitorExtension: DeviceActivityMonitor {
 
     override func intervalDidEnd(for activity: DeviceActivityName) {
         super.intervalDidEnd(for: activity)
+        if activity == Self.relay { return } // re-arms every 5 minutes: keep it out of the log
         log(activity.rawValue + " end")
     }
 
     override func intervalDidStart(for activity: DeviceActivityName) {
         super.intervalDidStart(for: activity)
+        if activity == Self.relay { return }
         log(activity.rawValue + " start")
+        // New day (or a restart): make sure the TestFlight "relay" test counter is running.
+        if activity == DeviceActivityName("daily"), !DeviceActivityCenter().activities.contains(Self.relay) { armRelay() }
         let key = "minutes-" + today()
         if defaults?.object(forKey: key) == nil { defaults?.set(0, forKey: key) }
         purgeOld()
@@ -53,6 +58,7 @@ class MonitorExtension: DeviceActivityMonitor {
             if key.hasPrefix("minutes-"), String(key.dropFirst(8)) < oldest { d.removeObject(forKey: key) }
             if key.hasPrefix("log-"), String(key.dropFirst(4)) < oldest { d.removeObject(forKey: key) }
             if key.hasPrefix("diag-"), String(key.dropFirst(5)) < oldest { d.removeObject(forKey: key) }
+            if key.hasPrefix("hours-"), String(key.dropFirst(6)) < oldest { d.removeObject(forKey: key) }
             if key.hasPrefix("at-"), let day = key.split(separator: "-", maxSplits: 2).last, String(day) < oldest { d.removeObject(forKey: key) }
         }
     }
@@ -76,8 +82,66 @@ class MonitorExtension: DeviceActivityMonitor {
         return true
     }
 
+    // TestFlight check: minutes gained in each hour of the day by a counter ("daily-14" = 2 PM), to compare with the
+    // hourly bars in iPhone Settings. Logged only. REMOVE before App Store submission.
+    private func addHour(_ name: String, _ gained: Int) {
+        guard gained > 0 else { return }
+        let key = "hours-" + today()
+        var h = defaults?.dictionary(forKey: key) as? [String: Int] ?? [:]
+        let k = name + "-\(Calendar.current.component(.hour, from: Date()))"
+        h[k] = (h[k] ?? 0) + gained
+        defaults?.set(h, forKey: key)
+    }
+
+    // TestFlight test counter "relay" (logged only, never scored; REMOVE before App Store submission). Every counter so far
+    // used one all-day activity with cumulative thresholds, and all of them read about 35-40% below iPhone. Relay counts the
+    // other way: a single 5-minute threshold that starts fresh (no past activity) and is re-armed each time it fires.
+    static let relay = DeviceActivityName("relay")
+    private func armRelay() {
+        guard #available(iOS 17.4, *) else { return }
+        guard let data = defaults?.data(forKey: "selection"),
+              let selection = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) else { return }
+        let now = Date(), cal = Calendar.current, dayStart = cal.startOfDay(for: now)
+        guard let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart), dayEnd.timeIntervalSince(now) > 16 * 60 else { return }
+        let from = max(dayStart, now.addingTimeInterval(-60))
+        let schedule = DeviceActivitySchedule(
+            intervalStart: cal.dateComponents([.hour, .minute, .second], from: from),
+            intervalEnd: DateComponents(hour: 23, minute: 59, second: 59),
+            repeats: false)
+        let ev = DeviceActivityEvent(applications: selection.applicationTokens, categories: selection.categoryTokens, webDomains: [],
+                                     threshold: DateComponents(minute: 5), includesPastActivity: false)
+        do {
+            try DeviceActivityCenter().startMonitoring(Self.relay, during: schedule, events: [DeviceActivityEvent.Name("r5"): ev])
+            defaults?.set(now.timeIntervalSince1970, forKey: "relay-armed")
+        } catch { log("relay re-arm failed: " + error.localizedDescription) }
+    }
+
     override func eventDidReachThreshold(_ event: DeviceActivityEvent.Name, activity: DeviceActivityName) {
         super.eventDidReachThreshold(event, activity: activity)
+        if activity == Self.relay {
+            let now = Date().timeIntervalSince1970
+            let armed = defaults?.double(forKey: "relay-armed") ?? 0
+            let center = DeviceActivityCenter()
+            // 5 minutes of use can't take less than about 5 minutes. An early fire isn't counted; after 3 in a row relay stops for the day.
+            if now - armed < 270 {
+                let early = (defaults?.integer(forKey: "relay-early") ?? 0) + 1
+                defaults?.set(early, forKey: "relay-early")
+                log("relay early fire ignored")
+                center.stopMonitoring([Self.relay])
+                if early < 3 { armRelay() } else { log("relay stopped for today (3 early fires)") }
+                return
+            }
+            defaults?.set(0, forKey: "relay-early")
+            let key = "diag-" + today()
+            var best = defaults?.dictionary(forKey: key) as? [String: Int] ?? [:]
+            let total = (best["relay"] ?? 0) + 5
+            best["relay"] = total; defaults?.set(best, forKey: key)
+            addHour("relay", 5)
+            log("relay \(total)m")
+            center.stopMonitoring([Self.relay])
+            armRelay()
+            return
+        }
         // TestFlight check: per-category steps ("c3_45" = category #3 passed 45 minutes). Logged only, never counted.
         if activity == DeviceActivityName("cats") { log("cat " + event.rawValue.dropFirst().replacingOccurrences(of: "_", with: ": ") + "m"); return }
         // TestFlight check: websites-only ("web45"), build 20 way ("picked45") and no-filter ("all45") watchers. Logged only, never counted.
@@ -96,13 +160,16 @@ class MonitorExtension: DeviceActivityMonitor {
             var best = defaults?.dictionary(forKey: key) as? [String: Int] ?? [:]
             guard m > (best[activity.rawValue] ?? 0) else { return }
             guard possible(m, name: activity.rawValue) else { return }
+            if activity.rawValue == "all" { addHour("all", m - (best["all"] ?? 0)) }
             best[activity.rawValue] = m; defaults?.set(best, forKey: key); log(activity.rawValue + " \(m)m")
             return
         }
         guard let m = Int(event.rawValue.dropFirst()) else { return }
         let key = "minutes-" + today()
-        guard m > (defaults?.integer(forKey: key) ?? 0) else { return }
+        let before = defaults?.integer(forKey: key) ?? 0
+        guard m > before else { return }
         guard possible(m, name: "daily") else { return }
+        addHour("daily", m - before)
         defaults?.set(m, forKey: key); log("\(m)m")
         WidgetCenter.shared.reloadAllTimelines() // Blip's widget shows the new step
     }

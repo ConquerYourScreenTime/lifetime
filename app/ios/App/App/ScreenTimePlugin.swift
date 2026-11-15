@@ -143,6 +143,23 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         // The build 20 way (picked apps, categories and websites) and the build 21 way (no filter), side by side.
         part("picked", apps: selection.applicationTokens, cats: selection.categoryTokens, webs: selection.webDomainTokens, upTo: 480)
         part("all", all: true, upTo: 480)
+        // TestFlight test counter "relay": one fresh 5-minute threshold that the monitor re-arms each time it fires (see
+        // MonitorExtension.armRelay). Never restarted here while it runs: a restart throws away up to 5 minutes of progress.
+        if #available(iOS 17.4, *), !center.activities.contains(DeviceActivityName("relay")) {
+            let now = Date(), cal = Calendar.current, dayStart = cal.startOfDay(for: now)
+            if let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart), dayEnd.timeIntervalSince(now) > 16 * 60 {
+                let from = max(dayStart, now.addingTimeInterval(-60))
+                let once = DeviceActivitySchedule(intervalStart: cal.dateComponents([.hour, .minute, .second], from: from),
+                                                  intervalEnd: DateComponents(hour: 23, minute: 59, second: 59), repeats: false)
+                let ev = DeviceActivityEvent(applications: selection.applicationTokens, categories: selection.categoryTokens, webDomains: [],
+                                             threshold: DateComponents(minute: 5), includesPastActivity: false)
+                do {
+                    try center.startMonitoring(DeviceActivityName("relay"), during: once, events: [DeviceActivityEvent.Name("r5"): ev])
+                    d?.set(now.timeIntervalSince1970, forKey: "relay-armed"); d?.set(0, forKey: "relay-early")
+                    log(d, "relay started")
+                } catch { log(d, "relay watcher failed: " + error.localizedDescription) }
+            }
+        }
         log(d, d?.bool(forKey: "entireCategory") == true ? "whole categories incl. websites: on" : "whole categories incl. websites: OFF (re-pick in Change what counts)")
     }
 
@@ -209,6 +226,7 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         let acts = DeviceActivityCenter().activities.map { $0.rawValue }
         call.resolve(["log": Array((defaults?.stringArray(forKey: "log-" + day) ?? []).suffix(300)), "apps": apps, "categories": cats, "webDomains": webs, "watching": acts,
                       "diag": defaults?.dictionary(forKey: "diag-" + day) ?? [:],
+                      "hours": defaults?.dictionary(forKey: "hours-" + day) ?? [:],
                       "qt": defaults?.dictionary(forKey: "qt-best") ?? [:], "qtStart": defaults?.double(forKey: "qt-start") ?? 0])
     }
 
@@ -271,6 +289,7 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
             if key.hasPrefix("minutes-"), String(key.dropFirst(8)) < oldest { d.removeObject(forKey: key) }
             if key.hasPrefix("log-"), String(key.dropFirst(4)) < oldest { d.removeObject(forKey: key) }
             if key.hasPrefix("diag-"), String(key.dropFirst(5)) < oldest { d.removeObject(forKey: key) }
+            if key.hasPrefix("hours-"), String(key.dropFirst(6)) < oldest { d.removeObject(forKey: key) }
         }
     }
 

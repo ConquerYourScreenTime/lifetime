@@ -1431,16 +1431,11 @@ function liveYear(mins, tier){
   }
   const buys = buyThings();
 
-  // A quiet year's milestone goes by how the Blip is doing, and never costs stats.
-  // Postponed big moments: a big moment that lands in a missed year moves to the next year (once) instead of going badly.
-  // It shows only as a light line on that year's card, never as a big moment in shares, photos or the life story (Lawyer).
-  let ms = null, moved = null;
-  const due = S.postponed != null ? S.postponed : null;
-  if (due != null) { delete S.postponed; ms = milestone(due, quiet ? (S.h + S.s + S.j) / 3 >= 50 : met); }
-  else if (!met && !quiet && MOVE_LINES[S.age] && (S.age !== 35 || S.job)) { S.postponed = S.age; moved = MOVE_LINES[S.age]; }
-  else ms = milestone(S.age, quiet ? (S.h + S.s + S.j) / 3 >= 50 : met);
-  if (moved) notes.push('🌧️ '+moved);
-  if (ms && ms.fx) { const f = {}; for (const k in ms.fx) if (!quiet || ms.fx[k] > 0) f[k] = ms.fx[k]; applyFx(f); }
+  // Big moments are tied to age, so they always happen on time (Matthew, 2026-11-14: never delayed). A missed day no longer
+  // ruins one: in a missed or quiet year the moment goes by how the Blip is doing, and it never costs stats.
+  const soft = !met;
+  const ms = milestone(S.age, soft ? (S.h + S.s + S.j) / 3 >= 50 : met);
+  if (ms && ms.fx) { const f = {}; for (const k in ms.fx) if (!soft || ms.fx[k] > 0) f[k] = ms.fx[k]; applyFx(f); }
   if (S.age === 22 && LOANS[S.eduTier]) {
     S.money -= LOANS[S.eduTier];
     notes.push('🎓 Graduated! Good years pay off the student loans.');
@@ -1450,7 +1445,6 @@ function liveYear(mins, tier){
   if (buys.length) entry.buys = buys;
   if (near) entry.near = true;
   if (comeback) entry.comeback = true;
-  if (moved) entry.moved = true;
   S.log.push(entry);
   if (S.age >= SETTINGS.lifeLength) S.done = true;
   return entry;
@@ -1465,19 +1459,6 @@ const NEAR_LINES = [
   'A quiet year. {name} did the usual things in the usual order.',
   'Nothing big this year. {name} just kept going.'
 ];
-// Where a big moment lands in a missed year, it moves to next year with one of these lines. Never "postponed" or "because you missed".
-const MOVE_LINES = {
-  5: 'Snow day! The first day of school moved to next year.',
-  10: 'The school talent show got rained out. It\'s next year now.',
-  14: 'A pipe burst at the high school. The first day moved to next year.',
-  16: 'The driving test got rained out. The new date is next year.',
-  18: 'A storm closed the test center. The entrance exam is next year now.',
-  22: 'The big interview got moved to next year.',
-  28: 'The rock climbing gym closed for repairs until next year.',
-  35: 'Promotion season got pushed to next year.',
-  45: 'The marathon got rained out. It moved to next year.',
-  65: 'The retirement party got rained out. It moved to next year.'
-};
 // After a rough year, a good day plays one of these. Plain story beats: no "comeback" or "recovery" words (Lawyer).
 const COMEBACK = {
   baby: [['🌞', 'Woke up giggling and stayed that way all day.', {j:6,h:3}], ['🧸', 'Napped like a champion and woke up ready to play.', {h:6,j:3}], ['🎶', 'Clapped along to every song at music time.', {j:5,s:3}]],
@@ -2004,8 +1985,6 @@ function statRow(lbl, v, color){
 const UPCOMING = {5:['🎒','First day of school'], 10:['🌟','A hidden talent shows up'], 14:['🏫','First day of high school'], 16:['🚗','Driving test'],
   18:['🎓','College decisions'], 22:['💼','First real job'], 28:['💞','Love life'], 35:['📈','Big career moment'], 45:['🪞','Midlife'], 65:['🏖️','Retirement']};
 function nextBig(after){
-  // A big moment moved from a missed year happens the year after it.
-  if (S && S.postponed != null && after === S.age && UPCOMING[S.postponed]) return [S.age + 1].concat(UPCOMING[S.postponed]);
   const ages = Object.keys(UPCOMING).map(Number).filter(a => a > after);
   if (ages.length) return [ages[0]].concat(UPCOMING[ages[0]]);
   return after < SETTINGS.lifeLength ? [SETTINGS.lifeLength, '🎂', 'The final chapter'] : null;

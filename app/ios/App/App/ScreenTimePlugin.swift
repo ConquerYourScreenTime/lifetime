@@ -328,6 +328,7 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         info["skin"] = call.getString("skin") ?? "#f1c27d"
         info["hair"] = call.getString("hair") ?? "#3b2a4a"
         info["girl"] = call.getBool("girl") ?? false
+        info["glum"] = call.getBool("glum") ?? false
         // The player's own Blip, drawn by the app (only sent when the look changes).
         var newArt = false
         if let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Self.group) {

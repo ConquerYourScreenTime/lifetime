@@ -27,6 +27,7 @@ struct BlipEntry: TimelineEntry {
     let skin: Color
     let hair: Color
     let girl: Bool
+    var glum = false // the Blip's mood comes from the last year it lived, same as everywhere in the app
 
     var over: Bool { minutes > goal }
     var progress: Double { goal > 0 ? min(1, Double(minutes) / Double(goal)) : 0 }
@@ -80,7 +81,7 @@ struct Provider: TimelineProvider {
         return BlipEntry(date: date, ready: true, minutes: minutes, goal: goal,
                          name: info["name"] as? String ?? "", age: info["age"] as? Int ?? 0, streak: info["streak"] as? Int ?? 0,
                          skin: Color(hex: info["skin"] as? String ?? "#f1c27d"), hair: Color(hex: info["hair"] as? String ?? "#3b2a4a"),
-                         girl: info["girl"] as? Bool ?? false)
+                         girl: info["girl"] as? Bool ?? false, glum: info["glum"] as? Bool ?? false)
     }
 
     func placeholder(in context: Context) -> BlipEntry { .sample }
@@ -137,7 +138,7 @@ struct BlipFace: View {
 
     var body: some View {
         // The mood gives the result away, so it goes neutral when the phone hides private widget data.
-        let mood = reasons.contains(.privacy) ? "Neutral" : (e.over ? "Glum" : "Happy")
+        let mood = reasons.contains(.privacy) ? "Neutral" : (e.glum ? "Glum" : "Happy")
         // Lock screen (one tint): a white version of the player's own Blip, made by the app from the same art (lineArt in
         // index.html), so it keeps their hair and hat. Elsewhere: the app's own full-colour art.
         if mono, let line = blipArt("line" + mood) {
@@ -154,7 +155,7 @@ struct BlipFace: View {
             let s = min(g.size.width, g.size.height)
             let line = max(1.5, s * 0.05)
             // The mood gives the result away, so it goes neutral when the phone hides private widget data.
-            let mood = reasons.contains(.privacy) ? 0 : (e.over ? -1 : 1)
+            let mood = reasons.contains(.privacy) ? 0 : (e.glum ? -1 : 1)
             let hairC = mono ? Color.primary : e.hair
             let skinC = mono ? Color.primary.opacity(0.25) : e.skin
             ZStack {
@@ -238,7 +239,7 @@ struct RoomView: View {
                     .overlay(Ellipse().stroke(ink, lineWidth: 2))
                     .frame(width: w * 0.7, height: h * 0.12).offset(x: w * 0.15, y: h * 0.82)
                 // the Blip
-                if let whole = blipArt(e.over ? "bodyGlum" : "bodyHappy") {
+                if let whole = blipArt(e.glum ? "bodyGlum" : "bodyHappy") {
                     Image(uiImage: whole).resizable().scaledToFit()
                         .frame(width: w * 0.7, height: h * 0.84)
                         .frame(width: w).offset(y: h * 0.1)

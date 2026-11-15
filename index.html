@@ -709,7 +709,7 @@ function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){
 function widgetSync(){
   if (!IS_APP || !S || !S.auto) return;
   const p = nativePlugin('ScreenTime'); if (!p || !p.widget) return;
-  const send = art => { try { const r = p.widget(Object.assign({goal: S.goal, name: S.name, age: S.age, streak: S.streak, skin: S.skin, hair: S.hair, girl: !!S.girl}, art || {})); if (r && r.catch) r.catch(() => {}); } catch(e) {} };
+  const send = art => { try { const r = p.widget(Object.assign({goal: S.goal, name: S.name, age: S.age, streak: S.streak, skin: S.skin, hair: S.hair, girl: !!S.girl, glum: blipSad(S)}, art || {})); if (r && r.catch) r.catch(() => {}); } catch(e) {} };
   // The widget draws the player's own Blip with the app's art: pictures are made here and only re-sent when the look changes.
   const look = JSON.stringify([stage(S.age), S.skin, S.hair, !!S.girl, S.s >= 70, S.h < 35, myWear(), 3]);
   let old = null; try { old = localStorage.getItem('blip-widget-look'); } catch(e) {}
@@ -1165,7 +1165,7 @@ function wearing(k){
   return w;
 }
 function giftBlip(k, crop){
-  const who = Object.assign({}, S, {wear: wearing(k)});
+  const who = Object.assign({}, S, {wear: wearing(k), mood: 'happy'}); // the shop always shows a happy Blip and never reacts to goal results
   if (outgrown(k)) { who.age = 2; who.wear = {[GIFT.WEAR[k].slot]: k}; } // show baby clothes on a baby, even in a grown-up's closet
   else if (tooYoung(k)) { who.age = 8; who.wear = {[GIFT.WEAR[k].slot]: k}; } // and style clothes on a kid, even in a baby's closet
   const svg = charSVG(who);
@@ -1213,7 +1213,7 @@ function shopHTML(){
   const bundles = Object.keys(GIFT.BUNDLES).filter(b => (!GIFT.BUNDLES[b].baby || stage(S.age) === 'baby') && (!GIFT.BUNDLES[b].girl || styleOn())).map(b => {
     const B = GIFT.BUNDLES[b], all = B.items.every(ownsGift), blipItems = B.items.filter(g => !GIFT.ITEMS[g].pet);
     const w = Object.assign({}, store.wear); for (const g of blipItems) w[GIFT.WEAR[g].slot] = g;
-    return '<button class="gbundle '+B.cls+'" data-bundle="'+b+'"'+(all ? ' disabled' : '')+'><span class="gbb">'+charSVG(Object.assign({}, S, {wear: w}))+'</span>'+
+    return '<button class="gbundle '+B.cls+'" data-bundle="'+b+'"'+(all ? ' disabled' : '')+'><span class="gbb">'+charSVG(Object.assign({}, S, {wear: w, mood: 'happy'}))+'</span>'+
       '<span class="gbt"><b>'+esc(B.name)+'</b><span>'+(B.desc || (B.note ? B.note+': ' : '')+B.items.map(g => GIFT.ITEMS[g].name).join(', '))+'</span></span>'+
       '<span class="gbp">'+(all ? 'Owned ✓' : giftPrice(b))+'</span></button>';
   }).join('');
@@ -1357,11 +1357,24 @@ function checkIn(mins, src, tierOverride, silent){
 function liveYear(mins, tier){
   const g = S.goal;
   const met = tier === 'great' || tier === 'good', quiet = tier === 'quiet';
+  // Graded misses: just over the goal (up to 10 minutes or 10%, whichever is more) is a plain, quiet year with no bad event.
+  // The streak still ends. Free game logic, never sold or extended (Lawyer).
+  const near = !met && !quiet && mins != null && isNear(mins, g);
+  // Comeback years: a good day right after a rough year plays a happy recovery event instead of a normal good one.
+  const prev = lastLived(), rough = prev && !prev.near && ['meh', 'bad', 'awful', 'skipped'].includes(prev.tier);
+  const comeback = met && rough;
 
   S.age++;
   const st = stage(S.age);
   let ev;
   if (quiet) ev = ['🌙', pick(QUIET_LINES).replace('{name}', S.name), {}];
+  else if (near) ev = ['🌤️', pick(NEAR_LINES).replace('{name}', S.name), {}];
+  else if (comeback) {
+    let fresh = COMEBACK[st].filter(e => !S.used.includes(e[1]));
+    if (!fresh.length) { S.used = S.used.filter(t => !COMEBACK[st].some(e => e[1] === t)); fresh = COMEBACK[st].filter(e => !prev || e[1] !== prev.text); }
+    ev = pick(fresh);
+    S.used.push(ev[1]);
+  }
   else {
     const pool = EVENTS[st][met ? 'good' : 'bad'];
     let fresh = pool.filter(e => !S.used.includes(e[1]));
@@ -1372,10 +1385,10 @@ function liveYear(mins, tier){
     S.used.push(ev[1]);
   }
 
-  const mult = {great:1.5, good:1, meh:0.75, bad:1.5, skipped:1.5, awful:2, quiet:0}[tier];
+  const mult = near ? 0 : {great:1.5, good:1, meh:0.75, bad:1.5, skipped:1.5, awful:2, quiet:0}[tier];
   const fx = {};
   for (const k in ev[2]) fx[k] = Math.round(ev[2][k] * mult);
-  if (S.age > 60 && !quiet) fx.h = (fx.h || 0) - 1; // getting older
+  if (S.age > 60 && !quiet && !near) fx.h = (fx.h || 0) - 1; // getting older
 
   const notes = [];
   if (tier === 'skipped') notes.push(pick(SKIP_LINES).replace('{name}', S.name));
@@ -1406,7 +1419,7 @@ function liveYear(mins, tier){
 
   let earned = 0;
   // Good years add to savings. Bad years eat into them (impulse buys, missed work, late fees).
-  if (quiet) {}
+  if (quiet || near) {}
   else if (met) { if (S.pay > 0) earned = Math.round(S.pay * 0.3); }
   else earned = -Math.min(Math.max(0, S.money), Math.round(Math.max(S.pay * 0.2, S.money * 0.03)));
   const wasInDebt = S.money < 0;
@@ -1419,7 +1432,14 @@ function liveYear(mins, tier){
   const buys = buyThings();
 
   // A quiet year's milestone goes by how the Blip is doing, and never costs stats.
-  const ms = milestone(S.age, quiet ? (S.h + S.s + S.j) / 3 >= 50 : met);
+  // Postponed big moments: a big moment that lands in a missed year moves to the next year (once) instead of going badly.
+  // It shows only as a light line on that year's card, never as a big moment in shares, photos or the life story (Lawyer).
+  let ms = null, moved = null;
+  const due = S.postponed != null ? S.postponed : null;
+  if (due != null) { delete S.postponed; ms = milestone(due, quiet ? (S.h + S.s + S.j) / 3 >= 50 : met); }
+  else if (!met && !quiet && MOVE_LINES[S.age] && (S.age !== 35 || S.job)) { S.postponed = S.age; moved = MOVE_LINES[S.age]; }
+  else ms = milestone(S.age, quiet ? (S.h + S.s + S.j) / 3 >= 50 : met);
+  if (moved) notes.push('🌧️ '+moved);
   if (ms && ms.fx) { const f = {}; for (const k in ms.fx) if (!quiet || ms.fx[k] > 0) f[k] = ms.fx[k]; applyFx(f); }
   if (S.age === 22 && LOANS[S.eduTier]) {
     S.money -= LOANS[S.eduTier];
@@ -1428,10 +1448,46 @@ function liveYear(mins, tier){
 
   const entry = {age:S.age, date:today(), mins, goal:g, tier, emoji:ev[0], text:ev[1], fx: shown, shrunk, earned, notes, ms: ms ? {emoji:ms.emoji, title:ms.title, text:ms.text} : null};
   if (buys.length) entry.buys = buys;
+  if (near) entry.near = true;
+  if (comeback) entry.comeback = true;
+  if (moved) entry.moved = true;
   S.log.push(entry);
   if (S.age >= SETTINGS.lifeLength) S.done = true;
   return entry;
 }
+
+function isNear(mins, g){ return mins > g && mins - g <= Math.max(10, g * 0.1); }
+function lastLived(){ for (let i = S.log.length - 1; i >= 0; i--) if (S.log[i].tier !== 'quiet') return S.log[i]; return null; }
+// A near miss: an ordinary year, nothing good or bad.
+const NEAR_LINES = [
+  'A plain, ordinary year. Nothing much happened, and that was fine.',
+  'An uneventful year for {name}. Same routine, same breakfast.',
+  'A quiet year. {name} did the usual things in the usual order.',
+  'Nothing big this year. {name} just kept going.'
+];
+// Where a big moment lands in a missed year, it moves to next year with one of these lines. Never "postponed" or "because you missed".
+const MOVE_LINES = {
+  5: 'Snow day! The first day of school moved to next year.',
+  10: 'The school talent show got rained out. It\'s next year now.',
+  14: 'A pipe burst at the high school. The first day moved to next year.',
+  16: 'The driving test got rained out. The new date is next year.',
+  18: 'A storm closed the test center. The entrance exam is next year now.',
+  22: 'The big interview got moved to next year.',
+  28: 'The rock climbing gym closed for repairs until next year.',
+  35: 'Promotion season got pushed to next year.',
+  45: 'The marathon got rained out. It moved to next year.',
+  65: 'The retirement party got rained out. It moved to next year.'
+};
+// After a rough year, a good day plays one of these. Plain story beats: no "comeback" or "recovery" words (Lawyer).
+const COMEBACK = {
+  baby: [['🌞', 'Woke up giggling and stayed that way all day.', {j:6,h:3}], ['🧸', 'Napped like a champion and woke up ready to play.', {h:6,j:3}], ['🎶', 'Clapped along to every song at music time.', {j:5,s:3}]],
+  kid: [['🚲', 'Dusted off the old bike and rode it to the park every day.', {h:7,j:4}], ['📗', 'Finished a whole book in one weekend.', {s:7,j:3}], ['⚽', 'Got picked first for kickball. Twice.', {h:5,j:5}], ['🌻', 'Planted sunflowers that grew taller than the fence.', {j:6,s:3}]],
+  middle: [['🏀', 'Shot hoops after school every day and finally made a three.', {h:7,j:4}], ['🧪', 'Their volcano erupted on cue at the science fair.', {s:7,j:4}], ['🎨', 'Filled a whole sketchbook in a month.', {j:6,s:3}], ['🤝', 'Made up with an old friend over pizza.', {j:7}]],
+  teen: [['🏃', 'Started running before school and actually liked it.', {h:8,j:3}], ['🎸', 'Learned three songs on guitar and played them for friends.', {j:7,s:2}], ['📈', 'Pulled a C up to a B+ by the end of the term.', {s:8,j:3}], ['🌄', 'Watched the sunrise from the hill with friends.', {j:7,h:2}]],
+  young: [['🥾', 'Took a weekend hiking trip and came back glowing.', {h:8,j:4}], ['🍳', 'Learned to cook five real dinners.', {h:5,s:4,j:3}], ['📚', 'Signed up for a night class and aced it.', {s:8,j:3}], ['🎉', 'Threw a game night that everyone talked about for weeks.', {j:8}]],
+  adult: [['🚴', 'Rode their bike to work all spring.', {h:8,j:3}], ['🏆', 'Nailed a big project at work.', {s:6,j:5}], ['🏕️', 'Took the whole family camping. Nobody wanted to leave.', {j:8,h:3}], ['🥕', 'Grew a vegetable garden that fed the neighbors.', {h:5,j:5}]],
+  senior: [['🚶', 'Walked the park loop every morning with a friend.', {h:7,j:4}], ['🧩', 'Finished a 2,000 piece puzzle with the grandkids.', {s:5,j:6}], ['💃', 'Joined a Tuesday dance class and never missed one.', {h:6,j:6}], ['📷', 'Made a photo album of the whole family.', {j:8}]]
+};
 
 // ============ SKIPPED DAYS ============
 const QUIET_LINES = [
@@ -1613,10 +1669,17 @@ function lifeTitle(score){
 
 // ============ CHARACTER DRAWING ============
 // Big-eyed cartoon style. Looks happy after a good year and tired, phone in hand, after a missed one.
+// One mood everywhere (Today room, logo, closet, widgets): it comes from the last year the Blip lived. A near miss is
+// a plain quiet year, not a sad one.
+function blipSad(c){
+  if (c.mood) return c.mood === 'sad';
+  const last = c.log && c.log.length ? c.log[c.log.length-1] : null;
+  return !!((last && !(last.tier === 'good' || last.tier === 'great' || last.tier === 'restored' || last.tier === 'quiet' || last.near)) || c.j < 30);
+}
 function charSVG(c){
   const st = stage(c.age);
   const last = c.log && c.log.length ? c.log[c.log.length-1] : null;
-  const sad = c.mood ? c.mood === 'sad' : ((last && !(last.tier === 'good' || last.tier === 'great' || last.tier === 'restored' || last.tier === 'quiet')) || c.j < 30);
+  const sad = blipSad(c);
   const O = '#3b2a4a', W = 'stroke="'+O+'" stroke-width="3.5"';
   const sc = {baby:.62, kid:.8, middle:.86, teen:.92, young:.97, adult:1, senior:.95}[st];
   const hair = st === 'senior' ? '#e9e7ef' : c.hair;
@@ -1659,7 +1722,7 @@ function charSVG(c){
   b += '<rect x="'+(bodyX-arm+4)+'" y="'+ay+'" width="'+arm+'" height="44" rx="'+(arm/2)+'" fill="'+shirt+'" '+W+' transform="rotate('+((c.la!=null?c.la:(sad?4:14)))+' '+(bodyX+4)+' '+ay+')"/>';
   handAt(bodyX-arm+4, 44, (c.la!=null?c.la:(sad?4:14)), bodyX+4);
   let phone = '';
-  if ((c.phone != null ? c.phone : (sad || c.pose === 'phone')) && st !== 'baby') {
+  if (false) { // Matthew (2026-11-14): no phone in any Blip art. A sad Blip shows it with the slump and the rain cloud only.
     b += '<rect x="'+(bodyX+bodyW-4)+'" y="'+ay+'" width="'+arm+'" height="40" rx="'+(arm/2)+'" fill="'+shirt+'" '+W+' transform="rotate(-40 '+(bodyX+bodyW+4)+' '+ay+')"/>';
     const [hx, hy] = handAt(bodyX+bodyW-4, 40, -40, bodyX+bodyW+4);
     // the phone sits in the raised mitten, glowing at their face
@@ -1941,6 +2004,8 @@ function statRow(lbl, v, color){
 const UPCOMING = {5:['🎒','First day of school'], 10:['🌟','A hidden talent shows up'], 14:['🏫','First day of high school'], 16:['🚗','Driving test'],
   18:['🎓','College decisions'], 22:['💼','First real job'], 28:['💞','Love life'], 35:['📈','Big career moment'], 45:['🪞','Midlife'], 65:['🏖️','Retirement']};
 function nextBig(after){
+  // A big moment moved from a missed year happens the year after it.
+  if (S && S.postponed != null && after === S.age && UPCOMING[S.postponed]) return [S.age + 1].concat(UPCOMING[S.postponed]);
   const ages = Object.keys(UPCOMING).map(Number).filter(a => a > after);
   if (ages.length) return [ages[0]].concat(UPCOMING[ages[0]]);
   return after < SETTINGS.lifeLength ? [SETTINGS.lifeLength, '🎂', 'The final chapter'] : null;
@@ -2045,6 +2110,31 @@ function showGoalAsk(){
     '<button class="btn wdown" id="gaskyes">Yes, set '+fmtTime(v)+'</button><button class="btn" id="gaskno" style="margin-top:10px;background:#fff;color:#3b2a4a;border:2.5px solid #3b2a4a;box-shadow:0 4px 0 #3b2a4a">Keep my goal</button>');
   $('gaskyes').onclick = () => { S.goalNext = v; save(); track('goal-changed'); document.querySelector('.modal').remove(); render(); };
   $('gaskno').onclick = () => document.querySelector('.modal').remove();
+}
+// Goal fit: after 3 misses in the last 5 days, offer (never push) a goal they'd hit about 3 days in 4, from recent days.
+// Same card family as the day-3 check-in. Neutral words, no health language, no shop on or after it (Lawyer).
+function goalFitPlan(){
+  if (!S || S.done || S.testMode || S.goalNext != null || goodbye || tab !== 'home') return null;
+  const days = S.log.filter(e => e.mins != null && e.tier !== 'quiet');
+  if (days.length < 5 || (S.goalFitAt != null && days.length - S.goalFitAt < 14)) return null;
+  const last5 = days.slice(-5);
+  if (last5.filter(e => e.mins > (e.goal || S.goal)).length < 3) return null;
+  const recent = days.slice(-7).map(e => e.mins).sort((a, b) => a - b);
+  const p75 = recent[Math.min(recent.length - 1, Math.ceil(recent.length * 0.75) - 1)];
+  const v = Math.min(960, Math.ceil(p75 / 15) * 15);
+  return v > S.goal ? {v, n: days.length} : null;
+}
+function showGoalFit(plan){
+  S.goalFitAt = plan.n; save();
+  const v = plan.v, eq = 'flex:1;margin:0';
+  modal('<div class="gaskart">'+charSVG(Object.assign({}, S, {wear: myWear(), mood: 'happy'})).replace('<svg ', '<svg width="92" ')+'</div><div class="gaskt">🎯 Goal check-in</div>'+
+    '<h2 style="margin:4px 0 10px">Want to try '+fmtTime(v)+' for a while?</h2>'+
+    '<p style="margin:0 0 4px">Your goal right now is '+fmtTime(S.goal)+'. Based on your last few days, '+fmtTime(v)+' is one you\'d reach on most days.</p>'+
+    '<p class="muted small" style="margin:0 0 12px">You can change it any time. A new goal starts tomorrow.</p>'+
+    '<div style="display:flex;gap:10px"><button class="btn" id="gfitno" style="'+eq+';background:#fff;color:#3b2a4a;border:2.5px solid #3b2a4a;box-shadow:0 4px 0 #3b2a4a">Keep '+fmtTime(S.goal)+'</button>'+
+    '<button class="btn" id="gfityes" style="'+eq+'">Try '+fmtTime(v)+'</button></div>');
+  $('gfityes').onclick = () => { S.goalNext = v; save(); track('goal-changed'); document.querySelector('.modal').remove(); render(); };
+  $('gfitno').onclick = () => document.querySelector('.modal').remove();
 }
 function showGoalCard(){
   const recent = S.log.slice(-7).filter(e => e.mins != null), avg = recent.length ? Math.round(recent.reduce((a, e) => a + e.mins, 0) / recent.length / 5) * 5 : null;
@@ -3131,6 +3221,7 @@ function bind(){
   bindST(); bindRemind();
   if ($('whylow')) $('whylow').onclick = ev => { ev.stopPropagation(); showWhyLower(); };
   if (goalAskDue() && !document.querySelector('.modal')) setTimeout(() => { if (goalAskDue() && !document.querySelector('.modal')) showGoalAsk(); }, 900);
+  else if (!document.querySelector('.modal') && goalFitPlan()) setTimeout(() => { const p = goalFitPlan(); if (p && !document.querySelector('.modal')) showGoalFit(p); }, 900);
   if ($('firstremind')) $('firstremind').onclick = () => { remind.on = true; remindSave(); remindSync().then(ok => { if (!ok) { remind.on = false; remindSave(); } render(); }); };
   if ($('goal')) $('goal').oninput = e => { S.goal = +e.target.value; delete S.goalNext; $('gv').textContent = fmtTime(S.goal); save(); };
   if ($('nm')) $('nm').onchange = e => { const v = e.target.value.trim(); if (v) { S.name = v; save(); } };
@@ -3189,7 +3280,7 @@ const mug = '<path d="M146 152 q-4 -6 0 -12 M154 152 q4 -6 0 -12" stroke="#fff" 
   '<path d="M158 166 h4 q7 0 7 7 q0 7 -7 7 h-4" fill="none" '+W(3)+'/><rect x="138" y="158" width="22" height="26" rx="5" fill="#ffc23d" '+W(3)+'/><path d="M143 168 h12" stroke="#fff" stroke-width="3" stroke-linecap="round"/>';
 const sketch = '<g transform="rotate(8 54 168)"><rect x="40" y="164" width="30" height="38" rx="3" fill="#ff8fa8" '+W(3.5)+'/><path d="M40 170 h30" stroke="'+O+'" stroke-width="2.5"/><path d="M47 182 q8 -8 16 0 q-8 8 -16 0z" fill="#fff" stroke="'+O+'" stroke-width="2"/></g>';
 const marker = '<g transform="rotate(-25 147 172)"><rect x="143" y="160" width="9" height="26" rx="2.5" fill="#4da3ff" '+W(2.5)+'/><rect x="143" y="180" width="9" height="7" rx="2" fill="#3b2a4a"/></g>';
-const me = (o) => Object.assign({}, S, {log:[{tier:'good'}], wear:myWear()}, o || {});
+const me = (o) => Object.assign({}, S, {wear:myWear()}, o || {}); // mood from the last year lived (one mood everywhere)
 const nest = (s, x, y, w) => s.replace('<svg ', '<svg x="'+x+'" y="'+y+'" width="'+w+'" height="'+(w*1.2)+'" ');
 const place = (s, cx, F, w) => nest(s, cx - w/2, F - w*1.2*0.94, w);
 const icon = (k, x, y, w) => '<svg x="'+x+'" y="'+y+'" width="'+w+'" height="'+w+'" viewBox="0 0 100 100">'+ICONS[k]+'</svg>';
@@ -3237,21 +3328,21 @@ function bubble(x, y, w, lines, tx){ const h = lines.length > 1 ? 50 : 32;
   let s = '<path d="M'+x+' '+y+' h'+w+' q10 0 10 10 v'+(h-20)+' q0 10 -10 10 H'+(tx+14)+' l-10 12 l0 -12 H'+x+' q-10 0 -10 -10 v'+(-(h-20))+' q0 -10 10 -10z" fill="#fff" '+W(3)+'/>';
   lines.forEach((t, i) => s += '<text x="'+(x+w/2)+'" y="'+(y+21+i*19)+'" text-anchor="middle" font-family="Fredoka,sans-serif" font-weight="600" font-size="15" fill="'+O+'">'+esc(t)+'</text>');
   return s; }
-// o = {t, kind:'studio'|'couch'|'wave'|'empty', mood:'happy'|'sketch'|'phone', dog, say}
+// o = {t, kind:'studio'|'couch'|'wave'|'empty', mood:'happy'|'sketch', dog, say}
 function scene(o){ const H = 230, F = 196, t = o.t, w = 150;
   let s = '<svg viewBox="0 0 300 '+H+'" preserveAspectRatio="xMidYMax slice" width="100%" height="100%" style="display:block">'+room(H, F, t);
   if (o.kind === 'studio') {
     const wy = F - 180;
     s += win(16, wy, 70, 72, t)+beam(16, wy, 70, 72, F, t, t === 'afternoon' ? 90 : 50)+board(176, F-214, 114, 92)+desk(184, F);
     if (o.dog) s += dog(222, F, 58, 'ball');
-    const b = o.mood === 'phone' ? noGlow(charSVG(me({pose:'phone'}))) : o.mood === 'sketch' ? front(noGlow(charSVG(me())).replace('<g class="bob">', '<g class="bob">'+sketch), marker) : front(noGlow(charSVG(me())), mug);
+    const b = o.mood === 'sketch' ? front(noGlow(charSVG(me())).replace('<g class="bob">', '<g class="bob">'+sketch), marker) : front(noGlow(charSVG(me())), mug);
     s += '<g id="wblip">'+place(b, 128, F, w)+'</g>';
     if (o.say) s += '<g id="wsay">'+bubble(16, 8, 160, o.say, 96)+'</g>';
   } else {
     const wy = F - 196;
     s += win(18, wy, 64, 80, t);
     if (o.kind === 'couch') {
-      s += lamp(30, F, true)+door(226, F, false)+couchBack(72, F, 136)+'<g id="wblip">'+nest(noGlow(charSVG(Object.assign({}, S, {log:[{tier:'bad'}], wear:myWear()}))), 140 - w/2, F - 44 - 184*w/200, w)+'</g>'+couchFront(72, F, 136);
+      s += lamp(30, F, true)+door(226, F, false)+couchBack(72, F, 136)+'<g id="wblip">'+nest(noGlow(charSVG(Object.assign({}, S, {wear:myWear()}))), 140 - w/2, F - 44 - 184*w/200, w)+'</g>'+couchFront(72, F, 136);
       if (o.dog) s += dog(212, F, 58, 'leash');
     } else if (o.kind === 'wave') {
       s += lamp(30, F, true)+door(226, F, true)+couchBack(72, F, 136)+couchFront(72, F, 136)+(o.dog ? dog(40, F, 56, 'leash') : '')+'<g id="wblip">'+place(noGlow(charSVG(me({pose:'wave'}))), 150, F, w)+'</g>';
@@ -3277,7 +3368,7 @@ function windowHTML(){
       : '<div class="bye card2"><div class="e">🌙</div><h2>See you tomorrow morning</h2><p class="muted">'+n+' turns '+turning+' when you wake up.</p></div>';
     return '<div class="card wincard"><div class="wart">'+art+'<div class="bubble wbub" id="wbub"></div></div></div>'+msg;
   }
-  const kind = over ? 'couch' : 'studio', mood = near ? 'phone' : t === 'morning' ? 'happy' : 'sketch';
+  const kind = over ? 'couch' : 'studio', mood = near || t === 'morning' ? 'happy' : 'sketch';
   const pool = WIN_LINES[over ? 'over' : near ? 'near' : 'under'], say = pick(pool);
   const pill = dg ? (over ? '🐶 '+dg+' brought you his leash' : near ? '🐶 '+dg+' wants to play ball' : '') : '';
   const words = say.length > 18 ? [say.slice(0, say.lastIndexOf(' ', 18) > 0 ? say.lastIndexOf(' ', 18) : 18), say.slice(say.lastIndexOf(' ', 18) > 0 ? say.lastIndexOf(' ', 18) + 1 : 18)] : [say];
@@ -3772,6 +3863,7 @@ const SCREEN = /phone|scroll|screen|video|tablet|online|text|notification|\bads?
 const FALL = {baby:'nursery blocks - - toddle', kid:'park - - - wave', middle:'park - - - wave', teen:'park - - - wave', young:'park - - - wave', adult:'park - - - wave', senior:'park - - - wave'};
 
 function polarity(e){
+  if (e.near) return '+'; // a near miss is a plain year: an ordinary, calm photo
   const st = stage(e.age), list = EVENTS[st];
   if (list && list.bad.some(x => x[1] === e.text)) return '-';
   if (list && list.good.some(x => x[1] === e.text)) return '+';
@@ -3844,7 +3936,7 @@ function polaroidHTML(e){
     '<div class="cap">'+(e.buys ? momentLine(e.buys[0].key) : e.emoji+' '+esc(e.text))+'</div></div>';
 }
 function showYear(e, next){
-  const t = TIER[e.tier], big = e.buys || e.ms, nb = !S.done ? nextBig(e.age) : null;
+  const t = e.near ? {label:'🌤️ Plain year', color:'#8fa3c8'} : e.comeback ? {label:'🌈 Back on track!', color:'var(--good)'} : TIER[e.tier], big = e.buys || e.ms, nb = !S.done ? nextBig(e.age) : null;
   let h = '<span class="tpill" style="background:'+t.color+'">'+(big ? '⭐ Big year!' : t.label)+'</span>'+
     '<div class="nowage">'+esc(S.name)+' is now <b>'+e.age+'</b></div>'+polaroidHTML(e)+
     (e.buys ? '<p class="muted small">'+e.emoji+' '+esc(e.text)+' All those good years paid off.'+(ITEM[e.buys[0].key].fx ? ' +'+ITEM[e.buys[0].key].fx.j+' 😊' : '')+'</p>' : '')+

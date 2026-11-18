@@ -759,6 +759,8 @@ function lineArt(b64, skin){
 // The same file runs as the website and inside the phone app (see app/README.md).
 // In the app, iPhone can clear website-style storage, so the save is also kept in the app's own storage.
 const IS_APP = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
+// Nomad prototype (TestFlight, 2026-11-18): true runs nomad.js instead of Blip Classic. Classic is kept as is on branch blip-classic.
+const NOMAD = IS_APP || /[?&]nomad/.test(location.search);
 const WEB_URL = 'https://gamesbyvidal.github.io/lifetime/';
 // The page has no bundler, so @capacitor/core's registerPlugin isn't loaded. Talk to native plugins
 // through the bridge iOS injects (nativePromise / nativeCallback), which every Capacitor app has.
@@ -4403,6 +4405,7 @@ function confetti(set){
   }
 }
 
+if (!NOMAD) { // Blip Classic boots here; the Nomad prototype (nomad.js) boots itself instead
 if (SHOP_ON && !store.seen) { store.seen = store.owned.slice(); saveStore(); }
 if (SHOP_ON) { document.querySelector('.nav [data-tab=settings]').insertAdjacentHTML('beforebegin', '<button data-tab="shop"><b>🎁</b>Shop</button>'); shopInit(); }
 // Blip-style tab icons (nav option C): same thick outline and pastel fills as the rest of the art.
@@ -4445,6 +4448,8 @@ stRefresh();
 setTimeout(stResync, 1500);
 // iOS sends the 5-minute steps in the background, sometimes minutes later. Re-read them every 30 seconds while Blip is on screen.
 setInterval(() => { if (document.visibilityState === 'visible' && S) stRefresh(); }, 30000);
+} // end of Blip Classic boot
 </script>
+<script src="nomad.js"></script>
 </body>
 </html>

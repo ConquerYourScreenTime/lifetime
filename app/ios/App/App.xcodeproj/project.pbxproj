@@ -19,12 +19,16 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		511102AB57227BE6828E741E /* MonitorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4242DFDEF86BAAB87FACC69 /* MonitorExtension.swift */; };
+		B1A5E2000C00000000000000 /* ShieldActionExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1A5E2000800000000000000 /* ShieldActionExtension.swift */; };
+		B1A5E1000C00000000000000 /* ShieldConfigExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1A5E1000800000000000000 /* ShieldConfigExtension.swift */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		A1B2C3D40000000000000002 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40000000000000001 /* MainViewController.swift */; };
 		A1B2C3D40000000000000004 /* StorePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40000000000000003 /* StorePlugin.swift */; };
 		A1B2C3D400000000000000B2 /* PhotosPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D400000000000000B1 /* PhotosPlugin.swift */; };
 		CF23AC322B1B1DFAAC483B94 /* ScreenTimePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FD842C068A3B43E6256D3E9 /* ScreenTimePlugin.swift */; };
 		E2E097B5915E69A37C45A641 /* BlipMonitor.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D588CF0A7A2230DD94193823 /* BlipMonitor.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B1A5E2000D00000000000000 /* BlipShieldAction.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B1A5E2000B00000000000000 /* BlipShieldAction.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B1A5E1000D00000000000000 /* BlipShieldConfig.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B1A5E1000B00000000000000 /* BlipShieldConfig.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -42,6 +46,20 @@
 			remoteGlobalIDString = C59B5DA7393303525A28001D;
 			remoteInfo = BlipMonitor;
 		};
+		B1A5E2000E00000000000000 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B1A5E2000000000000000000;
+			remoteInfo = BlipShieldAction;
+		};
+		B1A5E1000E00000000000000 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B1A5E1000000000000000000;
+			remoteInfo = BlipShieldConfig;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -52,6 +70,8 @@
 			dstSubfolderSpec = 13;
 			files = (
 				E2E097B5915E69A37C45A641 /* BlipMonitor.appex in Embed Foundation Extensions */,
+				B1A5E2000D00000000000000 /* BlipShieldAction.appex in Embed Foundation Extensions */,
+				B1A5E1000D00000000000000 /* BlipShieldConfig.appex in Embed Foundation Extensions */,
 				B1E9C0DE0000000000000006 /* BlipWidget.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
@@ -75,6 +95,8 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		532538532B87CE915F07FA17 /* App.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		6A1F6915ED0BCD3B9FB63702 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B1A5E2000900000000000000 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B1A5E1000900000000000000 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8FD842C068A3B43E6256D3E9 /* ScreenTimePlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenTimePlugin.swift; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
@@ -83,8 +105,14 @@
 		A1B2C3D400000000000000B1 /* PhotosPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosPlugin.swift; sourceTree = "<group>"; };
 		A3AA586F1275ACCD00BC97FD /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		A4242DFDEF86BAAB87FACC69 /* MonitorExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MonitorExtension.swift; sourceTree = "<group>"; };
+		B1A5E2000800000000000000 /* ShieldActionExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShieldActionExtension.swift; sourceTree = "<group>"; };
+		B1A5E1000800000000000000 /* ShieldConfigExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShieldConfigExtension.swift; sourceTree = "<group>"; };
 		C9A5A1F5C8E3AD43505C2785 /* BlipMonitor.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = BlipMonitor.entitlements; sourceTree = "<group>"; };
+		B1A5E2000A00000000000000 /* BlipShieldAction.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = BlipShieldAction.entitlements; sourceTree = "<group>"; };
+		B1A5E1000A00000000000000 /* BlipShieldConfig.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = BlipShieldConfig.entitlements; sourceTree = "<group>"; };
 		D588CF0A7A2230DD94193823 /* BlipMonitor.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BlipMonitor.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1A5E2000B00000000000000 /* BlipShieldAction.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BlipShieldAction.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1A5E1000B00000000000000 /* BlipShieldConfig.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BlipShieldConfig.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -108,6 +136,20 @@
 			buildActionMask = 2147483647;
 			files = (
 				102487B447FBA24DCA9EB04C /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B1A5E2000500000000000000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B1A5E1000500000000000000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -144,6 +186,28 @@
 			path = BlipMonitor;
 			sourceTree = "<group>";
 		};
+		B1A5E2000700000000000000 /* BlipShieldAction */ = {
+			isa = PBXGroup;
+			children = (
+				B1A5E2000800000000000000 /* ShieldActionExtension.swift */,
+				B1A5E2000900000000000000 /* Info.plist */,
+				B1A5E2000A00000000000000 /* BlipShieldAction.entitlements */,
+			);
+			name = BlipShieldAction;
+			path = BlipShieldAction;
+			sourceTree = "<group>";
+		};
+		B1A5E1000700000000000000 /* BlipShieldConfig */ = {
+			isa = PBXGroup;
+			children = (
+				B1A5E1000800000000000000 /* ShieldConfigExtension.swift */,
+				B1A5E1000900000000000000 /* Info.plist */,
+				B1A5E1000A00000000000000 /* BlipShieldConfig.entitlements */,
+			);
+			name = BlipShieldConfig;
+			path = BlipShieldConfig;
+			sourceTree = "<group>";
+		};
 		504EC2FB1FED79650016851F = {
 			isa = PBXGroup;
 			children = (
@@ -152,6 +216,8 @@
 				504EC3051FED79650016851F /* Products */,
 				2B283AC18007AB4304187405 /* Frameworks */,
 				3A08D3E32734C66D6B684CC1 /* BlipMonitor */,
+				B1A5E2000700000000000000 /* BlipShieldAction */,
+				B1A5E1000700000000000000 /* BlipShieldConfig */,
 				B1E9C0DE0000000000000008 /* BlipWidget */,
 			);
 			sourceTree = "<group>";
@@ -161,6 +227,8 @@
 			children = (
 				504EC3041FED79650016851F /* App.app */,
 				D588CF0A7A2230DD94193823 /* BlipMonitor.appex */,
+				B1A5E2000B00000000000000 /* BlipShieldAction.appex */,
+				B1A5E1000B00000000000000 /* BlipShieldConfig.appex */,
 				B1E9C0DE0000000000000002 /* BlipWidget.appex */,
 			);
 			name = Products;
@@ -228,6 +296,8 @@
 			);
 			dependencies = (
 				B2180D1297258100116217E2 /* PBXTargetDependency */,
+				B1A5E2000F00000000000000 /* PBXTargetDependency */,
+				B1A5E1000F00000000000000 /* PBXTargetDependency */,
 				B1E9C0DE000000000000000D /* PBXTargetDependency */,
 			);
 			name = App;
@@ -253,6 +323,40 @@
 			name = BlipMonitor;
 			productName = BlipMonitor;
 			productReference = D588CF0A7A2230DD94193823 /* BlipMonitor.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		B1A5E2000000000000000000 /* BlipShieldAction */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B1A5E2000100000000000000 /* Build configuration list for PBXNativeTarget "BlipShieldAction" */;
+			buildPhases = (
+				B1A5E2000400000000000000 /* Sources */,
+				B1A5E2000500000000000000 /* Frameworks */,
+				B1A5E2000600000000000000 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BlipShieldAction;
+			productName = BlipShieldAction;
+			productReference = B1A5E2000B00000000000000 /* BlipShieldAction.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		B1A5E1000000000000000000 /* BlipShieldConfig */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B1A5E1000100000000000000 /* Build configuration list for PBXNativeTarget "BlipShieldConfig" */;
+			buildPhases = (
+				B1A5E1000400000000000000 /* Sources */,
+				B1A5E1000500000000000000 /* Frameworks */,
+				B1A5E1000600000000000000 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BlipShieldConfig;
+			productName = BlipShieldConfig;
+			productReference = B1A5E1000B00000000000000 /* BlipShieldConfig.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -289,6 +393,8 @@
 			targets = (
 				504EC3031FED79650016851F /* App */,
 				C59B5DA7393303525A28001D /* BlipMonitor */,
+				B1A5E2000000000000000000 /* BlipShieldAction */,
+				B1A5E1000000000000000000 /* BlipShieldConfig */,
 				B1E9C0DE0000000000000009 /* BlipWidget */,
 			);
 		};
@@ -303,6 +409,20 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		3CB0326B1A0E7AB58F403716 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B1A5E2000600000000000000 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B1A5E1000600000000000000 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -354,6 +474,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B1A5E2000400000000000000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1A5E2000C00000000000000 /* ShieldActionExtension.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B1A5E1000400000000000000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1A5E1000C00000000000000 /* ShieldConfigExtension.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -368,6 +504,18 @@
 			name = BlipMonitor;
 			target = C59B5DA7393303525A28001D /* BlipMonitor */;
 			targetProxy = A98937DBC8DF163E2DC75A87 /* PBXContainerItemProxy */;
+		};
+		B1A5E2000F00000000000000 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = BlipShieldAction;
+			target = B1A5E2000000000000000000 /* BlipShieldAction */;
+			targetProxy = B1A5E2000E00000000000000 /* PBXContainerItemProxy */;
+		};
+		B1A5E1000F00000000000000 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = BlipShieldConfig;
+			target = B1A5E1000000000000000000 /* BlipShieldConfig */;
+			targetProxy = B1A5E1000E00000000000000 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -467,6 +615,56 @@
 			};
 			name = Debug;
 		};
+		B1A5E2000300000000000000 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = BlipShieldAction/BlipShieldAction.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlipShieldAction/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.gamesbyvidal.lifetime.shieldaction;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		B1A5E1000300000000000000 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = BlipShieldConfig/BlipShieldConfig.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlipShieldConfig/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.gamesbyvidal.lifetime.shieldconfig;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
 		3D57E0D77755789A837BAE57 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -484,6 +682,58 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.gamesbyvidal.lifetime.monitor;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		B1A5E2000200000000000000 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = BlipShieldAction/BlipShieldAction.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlipShieldAction/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.gamesbyvidal.lifetime.shieldaction;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		B1A5E1000200000000000000 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = BlipShieldConfig/BlipShieldConfig.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlipShieldConfig/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.gamesbyvidal.lifetime.shieldconfig;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -665,6 +915,24 @@
 			buildConfigurations = (
 				3D57E0D77755789A837BAE57 /* Release */,
 				1C8353A917C05D60EBCC4FFA /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B1A5E2000100000000000000 /* Build configuration list for PBXNativeTarget "BlipShieldAction" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B1A5E2000200000000000000 /* Release */,
+				B1A5E2000300000000000000 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B1A5E1000100000000000000 /* Build configuration list for PBXNativeTarget "BlipShieldConfig" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B1A5E1000200000000000000 /* Release */,
+				B1A5E1000300000000000000 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

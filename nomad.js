@@ -109,7 +109,8 @@ function rollover(){
     for (const k in N.hist) if (k < key(old)) delete N.hist[k];
     const travel = settleTravel(y, N.credited[y] || pay.miles);
     nsave();
-    return {y, m: r.m, tips, under, pay: N.credited[y] || pay.miles, travel};
+    const res = {y, m: r.m, tips, under, pay: N.credited[y] || pay.miles, travel};
+    return turnbacksFor(y).then(n => { res.turnbacks = n; return res; });
   });
 }
 
@@ -237,6 +238,7 @@ function passportHTML(){
 function settingsHTML(){
   return '<div class="card"><h2 style="margin-top:0">Settings</h2><div class="nrow" style="justify-content:space-between"><span>Daily goal</span><span><button class="btn nsm" id="gm">–</button> <b>'+fmtTime(N.goal)+'</b> <button class="btn nsm" id="gp">+</button></span></div>'+
     '<p class="muted small">You choose the goal, and Blip never changes it on its own. A new goal starts tomorrow in the full game. In the prototype it counts right away.</p></div>'+
+    pauseCardHTML()+
     (IS_APP ? '<div class="card"><h3 style="margin-top:0">⏰ Morning note</h3><div class="switch"><span>One note in the morning when '+esc(N.name)+'\'s news is ready. Never during the day.</span><input type="checkbox" id="rmon" '+(N.remind.on ? 'checked' : '')+'></div>'+
       (N.remind.on ? '<div class="switch"><span>Time</span><input type="time" id="rmtime" value="'+String(N.remind.h).padStart(2, '0')+':'+String(N.remind.m).padStart(2, '0')+'"></div>' : '')+
       (remindNote ? '<p class="muted small">'+esc(remindNote)+'</p>' : '')+'</div>' : '')+
@@ -254,7 +256,7 @@ function draw(){
   const on = (id, f) => { const e = document.getElementById(id); if (e) e.onclick = f; };
   app.querySelectorAll('[data-unq]').forEach(b => b.onclick = () => unqueue(+b.dataset.unq));
   on('nfin', reveal);
-  bindExtras();
+  bindExtras(); bindPause(); pauseSync();
   on('gm', () => { N.goal = Math.max(15, N.goal - 15); nsave(); refresh(false); });
   on('gp', () => { N.goal = Math.min(960, N.goal + 15); nsave(); refresh(false); });
   const rm = document.getElementById('rmon');
@@ -320,6 +322,7 @@ function showMorning(t){
     (FEAT.framing ? '<p>'+esc(N.name)+'\'s day yesterday: <b>'+t.pay+' '+CUR+'</b>. '+esc(dayLine(t.y, t.pay))+'</p>' : '<p>Yesterday '+esc(N.name)+' earned <b>'+t.pay+' '+CUR+'</b> at the hostel.</p>')+
     (t.under ? '<p>You finished '+fmtTime(N.goal - t.m)+' under your goal, so guests left <b>'+t.tips+' '+CUR+'</b> in tips. That\'s a full shift toward the France key.</p>' :
       '<p>The shift ended at your goal. '+esc(N.name)+' kept every Coin and is back at the desk at 8 AM.</p>')+
+    (t.turnbacks ? '<p>⏸️ You turned back '+t.turnbacks+(t.turnbacks === 1 ? ' time' : ' times')+' yesterday, and '+esc(N.name)+' kept on exploring.</p>' : '')+
     (tr ? (tr.went ? '<p>🧳 That was travel day number '+N.travel.count+'.'+(tr.pin ? ' '+esc(N.name)+' earned a '+esc(tr.pin.name.toLowerCase())+' '+tr.pin.emoji+' for the backpack!' : '')+'</p>' :
       '<p>🧳 '+esc(N.name)+' took a slow day. That\'s part of travelling.</p>') : '')+
     (card ? postcardHTML(card) : '')+
@@ -550,6 +553,79 @@ function bindExtras(){
   if (n) n.onclick = () => answerTip(false);
 }
 
+// ======================= Blip pause (opt-in Screen Time shield on apps the player picks) =======================
+// Lawyer conditions (2026-11-19): opt-in, nothing picked by default, Apple's picker only, safety line in the picker, one-tap off,
+// no minute numbers on the shield, "Open for 15 min" after tap-wait-tap, turn-back count is one daily number on the phone,
+// deleted after the morning story, and neither button gains or loses Coins.
+N.pause = N.pause || {on:false, count:0};
+let pauseLine = '', pauseIconSent = false, pauseNote = '';
+const pauseOK = () => { const p = P(); return !!(p && p.pausePick); };
+// What the shield says: where Blip is, in words (never minutes), then the question.
+const PAUSE_AT = {
+  montserrat: ['setting off up Montserrat', 'halfway up Montserrat', 'nearly at the top of Montserrat'],
+  sagrada: ['starting up a Sagrada Família tower', 'halfway up a Sagrada Família tower', 'nearly at the top of a Sagrada Família tower'],
+  balloon: ['climbing into a hot-air balloon basket', 'floating over the Garrotxa volcanoes', 'drifting down to land after the balloon flight'],
+  laia: ['heading up to the Bunkers del Carmel with Laia', 'watching the sunset from the Bunkers del Carmel with Laia', 'walking back down from the Bunkers del Carmel with Laia'],
+  es1: ['just starting a Spanish lesson', 'halfway through a Spanish lesson', 'nearly done with a Spanish lesson'],
+  es2: ['just starting a Spanish lesson', 'halfway through a Spanish lesson', 'nearly done with a Spanish lesson']
+};
+function pauseText(){
+  const a = N.act;
+  if (!a) return N.name+' is working the hostel front desk. Want to head back?';
+  const x = actOf(a.id), f = a.prog / a.need, stage = f < .35 ? 0 : f < .75 ? 1 : 2;
+  const at = PAUSE_AT[a.id] ? PAUSE_AT[a.id][stage] : ['just starting: ', 'halfway through: ', 'nearly done with: '][stage] + x.title;
+  return N.name+' is '+at+'. Want to head back?';
+}
+function blipPNG(){
+  return new Promise((ok, no) => {
+    const w = 240, h = 288, t = NART.blipSVG(look()).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'" ');
+    const img = new Image();
+    img.onload = () => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h); ok(cv.toDataURL('image/png').split(',')[1]); };
+    img.onerror = no; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(t);
+  });
+}
+// Keeps the shield's line and picture in step with what Blip is doing. Only runs in the app, and only once the pause is on.
+function pauseSync(){
+  if (!pauseOK() || !N.pause.on) return;
+  const p = P(), line = pauseText();
+  if (line !== pauseLine) { pauseLine = line; p.pauseScene({line}).catch(() => {}); }
+  if (!pauseIconSent) { pauseIconSent = true; blipPNG().then(icon => p.pauseScene({icon})).catch(() => { pauseIconSent = false; }); }
+}
+function pauseStatus(){
+  if (!pauseOK()) return;
+  P().pauseStatus().then(r => { if (r) { const was = JSON.stringify(N.pause); N.pause.on = !!r.on; N.pause.count = r.count || 0; if (JSON.stringify(N.pause) !== was) { nsave(); if (view === 'settings') draw(); } } }).catch(() => {});
+}
+function pausePick(then){
+  P().pausePick().then(r => { N.pause.count = r && r.count || 0; nsave(); if (then) then(); else draw(); }).catch(() => {});
+}
+function pauseSet(on){
+  P().pauseSet({on}).then(r => { N.pause.on = !!(r && r.on); N.pause.count = r && r.count || 0; nsave(); pauseLine = ''; pauseIconSent = false; pauseSync(); draw(); }).catch(() => {});
+}
+function pauseCardHTML(){
+  if (!pauseOK()) return '';
+  const n = N.pause.count;
+  return '<div class="card npausecard"><h3 style="margin-top:0">⏸️ Blip pause</h3>'+
+    '<div class="switch"><span>Picks up a chosen app? '+esc(N.name)+' asks if you want to head back first.</span><input type="checkbox" id="pzon" '+(N.pause.on ? 'checked' : '')+'></div>'+
+    '<p class="muted small">You pick the apps with Apple\'s own list, and Blip never sees which ones. "Open for 15 min" always works after a short pause. Turn this off here any time.</p>'+
+    '<button class="btn ghost nsm" id="pzpick">'+(n ? 'Change apps ('+n+' picked)' : 'Choose apps')+'</button>'+
+    '<p class="muted small" style="margin:8px 0 0">Don\'t add apps you may need in a hurry, like Maps or messaging.</p>'+
+    (pauseNote ? '<p class="muted small">'+esc(pauseNote)+'</p>' : '')+'</div>';
+}
+function bindPause(){
+  const on = document.getElementById('pzon'), pick = document.getElementById('pzpick');
+  if (on) on.onchange = () => {
+    pauseNote = '';
+    if (on.checked && !N.pause.count) pausePick(() => { if (N.pause.count) pauseSet(true); else { pauseNote = 'Pick at least one app to turn on the Blip pause.'; draw(); } });
+    else pauseSet(on.checked);
+  };
+  if (pick) pick.onclick = () => pausePick();
+}
+// Yesterday's turn-back count for the morning story. Reading it deletes it on the phone.
+function turnbacksFor(day){
+  const p = P(); if (!p || !p.turnbacks) return Promise.resolve(0);
+  return p.turnbacks({day}).then(r => r && r.count || 0).catch(() => 0);
+}
+
 // ---------- the one optional notification: a morning note, never during the day ----------
 let remindNote = '';
 function nremindSync(){
@@ -591,12 +667,13 @@ draw();
 if (!N.welcomed) welcome();        // the goal picker follows when the welcome closes
 else if (!N.goalSet) chooseGoal();
 refresh(true);
+pauseStatus();
 nremindSync();                     // replaces any Classic "next year" note with Nomad's own (or turns it off)
 const p = P();
 if (p && p.env) p.env().then(r => { TF = !!(r && r.testflight); if (view === 'settings') draw(); }).catch(() => {});
 if (p && p.resync) setTimeout(() => p.resync().catch(() => {}), 1500);
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') { document.querySelectorAll('.ncalm').forEach(c => c.remove()); refresh(true); }
+  if (document.visibilityState === 'visible') { document.querySelectorAll('.ncalm').forEach(c => c.remove()); refresh(true); pauseStatus(); }
   else if (N.snap) { N.snap.t = Date.now(); nsave(); } // the phone-down clock starts now (Blip open doesn't count)
 });
 setInterval(() => { if (document.visibilityState === 'visible') refresh(false); }, 30000);

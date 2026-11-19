@@ -1,5 +1,6 @@
 import DeviceActivity
 import FamilyControls
+import ManagedSettings
 import WidgetKit
 import Foundation
 
@@ -32,6 +33,18 @@ class MonitorExtension: DeviceActivityMonitor {
     override func intervalDidEnd(for activity: DeviceActivityName) {
         super.intervalDidEnd(for: activity)
         log(activity.rawValue + " end")
+        if activity == DeviceActivityName("pause-unlock") { pauseBack() }
+    }
+
+    // Blip pause: the 15-minute break is over, so the pause goes back on the apps the player picked (if it's still turned on).
+    private func pauseBack() {
+        defaults?.removeObject(forKey: "pause-until")
+        guard defaults?.bool(forKey: "pause-on") == true, let data = defaults?.data(forKey: "pauseSelection"),
+              let sel = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) else { return }
+        let store = ManagedSettingsStore(named: ManagedSettingsStore.Name("blippause"))
+        store.shield.applications = sel.applicationTokens.isEmpty ? nil : sel.applicationTokens
+        store.shield.applicationCategories = sel.categoryTokens.isEmpty ? nil : .specific(sel.categoryTokens)
+        store.shield.webDomains = sel.webDomainTokens.isEmpty ? nil : sel.webDomainTokens
     }
 
     override func intervalDidStart(for activity: DeviceActivityName) {
@@ -58,6 +71,7 @@ class MonitorExtension: DeviceActivityMonitor {
             if key.hasPrefix("log-"), String(key.dropFirst(4)) < oldest { d.removeObject(forKey: key) }
             if key.hasPrefix("diag-"), String(key.dropFirst(5)) < oldest { d.removeObject(forKey: key) }
             if key.hasPrefix("hours-"), String(key.dropFirst(6)) < oldest { d.removeObject(forKey: key) }
+            if key.hasPrefix("turnback-"), String(key.dropFirst(9)) < oldest { d.removeObject(forKey: key) }
             if key.hasPrefix("at-"), let day = key.split(separator: "-", maxSplits: 2).last, String(day) < oldest { d.removeObject(forKey: key) }
         }
     }

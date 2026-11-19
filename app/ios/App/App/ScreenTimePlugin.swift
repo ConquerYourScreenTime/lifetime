@@ -25,7 +25,12 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "remindOn", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "remindOff", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "env", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "widget", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "widget", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "pausePick", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "pauseSet", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "pauseStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "pauseScene", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "turnbacks", returnType: CAPPluginReturnPromise)
     ]
 
     static let group = "group.io.github.gamesbyvidal.lifetime"
@@ -283,6 +288,7 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
             if key.hasPrefix("log-"), String(key.dropFirst(4)) < oldest { d.removeObject(forKey: key) }
             if key.hasPrefix("diag-"), String(key.dropFirst(5)) < oldest { d.removeObject(forKey: key) }
             if key.hasPrefix("hours-"), String(key.dropFirst(6)) < oldest { d.removeObject(forKey: key) }
+            if key.hasPrefix("turnback-"), String(key.dropFirst(9)) < oldest { d.removeObject(forKey: key) }
         }
     }
 
@@ -347,15 +353,98 @@ extension DeviceActivityName { static let daily = Self("daily") }
 
 private struct PickerView: View {
     @State var selection: FamilyActivitySelection
+    var title = "Tick All, then search Safari"
+    var note: String? = nil
     let done: (FamilyActivitySelection?) -> Void
     var body: some View {
         NavigationView {
-            FamilyActivityPicker(selection: $selection)
-                .navigationTitle("Tick All, then search Safari")
+            VStack(spacing: 0) {
+                if let note = note {
+                    Text(note).font(.footnote).multilineTextAlignment(.center).padding(.horizontal, 16).padding(.vertical, 10)
+                }
+                FamilyActivityPicker(selection: $selection)
+            }
+                .navigationTitle(title)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { done(nil) } }
                     ToolbarItem(placement: .confirmationAction) { Button("Done") { done(selection) } }
                 }
         }
+    }
+}
+
+// ---------- Blip pause (opt-in): a Screen Time shield on apps the player picks with Apple's picker ----------
+// Blip never learns which apps were picked (Apple gives only opaque tokens). Nothing here leaves the phone.
+extension ScreenTimePlugin {
+    static let pauseStore = ManagedSettingsStore(named: ManagedSettingsStore.Name("blippause"))
+
+    private var pauseSelection: FamilyActivitySelection? {
+        guard let data = UserDefaults(suiteName: Self.group)?.data(forKey: "pauseSelection") else { return nil }
+        return try? JSONDecoder().decode(FamilyActivitySelection.self, from: data)
+    }
+    private func pauseCount(_ sel: FamilyActivitySelection?) -> Int {
+        guard let sel = sel else { return 0 }
+        return sel.applicationTokens.count + sel.categoryTokens.count + sel.webDomainTokens.count
+    }
+    // Puts the shield on (or keeps it off during a 15-minute break, or when the pause is turned off).
+    private func pauseApply() {
+        let d = UserDefaults(suiteName: Self.group)
+        let store = Self.pauseStore
+        let onBreak = (d?.double(forKey: "pause-until") ?? 0) > Date().timeIntervalSince1970
+        guard d?.bool(forKey: "pause-on") == true, !onBreak, let sel = pauseSelection else { store.clearAllSettings(); return }
+        store.shield.applications = sel.applicationTokens.isEmpty ? nil : sel.applicationTokens
+        store.shield.applicationCategories = sel.categoryTokens.isEmpty ? nil : .specific(sel.categoryTokens)
+        store.shield.webDomains = sel.webDomainTokens.isEmpty ? nil : sel.webDomainTokens
+    }
+
+    // Apple's own picker, with the Lawyer's safety line. Nothing is picked by default.
+    @objc func pausePick(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let saved = self.pauseSelection ?? FamilyActivitySelection()
+            let picker = PickerView(selection: saved, title: "Apps for the Blip pause",
+                                    note: "Don't add apps you may need in a hurry, like Maps or messaging.") { picked in
+                self.bridge?.viewController?.dismiss(animated: true)
+                guard let picked = picked else { call.resolve(["picked": false, "count": self.pauseCount(self.pauseSelection)]); return }
+                if let data = try? JSONEncoder().encode(picked) { UserDefaults(suiteName: Self.group)?.set(data, forKey: "pauseSelection") }
+                self.pauseApply()
+                call.resolve(["picked": true, "count": self.pauseCount(picked)])
+            }
+            self.bridge?.viewController?.present(UIHostingController(rootView: picker), animated: true)
+        }
+    }
+    // One tap on or off. Off removes the shield right away.
+    @objc func pauseSet(_ call: CAPPluginCall) {
+        let d = UserDefaults(suiteName: Self.group)
+        d?.set(call.getBool("on") ?? false, forKey: "pause-on")
+        if call.getBool("on") != true { d?.removeObject(forKey: "pause-until"); DeviceActivityCenter().stopMonitoring([DeviceActivityName("pause-unlock")]) }
+        pauseApply()
+        call.resolve(["on": d?.bool(forKey: "pause-on") ?? false, "count": pauseCount(pauseSelection)])
+    }
+    // Also re-applies the pause, as a backup in case the end of a 15-minute break was missed.
+    @objc func pauseStatus(_ call: CAPPluginCall) {
+        let d = UserDefaults(suiteName: Self.group)
+        if let until = d?.object(forKey: "pause-until") as? Double, until <= Date().timeIntervalSince1970 { d?.removeObject(forKey: "pause-until") }
+        pauseApply()
+        call.resolve(["on": d?.bool(forKey: "pause-on") ?? false, "count": pauseCount(pauseSelection),
+                      "onBreak": (d?.double(forKey: "pause-until") ?? 0) > Date().timeIntervalSince1970])
+    }
+    // What the pause screen says and shows: one line of text and a picture of Blip, drawn by the game.
+    @objc func pauseScene(_ call: CAPPluginCall) {
+        let d = UserDefaults(suiteName: Self.group)
+        if let line = call.getString("line") { d?.set(line, forKey: "pause-line") }
+        if let b64 = call.getString("icon"), let data = Data(base64Encoded: b64),
+           let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Self.group) {
+            try? data.write(to: dir.appendingPathComponent("pause-icon.png"), options: .atomic)
+        }
+        call.resolve()
+    }
+    // The morning story reads a finished day's turn-back count once, then it is deleted (Lawyer condition).
+    @objc func turnbacks(_ call: CAPPluginCall) {
+        let d = UserDefaults(suiteName: Self.group)
+        let day = call.getString("day") ?? ""
+        let n = d?.integer(forKey: "turnback-" + day) ?? 0
+        let keys = d.map { Array($0.dictionaryRepresentation().keys) } ?? []
+        for key in keys where key.hasPrefix("turnback-") && String(key.dropFirst(9)) <= day { d?.removeObject(forKey: key) }
+        call.resolve(["count": n])
     }
 }

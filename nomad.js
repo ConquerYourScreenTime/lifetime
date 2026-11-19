@@ -11,7 +11,7 @@ const NKEY = 'blip-nomad';
 const SHIFT_FROM = 8, SHIFT_TO = 22;           // the odd job runs 8 AM to 10 PM
 const KEY_NEEDS = {small: 2, big: 1, lesson: 2, shift: 5};
 const CUR = 'Coins', CUR_ICON = '🪙';          // the currency's name lives here only (placeholder, may be renamed)
-const COIN_RULE = 'Coins only come from phone-down time. They can\'t be bought and have no cash value.';
+const COIN_RULE = 'Coins only come from phone-down time. They can\'t be bought.';
 const PLAN_MAX = 3;                            // activities Blip can have lined up (the one running plus 2 more)
 
 // ---------- Barcelona ----------
@@ -312,7 +312,8 @@ function welcome(){
   N.welcomed = true; nsave();
   modal('<div class="nsamw">'+sam()+'</div><h2 style="margin:4px 0">'+esc(N.name)+' lands in Barcelona!</h2><p>'+esc(N.name)+' is 18, with a backpack and <b>150 '+CUR+'</b> saved from home.</p>'+
     '<p class="muted">While your phone is down, '+esc(N.name)+' works the hostel front desk and earns '+CUR+'. Spend them on lessons, friends and adventures. Every one is something you can really do.</p>'+
-    '<p class="muted small">'+COIN_RULE+'</p><button class="btn" data-close>Let\'s explore</button>');
+    '<p class="muted small">'+COIN_RULE+'</p><button class="btn" data-close id="nwel">Let\'s explore</button>');
+  const w = document.getElementById('nwel'); if (w && !N.goalSet) w.addEventListener('click', chooseGoal);
 }
 // Choosing the goal (first run, and once for players from build 29). Blip suggests a little under a usual day; the player picks.
 function usualDay(){
@@ -373,8 +374,8 @@ document.head.insertAdjacentHTML('beforeend', '<style>'+
 
 // ---------- start ----------
 draw();
-if (!N.goalSet) chooseGoal();     // added first, so the welcome sits on top and the goal comes right after it
-if (!N.welcomed) welcome();
+if (!N.welcomed) welcome();        // the goal picker follows when the welcome closes
+else if (!N.goalSet) chooseGoal();
 refresh(true);
 nremindSync();                     // replaces any Classic "next year" note with Nomad's own (or turns it off)
 const p = P();

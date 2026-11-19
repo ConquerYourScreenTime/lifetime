@@ -27,6 +27,7 @@ function blip(o){
   s += '<g class="'+(o.wave ? 'nwave' : '')+'" style="transform-origin:128px '+ay+'px"><g transform="rotate('+ra+' 128 '+ay+')"><rect x="128" y="'+ay+'" width="16" height="44" rx="8" fill="'+o.shirt+'" '+W+'/><ellipse cx="136" cy="'+(ay+46)+'" rx="10" ry="9" fill="'+o.skin+'" '+W+'/></g></g>';
   s += '<rect x="68" y="'+bodyY+'" width="64" height="'+bodyH+'" rx="24" fill="'+o.shirt+'" '+W+'/>';
   if (o.pack_on) s += '<path d="M76 '+(bodyY+2)+' L80 '+(bodyY+bodyH-6)+' M124 '+(bodyY+2)+' L120 '+(bodyY+bodyH-6)+'" stroke="#8a3a22" stroke-width="7" stroke-linecap="round"/><path d="M79 '+(bodyY+30)+' H121" stroke="#8a3a22" stroke-width="4"/>';
+  if (o.sash) s += '<rect x="68" y="'+(bodyY+bodyH-26)+'" width="64" height="14" fill="#1b1b1b" stroke="'+O+'" stroke-width="3"/>';
   if (o.bun) s += '<circle cx="100" cy="28" r="18" fill="'+o.hair+'" '+W+'/>';
   const longHair = o.bun || o.girl;
   if (o.girl && !o.hat) s += '';
@@ -245,7 +246,9 @@ const TILE = {
   balloon: () => '<rect width="86" height="72" fill="#ffd9a8"/><circle cx="18" cy="18" r="9" fill="#fff1b8"/><g transform="scale(.344)">'+garrotxa()+'</g>'+balloonAt(58, 40, .42, false),
   job: () => '<svg viewBox="0 0 250 194" width="86" height="72" preserveAspectRatio="xMidYMid slice">'+hostelDesk({})+'</svg>'
 };
-const tile = id => '<svg viewBox="0 0 86 72" class="ntile" aria-hidden="true">'+(TILE[id] ? TILE[id]() : '<rect width="86" height="72" fill="#fff0d0"/>')+'</svg>';
+const tile = (id, o) => TILE[id] ? '<svg viewBox="0 0 86 72" class="ntile" aria-hidden="true">'+TILE[id]()+'</svg>'
+  : PHOTO[id] ? '<svg viewBox="0 0 250 194" class="ntile" preserveAspectRatio="xMidYMid slice" aria-hidden="true">'+PHOTO[id](o || {})+'</svg>'
+  : '<svg viewBox="0 0 86 72" class="ntile" aria-hidden="true"><rect width="86" height="72" fill="#fff0d0"/></svg>';
 
 // ---------- Polaroid photos for each activity (250 x 194), with the player's Blip in them ----------
 function eixample(x, y, w, h, cell){
@@ -280,6 +283,103 @@ const PHOTO = {
   balloon: o => '<rect width="250" height="194" fill="#ffcf9a"/><circle cx="48" cy="120" r="26" fill="#fff1b8"/><rect y="118" width="250" height="20" fill="#f2b8a0" opacity=".5"/>'+garrotxa()+balloonAt(170, 82, 1.25, true, o),
   job: o => hostelDesk(o)
 };
+
+// ---------- festivals and hidden gems (photos 250 x 194; tiles reuse the photo, cropped) ----------
+// Barcelona Cathedral's Gothic front: the tall central spire over the pointed door, two octagonal side towers, pinnacles.
+function cathedral(x, y, s){
+  const st = '#d9c7a4', OL = 'stroke="'+O+'" stroke-width="2" stroke-linejoin="round"';
+  let g = '<g transform="translate('+x+' '+y+') scale('+s+')">';
+  g += '<rect x="-60" y="-70" width="120" height="70" fill="'+st+'" '+OL+'/>';
+  for (const tx of [-52, 52]) g += '<path d="M'+(tx-10)+' 0 V-104 L'+tx+' -128 L'+(tx+10)+' -104 V0Z" fill="'+st+'" '+OL+'/><path d="M'+(tx-6)+' -86 v12 M'+(tx+6)+' -86 v12" stroke="'+O+'" stroke-width="1.5"/>';
+  g += '<path d="M-14 -70 V-120 L0 -170 L14 -120 V-70Z" fill="'+st+'" '+OL+'/>';
+  for (let k = 0; k < 5; k++) g += '<path d="M-8 '+(-124-k*8)+' H8" stroke="#b8a37c" stroke-width="1.2"/>';
+  for (const px of [-40,-28,28,40]) g += '<path d="M'+(px-3)+' -70 L'+px+' -84 L'+(px+3)+' -70Z" fill="'+st+'" '+OL+'/>';
+  g += '<path d="M-16 0 V-30 Q-16 -52 0 -58 Q16 -52 16 -30 V0Z" fill="#6a5240" '+OL+'/><path d="M-26 -38 Q0 -76 26 -38" fill="none" stroke="'+O+'" stroke-width="1.5"/>';
+  g += '<circle cx="0" cy="-90" r="7" fill="#8fb7d6" '+OL+'/>';
+  return g + '</g>';
+}
+const stall = (x, y, w, c) => '<g><rect x="'+x+'" y="'+(y-26)+'" width="'+w+'" height="26" fill="#a0794f" stroke="'+O+'" stroke-width="1.8"/>'+
+  '<path d="M'+(x-4)+' '+(y-26)+' L'+(x+w/2)+' '+(y-44)+' L'+(x+w+4)+' '+(y-26)+'Z" fill="'+c+'" stroke="'+O+'" stroke-width="1.8" stroke-linejoin="round"/>'+
+  [0,1,2].map(k => '<circle cx="'+(x+8+k*(w-16)/2)+'" cy="'+(y-12)+'" r="5" fill="'+(k%2 ? '#3e7a3a' : '#5b8c4a')+'"/>').join('')+'</g>';
+const smallFolk = (x, y, s, shirt, o) => blipAt(x, y, s, Object.assign({hat:false, pack_on:false, shirt:shirt || '#ffffff', pants:'#ffffff', boots:'#3b2a4a', hair:'#3b2a1a', skin:'#e0ac69'}, o || {}));
+
+Object.assign(PHOTO, {
+  castanyada: o => '<rect width="250" height="194" fill="#f6d9a8"/><rect y="0" width="250" height="70" fill="#e8c38a"/>'+
+    // the chestnut seller's stall: a striped awning, a round iron roaster with smoke, paper cones of chestnuts
+    '<path d="M110 30 H240 V48 Q228 58 216 48 Q204 58 192 48 Q180 58 168 48 Q156 58 144 48 Q132 58 120 48 Q110 54 110 48Z" fill="#c8553d" stroke="'+O+'" stroke-width="2.5"/>'+
+    '<path d="M120 52 V140 M232 52 V140" stroke="'+O+'" stroke-width="3"/>'+
+    '<path d="M160 70 q-6 -10 0 -18 q6 -8 0 -16 M182 72 q-6 -10 0 -18" stroke="#fff" stroke-width="4" fill="none" opacity=".7" stroke-linecap="round"/>'+
+    '<rect x="146" y="96" width="56" height="44" rx="6" fill="#3b3b3b" stroke="'+O+'" stroke-width="2.5"/><ellipse cx="174" cy="96" rx="32" ry="9" fill="#4a4a4a" stroke="'+O+'" stroke-width="2.5"/>'+
+    [0,1,2,3,4,5].map(k => '<ellipse cx="'+(152+k*9)+'" cy="'+(94+(k%2)*2)+'" rx="5" ry="3.5" fill="#7a3e1e" stroke="'+O+'" stroke-width="1"/>').join('')+
+    '<path d="M206 118 L218 146 L230 118Z" fill="#f4ecd8" stroke="'+O+'" stroke-width="2"/><circle cx="214" cy="117" r="3.5" fill="#7a3e1e"/><circle cx="222" cy="116" r="3.5" fill="#7a3e1e"/>'+
+    '<rect x="0" y="140" width="250" height="54" fill="#cfc2ae"/>'+blipAt(70, 186, 140, Object.assign({}, o, {wave:true}))+
+    // panellets: little round almond sweets rolled in pine nuts
+    '<g transform="translate(110 176)">'+[0,1,2].map(k => '<circle cx="'+(k*12)+'" cy="0" r="6" fill="#f2d9a6" stroke="'+O+'" stroke-width="1.2"/><circle cx="'+(k*12-2)+'" cy="-2" r="1.2" fill="#e8c38a"/><circle cx="'+(k*12+2)+'" cy="1" r="1.2" fill="#e8c38a"/>').join('')+'</g>',
+  santallucia: o => '<rect width="250" height="194" fill="#2c2f63"/>'+[0,1,2,3,4,5,6,7,8].map(k => '<circle cx="'+(14+k*28)+'" cy="'+(14+(k%3)*8)+'" r="1.4" fill="#fff"/>').join('')+
+    cathedral(125, 140, .8)+
+    // string lights, then the stalls in front of the cathedral steps
+    '<path d="M0 74 Q62 92 125 74 T250 74" stroke="#3b2a4a" stroke-width="1" fill="none"/>'+[0,1,2,3,4,5,6,7,8,9].map(k => '<circle cx="'+(10+k*25)+'" cy="'+(78+Math.sin(k)*4)+'" r="3" fill="#ffd76a"/>').join('')+
+    stall(4, 160, 56, '#d8392b')+stall(190, 160, 56, '#e8e2d4')+'<rect y="160" width="250" height="34" fill="#9a8b78"/>'+
+    blipAt(125, 190, 96, Object.assign({}, o, {wave:true})),
+  reis: o => '<rect width="250" height="194" fill="#1d1b3f"/>'+[0,1,2,3,4,5,6,7].map(k => '<circle cx="'+(20+k*30)+'" cy="'+(16+(k%2)*10)+'" r="1.5" fill="#fff"/>').join('')+
+    // a parade float lit up with three crowns, sweets flying through the air
+    '<rect x="70" y="80" width="170" height="70" rx="10" fill="#7a6cd6" stroke="'+O+'" stroke-width="3"/><path d="M70 92 H240" stroke="#ffc84a" stroke-width="4"/>'+
+    [0,1,2].map(k => { const cx = 105 + k*52; return '<path d="M'+(cx-16)+' 70 L'+(cx-16)+' 48 L'+(cx-8)+' 58 L'+cx+' 42 L'+(cx+8)+' 58 L'+(cx+16)+' 48 L'+(cx+16)+' 70Z" fill="#ffc84a" stroke="'+O+'" stroke-width="2.5" stroke-linejoin="round"/><circle cx="'+cx+'" cy="62" r="3.5" fill="'+['#d8392b','#1fa3a8','#5b8c4a'][k]+'"/>'; }).join('')+
+    '<circle cx="100" cy="152" r="10" fill="#3b3b3b" stroke="'+O+'" stroke-width="2"/><circle cx="210" cy="152" r="10" fill="#3b3b3b" stroke="'+O+'" stroke-width="2"/>'+
+    [[40,40,'#ff7a59'],[60,22,'#5ec4d6'],[30,70,'#ffc84a'],[180,30,'#ff8fa3'],[220,20,'#5ec4d6']].map(([x,y,c]) => '<rect x="'+(x-5)+'" y="'+(y-3)+'" width="10" height="6" rx="3" fill="'+c+'" stroke="'+O+'" stroke-width="1"/><path d="M'+(x-5)+' '+y+' l-4 -3 v6z M'+(x+5)+' '+y+' l4 -3 v6z" fill="'+c+'"/>').join('')+
+    '<rect y="162" width="250" height="32" fill="#4b4a6a"/>'+blipAt(42, 190, 110, Object.assign({}, o, {wave:true})),
+  gracia: o => '<rect width="250" height="194" fill="#8fd3f0"/>'+
+    // a narrow Gràcia street roofed with handmade decorations: an underwater world of paper fish, jellyfish and seaweed
+    '<rect x="0" y="0" width="40" height="194" fill="#e9c99a" stroke="'+O+'" stroke-width="2.5"/><rect x="210" y="0" width="40" height="194" fill="#f2d3a8" stroke="'+O+'" stroke-width="2.5"/>'+
+    '<rect x="40" y="0" width="170" height="80" fill="#1f7fa8" opacity=".85"/>'+
+    [0,1,2,3,4,5,6,7].map(k => '<path d="M'+(48+k*22)+' 0 q6 30 0 60 q-6 20 2 40" stroke="#3e9b5b" stroke-width="5" fill="none" stroke-linecap="round"/>').join('')+
+    [[80,30,'#ff7a59'],[150,46,'#ffc84a'],[120,20,'#ff8fa3'],[180,24,'#fff']].map(([x,y,c]) => '<path d="M'+x+' '+y+' q14 -10 28 0 q-14 10 -28 0z M'+(x+28)+' '+y+' l8 -6 v12z" fill="'+c+'" stroke="'+O+'" stroke-width="1.5"/><circle cx="'+(x+6)+'" cy="'+(y-1)+'" r="1.5" fill="'+O+'"/>').join('')+
+    '<path d="M100 62 q10 -14 20 0Z" fill="#e8d0ff" stroke="'+O+'" stroke-width="1.5"/><path d="M104 62 q-2 10 2 16 M110 62 v16 M116 62 q2 10 -2 16" stroke="#e8d0ff" stroke-width="2" fill="none"/>'+
+    '<rect x="40" y="150" width="170" height="44" fill="#cfc2ae"/>'+blipAt(125, 188, 110, Object.assign({}, o, {wave:true})),
+  merce: o => {
+    // Plaça de Sant Jaume: the stone front of the Palau de la Generalitat behind a castell of invented castellers in white trousers and black sashes
+    let g = '<rect width="250" height="194" fill="#9fd8f2"/><rect x="20" y="20" width="210" height="140" fill="#d9c7a4" stroke="'+O+'" stroke-width="2.5"/>';
+    for (let k = 0; k < 6; k++) g += '<rect x="'+(34+k*34)+'" y="40" width="16" height="30" rx="8" fill="#6f5a7a" opacity=".6"/>';
+    g += '<path d="M100 160 V110 Q125 90 150 110 V160Z" fill="#6a5240" stroke="'+O+'" stroke-width="2"/><path d="M20 84 H230" stroke="#b8a37c" stroke-width="3"/>';
+    g += '<rect y="160" width="250" height="34" fill="#cfc2ae"/>';
+    // a real castell: the wide "pinya" crowd at the base, then tiers of three standing on each other's shoulders,
+    // two on the tier below the top, and the child (enxaneta) raising one hand at the very top
+    const shirt = '#d8392b', sash = {sash:true};
+    for (let k = 0; k < 7; k++) g += smallFolk(125 + (k-3)*24, 196, 44, shirt, sash);
+    let y = 176, h = 36;
+    for (let t = 0; t < 4; t++) { for (let k = -1; k <= 1; k++) g += smallFolk(125 + k*20, y, h, shirt, sash); y -= h*.5; h -= 2; }
+    for (let k = 0; k < 2; k++) g += smallFolk(115 + k*20, y, h, shirt, sash); y -= h*.5;
+    g += smallFolk(125, y, 26, '#ffc84a', {wave:true});
+    g += blipAt(218, 192, 70, Object.assign({}, o, {wave:true}));
+    return g;
+  },
+  aigues: o => '<rect width="250" height="194" fill="#bfe6ff"/><rect y="70" width="250" height="18" fill="#2aa5b8"/>'+
+    // the city far below with the Sagrada Família, then the Collserola hillside and the flat old road
+    '<rect y="86" width="250" height="40" fill="#e7c7a8"/>'+[0,1,2,3,4,5,6,7,8,9,10,11,12].map(k => '<rect x="'+(k*20)+'" y="'+(92+(k*7)%10)+'" width="16" height="10" fill="#d9b08a"/>').join('')+sagradaFull(150, 104, .1, {sw:8, crane:false})+
+    '<path d="M0 120 Q80 104 160 116 T250 108 V194 H0Z" fill="#6a9b58" stroke="'+O+'" stroke-width="2"/>'+
+    '<path d="M0 160 Q120 140 250 150 L250 170 Q120 160 0 182Z" fill="#e8d9b8" stroke="'+O+'" stroke-width="2"/>'+
+    [[20,130],[60,118],[200,120],[236,126]].map(([x,y]) => '<path d="M'+x+' '+(y+20)+' V'+y+'" stroke="#7a4a2a" stroke-width="3"/><ellipse cx="'+x+'" cy="'+(y-4)+'" rx="14" ry="7" fill="#3e7a3a" stroke="'+O+'" stroke-width="1.5"/>').join('')+
+    blipAt(110, 168, 100, Object.assign({}, o, {wave:true, walk:true})),
+  cactus: o => '<rect width="250" height="194" fill="#bfe6ff"/><rect y="60" width="250" height="40" fill="#2aa5b8"/>'+
+    // the port below Montjuïc: cranes and ships, then a steep slope of giant cacti and succulents
+    '<g stroke="'+O+'" stroke-width="1.5" fill="none"><path d="M170 60 V36 H200 M176 36 L170 44"/><path d="M210 60 V30 H236"/></g><rect x="60" y="66" width="50" height="10" fill="#fff" stroke="'+O+'" stroke-width="1.5"/>'+
+    '<path d="M0 110 Q125 86 250 104 V194 H0Z" fill="#d9b98a" stroke="'+O+'" stroke-width="2"/>'+
+    '<g fill="#5b9a5b" stroke="'+O+'" stroke-width="2" stroke-linejoin="round"><path d="M180 194 V96 Q180 86 190 86 Q200 86 200 96 V194Z"/><path d="M180 140 H168 V116 Q168 108 174 108 Q180 108 180 116Z"/><path d="M200 130 H214 V108 Q214 100 208 100 Q200 100 200 108Z"/>'+
+    '<path d="M222 194 V120 Q222 112 230 112 Q238 112 238 120 V194Z"/></g>'+
+    '<g fill="#7fb56a" stroke="'+O+'" stroke-width="1.5">'+[0,1,2,3,4,5].map(k => '<path d="M20 170 L'+(10+k*6)+' '+(140-(k%2)*10)+' L'+(16+k*6)+' 170Z"/>').join('')+'</g>'+
+    '<ellipse cx="150" cy="176" rx="20" ry="12" fill="#8fbf6a" stroke="'+O+'" stroke-width="1.5"/>'+
+    blipAt(90, 186, 110, Object.assign({}, o, {wave:true})),
+  santpau: o => '<rect width="250" height="194" fill="#bfe6ff"/>'+
+    // a red-brick pavilion with a dome of glazed tiles in green, yellow and blue, stone trim, and the clock tower behind
+    '<path d="M196 110 V40 L206 24 L216 40 V110Z" fill="#c8553d" stroke="'+O+'" stroke-width="2"/><circle cx="206" cy="54" r="6" fill="#fff" stroke="'+O+'" stroke-width="1.5"/>'+
+    '<rect x="30" y="90" width="150" height="70" fill="#c8553d" stroke="'+O+'" stroke-width="2.5"/>'+[0,1,2,3,4].map(k => '<path d="M'+(42+k*28)+' 150 V114 Q'+(50+k*28)+' 102 '+(58+k*28)+' 114 V150Z" fill="#f2e2c4" stroke="'+O+'" stroke-width="1.5"/>').join('')+
+    '<path d="M30 90 H180" stroke="#f2e2c4" stroke-width="5"/>'+
+    '<path d="M64 90 Q64 44 105 40 Q146 44 146 90Z" fill="#3e9b5b" stroke="'+O+'" stroke-width="2.5"/>'+
+    [0,1,2,3].map(r => [0,1,2,3,4,5,6].map(k => '<path d="M'+(72+k*12)+' '+(86-r*11)+' q6 -7 12 0" stroke="'+['#ffc84a','#1f7fa8','#f4f1de','#ffc84a'][r]+'" stroke-width="2.5" fill="none"/>').join('')).join('')+
+    '<path d="M105 40 V28" stroke="'+O+'" stroke-width="2.5"/><circle cx="105" cy="26" r="4" fill="#ffc84a" stroke="'+O+'" stroke-width="1.5"/>'+
+    '<rect y="160" width="250" height="34" fill="#8fbf6a"/>'+blipAt(206, 190, 96, Object.assign({}, o, {wave:true}))
+});
+
 function photo(id, o){
   const vb = id === 'sagrada' ? '0 0 252 226' : '0 0 250 194';
   return '<svg viewBox="'+vb+'" class="nphoto" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">'+(PHOTO[id] ? PHOTO[id](o || {}) : '<rect width="250" height="194" fill="#fff0d0"/>'+blipAt(125, 186, 150, o))+'</svg>';
@@ -363,6 +463,22 @@ body.nomad .nkrow{align-items:center;border-bottom:1px dashed #e4d8c4}
 @keyframes nwave{0%,100%{transform:rotate(0)}50%{transform:rotate(-14deg)}}
 .nblink{animation:nblink 4.5s infinite}
 @keyframes nblink{0%,94%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+.nsm-tile .ntile{width:58px;height:48px;border-width:2px;border-radius:6px}
+body.nomad .nq{margin-top:10px}
+body.nomad .ntd{background:#fff;border:2.5px solid #3b2a4a;color:#8d84a3;border-radius:12px;font-family:'Lilita One',sans-serif;font-weight:400;font-size:14px;box-shadow:0 3px 0 rgba(59,42,74,.2)}
+body.nomad .ntd.on{background:#ffc84a;color:#3b2a4a;transform:rotate(-4deg)}
+body.nomad .nfest{background:#fff8e6;border-style:dashed}
+body.nomad .npcard{background:#fffaf0;border:3px solid #3b2a4a;border-radius:6px;box-shadow:0 6px 14px rgba(0,0,0,.15);padding:12px 14px;background-image:repeating-linear-gradient(90deg,transparent 0 60%,transparent 60%);position:relative}
+body.nomad .npcard:after{content:'';position:absolute;right:10px;top:10px;width:30px;height:36px;border:2px dashed #c0392b;border-radius:3px;background:#ffe0d6}
+body.nomad .npcardfrom{color:#c0392b;padding-right:40px}
+body.nomad .npcard p{font-family:Caveat,Fredoka,cursive;font-size:21px;line-height:1.15;color:#2a3f6e;padding-right:40px}
+body.nomad .npins span{background:#fff;border:2.5px solid #3b2a4a;border-radius:50%;width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 3px 0 rgba(59,42,74,.2)}
+body.nomad .nreal-ok{display:inline-block;transform:rotate(-4deg);border:2.5px solid #c99a00;color:#a87b00;border-radius:8px;padding:2px 10px;font-family:'Lilita One',sans-serif;font-weight:400;letter-spacing:1px;background:#fff6d0}
+body.nomad .ntip{border-color:#1fa3a8}
+body.nomad .ntip .ntiptext{font-family:Caveat,Fredoka,cursive;font-size:23px;line-height:1.15;color:#2a3f6e}
+body.nomad .nraise{background:#fff;border:3px solid #3b2a4a;border-radius:16px;padding:10px 12px;margin-top:10px}
+body.nomad .ncalm{background:linear-gradient(180deg,#2b3a67,#1b2440)}
+body.nomad .ncalm .nsamw svg{width:150px;height:180px}
 @media (prefers-reduced-motion:reduce){.nbob,.nwave,.nblink{animation:none}}
 body.nomad .modal{border:3px solid #3b2a4a;background:#fff4e0}
 `;

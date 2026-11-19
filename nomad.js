@@ -201,10 +201,10 @@ function cityHTML(){
   if (N.ready.length) s += '<div class="card nnow"><b>📸 '+N.ready.length+' new Polaroid'+(N.ready.length > 1 ? 's' : '')+'</b><button class="btn" id="nfin" style="margin-top:10px">See how it went ✨</button></div>';
   if (a) {
     const x = actOf(a.id);
-    s += '<div class="card nnow"><h3 style="margin:0 0 8px">'+esc(N.name)+'\'s plan</h3><div class="nrow"><span class="nem">'+x.emoji+'</span><div style="flex:1"><small class="nk">Now</small><b>'+esc(x.title)+'</b><div class="muted small">'+Math.floor(a.prog)+' of '+a.need+' min with your phone down</div></div></div>'+
+    s += '<div class="card nnow"><h3 style="margin:0 0 8px">'+esc(N.name)+'\'s plan</h3><div class="nrow"><span class="nsm-tile">'+NART.tile(x.id, look())+'</span><div style="flex:1"><small class="nk">Now</small><b>'+esc(x.title)+'</b><div class="muted small">'+Math.floor(a.prog)+' of '+a.need+' min with your phone down</div></div></div>'+
       bar(a.prog / a.need);
     N.queue.forEach((id, i) => { const q = actOf(id);
-      s += '<div class="nrow nq"><span class="nem">'+q.emoji+'</span><div style="flex:1"><small class="nk">'+(i ? 'Then' : 'Next')+'</small><b>'+esc(q.title)+'</b></div>'+
+      s += '<div class="nrow nq"><span class="nsm-tile">'+NART.tile(q.id, look())+'</span><div style="flex:1"><small class="nk">'+(i ? 'Then' : 'Next')+'</small><b>'+esc(q.title)+'</b></div>'+
         '<button class="btn ghost nsm" data-unq="'+i+'">Remove</button></div>'; });
     s += '<p class="muted small" style="margin:8px 0 0">Close Blip and put your phone down. '+esc(N.name)+' does these one after another. Picking up your phone pauses the plan, and it never resets.</p></div>';
   }
@@ -506,7 +506,7 @@ function festNext(){
 }
 function festCardHTML(){
   const n = festNext(); if (!n || festsNow().length) return '';
-  return '<div class="card nfest"><small class="nk">Coming up in Barcelona</small><b>'+n.f.emoji+' '+esc(n.f.title)+'</b><div class="muted small">Opens in '+n.days+' day'+(n.days > 1 ? 's' : '')+'. Here for a short time only, like the real thing.</div></div>';
+  return '<div class="card nfest"><div class="npost">'+NART.tile(n.f.id, look())+'<div class="nbody"><small class="nk">Coming up in Barcelona</small><b>'+esc(n.f.title)+'</b><div class="muted small">Opens in '+n.days+' day'+(n.days > 1 ? 's' : '')+'. Here for a short time only, like the real thing.</div></div></div></div>';
 }
 
 // ---- Hidden gems: a long phone-down stretch (about 2 hours) lets Blip find a lesser-known spot ----

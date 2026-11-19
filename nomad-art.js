@@ -297,7 +297,9 @@ const keyIcon = (c, sz) => '<svg viewBox="0 0 40 24" width="'+(sz || 34)+'" aria
 
 // ---------- styles (look 1A). Loaded after nomad.js's own block so these win. ----------
 const CSS = `
-body.nomad{background:#fff4e0;color:#3b2a4a}
+html:has(body.nomad),body.nomad{background:#fff4e0;color:#3b2a4a}
+body.nomad .top .logo,body.nomad .top .logo small{color:#3b2a4a}
+body.nomad .top .logo{font-family:'Lilita One',Fredoka,sans-serif;font-weight:400}
 body.nomad .app{padding-bottom:96px}
 .nscene{display:block;width:100%;height:100%}
 .nhero1a{position:relative;margin:-16px -16px 0;height:min(64vh,420px);overflow:hidden;border-bottom:3px solid #3b2a4a}

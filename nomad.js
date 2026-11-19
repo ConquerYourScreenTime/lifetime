@@ -162,19 +162,16 @@ function refresh(firstOpen){
 }
 
 // ---------- art ----------
-function sam(o){ return charSVG(Object.assign({name:N.name, age:18, log:[{tier:'good'}], h:70, s:60, j:75, skin:N.skin, hair:N.hair, girl:N.girl, wear:{}, mood:'happy', nobg:true}, o || {})); }
-const BACK = {
-  lesson:'<rect width="250" height="194" fill="#fff3d6"/><rect x="20" y="22" width="130" height="80" rx="6" fill="#2f5d50" stroke="#3b2a4a" stroke-width="4"/>',
-  meet:'<rect width="250" height="194" fill="#ffb37a"/><circle cx="190" cy="70" r="26" fill="#ffe08a"/><path d="M0 150 L40 120 L70 135 L110 100 L150 130 L200 110 L250 140 V194 H0Z" fill="#7a4e8f"/>',
-  small:'<rect width="250" height="194" fill="#bfe6ff"/><path d="M0 160 L50 60 L80 110 L120 30 L160 100 L200 50 L250 150 V194 H0Z" fill="#b08968" stroke="#3b2a4a" stroke-width="3"/>',
-  big:'<rect width="250" height="194" fill="#ffd8a8"/><circle cx="60" cy="40" r="18" fill="#fff3b0"/><path d="M0 170 Q60 120 120 160 T250 150 V194 H0Z" fill="#5c9e5c"/><path d="M150 168 Q170 130 190 168Z M60 172 Q85 135 110 172Z" fill="#6b4f3a"/>'
-};
-function polaroid(a){
-  const sc = a.kind === 'big' ? '<g transform="translate(150 18)"><ellipse cx="34" cy="40" rx="32" ry="38" fill="#ff5a8a" stroke="#3b2a4a" stroke-width="3"/><path d="M14 66 L24 92 H44 L54 66" fill="none" stroke="#3b2a4a" stroke-width="3"/><rect x="22" y="90" width="24" height="16" rx="3" fill="#b97c48" stroke="#3b2a4a" stroke-width="3"/></g>' : '';
-  const board = a.kind === 'lesson' ? '<text x="85" y="58" text-anchor="middle" font-family="Fredoka" font-size="15" fill="#fff">'+esc(nm(a.phrase).split(' ').slice(0,3).join(' '))+'</text>' : '';
-  return '<div class="npol"><svg viewBox="0 0 250 194" width="100%">'+BACK[a.kind]+board+sc+
-    '<svg x="'+(a.kind === 'big' ? 20 : 95)+'" y="40" width="120" height="150" viewBox="0 0 200 240">'+sam().replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')+'</svg></svg>'+
-    '<div class="npcap">'+a.emoji+' '+esc(a.title)+'</div></div>';
+// Drawings come from nomad-art.js (look 1A). The player's Blip keeps their Classic skin and hair, plus a travel kit.
+const look = o => Object.assign({skin:N.skin, hair:N.hair, girl:N.girl}, o || {});
+function sam(o){ return NART.blipSVG(look(o)); }
+function polaroid(a){ return '<div class="npol">'+NART.photo(a.id, look())+'<div class="npcap">'+esc(a.title)+'</div></div>'; }
+function bubbleLine(){
+  const h = new Date().getHours(), a = N.act;
+  if (a) return 'Off to '+actOf(a.id).title.replace(/^./, c => c.toLowerCase())+'! Put your phone down and I\'ll go.';
+  if (live.over) return 'Shift\'s done for today. I keep everything I earned!';
+  if (h >= SHIFT_FROM && h < SHIFT_TO) return 'Hola! I\'m on shift at the hostel until 10 PM.';
+  return h >= 5 && h < SHIFT_FROM ? 'Bon dia! Back at the desk at 8 AM.' : 'Bona nit! Back at the desk at 8 AM.';
 }
 
 // ---------- screens ----------
@@ -185,13 +182,15 @@ function keyLine(){ const k = N.keyp, row = (l, have, need) => '<div class="nkro
 function keyDone(){ return Object.keys(KEY_NEEDS).every(k => N.keyp[k] >= KEY_NEEDS[k]); }
 function cityHTML(){
   const a = N.act, pay = live.pay, h = new Date().getHours(), onShift = h >= SHIFT_FROM && h < SHIFT_TO && !live.over;
-  let s = '<div class="card nhero"><div class="nsam">'+sam()+'</div><div class="nhi"><div class="ncity">📍 '+esc(N.city)+', Spain</div><h2>'+esc(N.name)+', 18</h2>'+
-    '<div class="nmiles">'+CUR_ICON+' <b>'+N.coins+'</b> '+CUR+'</div><div class="nrule">'+COIN_RULE+'</div></div></div>';
-  s += '<div class="card"><div class="nrow"><span class="nem">'+JOB.emoji+'</span><div><b>'+JOB.title+'</b><div class="muted small">'+esc(nm(JOB.line))+'</div></div></div>'+
+  let s = '<div class="nhero1a">'+NART.scene({blip: look()})+'<div class="nhud"><div class="npill">'+NART.coin(26)+N.coins+' <small>'+CUR+'</small></div>'+
+    '<div class="npill npay2"><small>Shift pay</small>+'+pay+' today</div></div>'+
+    '<div class="nbanner">'+esc(N.city).toUpperCase()+'<small>'+esc(N.name)+', 18 · Spain</small></div><div class="nsay">'+esc(bubbleLine())+'</div></div><div class="nsheet">';
+  s += '<div class="card"><div class="npost">'+NART.tile('job')+'<div class="nbody"><small class="nk">Odd job</small><b>'+JOB.title+'</b><div class="muted small">'+esc(nm(JOB.line))+'</div></div></div>'+
     '<div class="npay">'+esc(N.name)+'\'s pay today: <b>'+pay+' '+CUR+'</b></div>'+
     '<div class="muted small">'+(live.over ? 'You reached your goal, so the shift is over for today. '+esc(N.name)+' keeps everything earned. Back on shift tomorrow at 8 AM.' :
       onShift ? 'On shift until 10 PM. Put your phone down and '+esc(N.name)+' earns 1 Coin every 5 minutes.' : 'The shift runs 8 AM to 10 PM.')+
     (live.today != null ? ' Blip\'s count today: '+fmtTime(live.today)+' of '+fmtTime(N.goal)+'.' : '')+'</div></div>';
+  s += '<p class="muted small nrule">'+COIN_RULE+'</p>';
   if (N.ready.length) s += '<div class="card nnow"><b>📸 '+N.ready.length+' new Polaroid'+(N.ready.length > 1 ? 's' : '')+'</b><button class="btn" id="nfin" style="margin-top:10px">See how it went ✨</button></div>';
   if (a) {
     const x = actOf(a.id);
@@ -207,17 +206,24 @@ function cityHTML(){
   for (const x of ACTS) {
     const done = N.done[x.id], inPlan = planned(x.id), locked = !unlocked(x), afford = N.coins >= x.cost;
     const label = inPlan ? 'In the plan' : locked ? 'After lesson 1' : full ? 'Plan is full' : !afford ? 'Need '+(x.cost - N.coins) : a ? 'Add to plan' : 'Go';
-    s += '<div class="card nact'+(done ? ' ndone' : '')+'"><div class="nrow"><span class="nem">'+x.emoji+'</span><div style="flex:1"><small class="nk">'+KINDS[x.kind]+'</small><b>'+esc(x.title)+'</b>'+
-      '<div class="muted small">'+x.cost+' '+CUR+' · '+(x.min >= 60 ? '1 hour' : x.min+' min')+' phone down</div></div>'+
-      (done ? '<span class="ntick">✓</span>' : '<button class="btn nsm" data-go="'+x.id+'"'+(inPlan || locked || full || !afford ? ' disabled' : '')+'>'+label+'</button>')+'</div></div>';
+    s += '<div class="card nact'+(done ? ' ndone' : '')+'">'+(done ? '<span class="nstamped">DONE</span>' : '')+'<div class="npost">'+NART.tile(x.id)+'<div class="nbody"><small class="nk">'+KINDS[x.kind]+'</small><b>'+esc(x.title)+'</b>'+
+      '<div class="ncost">'+NART.coin(16)+'<b>'+x.cost+'</b> · '+(x.min >= 60 ? '1 hour' : x.min+' min')+' phone down</div>'+
+      (done ? '' : '<button class="btn nsm" data-go="'+x.id+'"'+(inPlan || locked || full || !afford ? ' disabled' : '')+' style="margin-top:8px">'+label+'</button>')+'</div></div></div>';
   }
-  return s;
+  return s+'</div>';
 }
 function passportHTML(){
-  let s = '<div class="card npass"><h2>🛂 '+esc(N.name)+'\'s passport</h2><div class="nstamps"><div class="nstamp">🇪🇸<b>España</b><small>Barcelona</small></div>'+
-    '<div class="nstamp nlock">🇫🇷<b>France</b><small>'+(keyDone() ? 'Key earned!' : 'Locked')+'</small></div><div class="nstamp nlock">🇮🇹<b>Italia</b><small>Locked</small></div></div></div>';
-  s += '<div class="card"><h3 style="margin-top:0">🔑 France key</h3><p class="muted small">Finish Spain\'s goals to earn the key that opens France.</p>'+keyLine()+
-    (keyDone() ? '<p><b>🔑 Key earned! France opens in the next version of the prototype.</b></p>' : '')+'</div>';
+  const k = N.keyp, dots = (have, need) => '<span class="nkdots">'+Array.from({length: need}, (_, i) => '<i'+(i < have ? ' class="on"' : '')+'></i>').join('')+'</span>';
+  const row = (l, have, need) => '<div class="nkrow"><span>'+l+'</span>'+dots(Math.min(have, need), need)+'</div>';
+  const born = new Date(N.born || Date.now()), date = born.getDate()+' '+born.toLocaleString('en-US', {month:'short'})+' '+born.getFullYear();
+  let s = '<div class="npassbook"><div class="pg"><h2>'+esc(N.name).toUpperCase()+'\'S PASSPORT</h2>'+
+    '<div>'+NART.stamp('ESPAÑA', 'Barcelona', date)+'</div>'+
+    '<div class="nslot'+(keyDone() ? ' open' : '')+'">FRANCE'+NART.keyIcon(keyDone() ? '#ffc84a' : '#e3e6f0', 34)+'<small>'+(keyDone() ? 'Key earned!' : 'Locked')+'</small></div>'+
+    '<div class="nslot">ITALIA<small>Locked</small></div>'+
+    '<div class="nslot" style="border-style:solid;border-color:#e4d8c4;color:#6d6787">'+N.polaroids.length+'<small>Polaroid'+(N.polaroids.length === 1 ? '' : 's')+'</small></div></div></div>';
+  s += '<div class="card" style="margin-top:14px"><div class="nrow2">'+NART.keyIcon('#ffc84a', 36)+'<h3 style="margin:0">France key</h3></div><p class="muted small">Finish Spain\'s goals to earn the key that opens France.</p>'+
+    row('Small adventures', k.small, KEY_NEEDS.small)+row('Big adventure', k.big, KEY_NEEDS.big)+row('Spanish lessons', k.lesson, KEY_NEEDS.lesson)+row('Full shifts (a day under your goal)', k.shift, KEY_NEEDS.shift)+
+    (keyDone() ? '<p><b>Key earned! France opens in the next version of the prototype.</b></p>' : '')+'</div>';
   if (N.polaroids.length) s += '<h3 class="nh3">Photos</h3>'+N.polaroids.slice().reverse().map(id => { const x = ACTS.find(z => z.id === id); return x ? '<div class="card">'+polaroid(x)+realHTML(x)+'</div>' : ''; }).join('');
   return s;
 }
@@ -233,8 +239,8 @@ function settingsHTML(){
 function realHTML(x){ return '<div class="nreal"><div class="nrk">Do it for real</div>'+(x.phrase ? '<p class="nphr">"'+esc(nm(x.phrase))+'"<br><small>Say it: '+esc(nm(x.say))+'<br>Means: '+esc(nm(x.mean))+'</small></p>' : '')+'<ul>'+x.real.map(r => '<li>'+esc(r)+'</li>').join('')+'</ul></div>'; }
 
 function draw(){
-  const nav = '<div class="nnav">'+[['city','📍','Barcelona'],['passport','🛂','Passport'],['settings','⚙️','Settings']].map(t => '<button data-v="'+t[0]+'" class="'+(view === t[0] ? 'on' : '')+'"><b>'+t[1]+'</b>'+t[2]+'</button>').join('')+'</div>';
-  app.innerHTML = '<div class="top"><div class="logo">Blip <small>Nomad prototype</small></div><div class="streak">'+CUR_ICON+' '+N.coins+'</div></div>'+
+  const nav = '<div class="nnav1a">'+[['city','📍','Barcelona'],['passport','🛂','Passport'],['settings','⚙️','Settings']].map(t => '<button data-v="'+t[0]+'" class="'+(view === t[0] ? 'on' : '')+'"><b>'+t[1]+'</b>'+t[2]+'</button>').join('')+'</div>';
+  app.innerHTML = (view === 'city' ? '' : '<div class="top"><div class="logo">Blip <small>Nomad prototype</small></div><div class="npill">'+NART.coin(24)+N.coins+' <small>'+CUR+'</small></div></div>')+
     (view === 'city' ? cityHTML() : view === 'passport' ? passportHTML() : settingsHTML())+nav;
   app.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { view = b.dataset.v; draw(); window.scrollTo(0, 0); });
   app.querySelectorAll('[data-go]').forEach(b => b.onclick = () => start(b.dataset.go));
@@ -310,9 +316,9 @@ function showMorning(t){
 }
 function welcome(){
   N.welcomed = true; nsave();
-  modal('<div class="nsamw">'+sam()+'</div><h2 style="margin:4px 0">'+esc(N.name)+' lands in Barcelona!</h2><p>'+esc(N.name)+' is 18, with a backpack and <b>150 '+CUR+'</b> saved from home.</p>'+
+  modal('<div class="nwelcome">'+NART.scene({blip: look(), bx: 180})+'</div><div class="nribbon">'+(N.girl ? 'BENVINGUDA!' : 'BENVINGUT!')+'</div><h2 style="margin:4px 0">'+esc(N.name)+' lands in Barcelona!</h2><p>'+esc(N.name)+' is 18, with a backpack and <b>150 '+CUR+'</b> saved from home.</p>'+
     '<p class="muted">While your phone is down, '+esc(N.name)+' works the hostel front desk and earns '+CUR+'. Spend them on lessons, friends and adventures. Every one is something you can really do.</p>'+
-    '<p class="muted small">'+COIN_RULE+'</p><button class="btn" data-close id="nwel">Let\'s explore</button>');
+    '<p class="muted small">'+(N.girl ? 'Benvinguda' : 'Benvingut')+' is Catalan for "welcome". '+COIN_RULE+'</p><button class="btn" data-close id="nwel">Let\'s explore</button>');
   const w = document.getElementById('nwel'); if (w && !N.goalSet) w.addEventListener('click', chooseGoal);
 }
 // Choosing the goal (first run, and once for players from build 29). Blip suggests a little under a usual day; the player picks.

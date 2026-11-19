@@ -226,12 +226,12 @@ function passportHTML(){
   const born = new Date(N.born || Date.now()), date = born.getDate()+' '+born.toLocaleString('en-US', {month:'short'})+' '+born.getFullYear();
   let s = '<div class="npassbook"><div class="pg"><h2>'+esc(N.name).toUpperCase()+'\'S PASSPORT</h2>'+
     '<div>'+NART.stamp('ESPAÑA', 'Barcelona', date)+'</div>'+
-    '<div class="nslot'+(keyDone() ? ' open' : '')+'">FRANCE'+NART.keyIcon(keyDone() ? '#ffc84a' : '#e3e6f0', 34)+'<small>'+(keyDone() ? 'Key earned!' : 'Locked')+'</small></div>'+
-    '<div class="nslot">ITALIA<small>Locked</small></div>'+
+    '<div class="nslot'+(keyDone() ? ' open' : '')+'">NEXT STOP'+NART.keyIcon(keyDone() ? '#ffc84a' : '#e3e6f0', 34)+'<small>'+(keyDone() ? 'Key earned!' : 'Locked')+'</small></div>'+
+    '<div class="nslot">MORE<small>Coming soon</small></div>'+
     '<div class="nslot" style="border-style:solid;border-color:#e4d8c4;color:#6d6787">'+N.polaroids.length+'<small>Polaroid'+(N.polaroids.length === 1 ? '' : 's')+'</small></div></div></div>';
-  s += '<div class="card" style="margin-top:14px"><div class="nrow2">'+NART.keyIcon('#ffc84a', 36)+'<h3 style="margin:0">France key</h3></div><p class="muted small">Finish Spain\'s goals to earn the key that opens France.</p>'+
+  s += '<div class="card" style="margin-top:14px"><div class="nrow2">'+NART.keyIcon('#ffc84a', 36)+'<h3 style="margin:0">Next destination key</h3></div><p class="muted small">Finish Spain\'s goals to earn the key to your next destination.</p>'+
     row('Small adventures', k.small, KEY_NEEDS.small)+row('Big adventure', k.big, KEY_NEEDS.big)+row('Spanish lessons', k.lesson, KEY_NEEDS.lesson)+row('Full shifts (a day under your goal)', k.shift, KEY_NEEDS.shift)+
-    (keyDone() ? '<p><b>Key earned! France opens in the next version of the prototype.</b></p>' : '')+'</div>';
+    (keyDone() ? '<p><b>Key earned! Your next destination opens in a later version of the prototype.</b></p>' : '')+'</div>';
   if (N.polaroids.length) s += '<h3 class="nh3">Photos</h3>'+N.polaroids.slice().reverse().map(id => { const x = actOf(id); return x ? '<div class="card">'+polaroid(x)+realHTML(x)+stampBtnHTML(x)+'</div>' : ''; }).join('');
   return s+passportExtrasHTML();
 }
@@ -300,7 +300,7 @@ function reveal(){
   N.ready = []; nsave(); draw();
   ids.slice().reverse().forEach((id, i) => { const x = actOf(id), last = i === 0;
     modal('<div class="nrk" style="text-align:center">'+(x.gem ? 'Hidden gem found!' : kindOf(x)+' done!')+'</div>'+polaroid(x)+(x.line ? '<p>'+esc(nm(x.line))+'</p>' : '')+realHTML(x)+stampBtnHTML(x)+
-      (last && keyDone() ? '<p><b>🔑 That\'s everything for the France key!</b></p>' : '')+'<button class="btn" data-close>'+(last ? 'Done' : 'Next photo')+'</button>'); });
+      (last && keyDone() ? '<p><b>🔑 That\'s everything for your next destination key!</b></p>' : '')+'<button class="btn" data-close>'+(last ? 'Done' : 'Next photo')+'</button>'); });
   confetti([actOf(ids[0]).emoji, '✨', '📸']);
   bindExtras();
 }
@@ -320,7 +320,7 @@ function showMorning(t){
   offerTip(); draw();
   modal('<div class="mbig">☀️</div><h2 style="margin:4px 0">Good morning</h2>'+
     (FEAT.framing ? '<p>'+esc(N.name)+'\'s day yesterday: <b>'+t.pay+' '+CUR+'</b>. '+esc(dayLine(t.y, t.pay))+'</p>' : '<p>Yesterday '+esc(N.name)+' earned <b>'+t.pay+' '+CUR+'</b> on the boat.</p>')+
-    (t.under ? '<p>You finished '+fmtTime(N.goal - t.m)+' under your goal, so the passengers left <b>'+t.tips+' '+CUR+'</b> in tips. That\'s a full shift toward the France key.</p>' :
+    (t.under ? '<p>You finished '+fmtTime(N.goal - t.m)+' under your goal, so the passengers left <b>'+t.tips+' '+CUR+'</b> in tips. That\'s a full shift toward your next key.</p>' :
       '<p>The shift ended at your goal. '+esc(N.name)+' kept every Coin and is back on the boat at 8 AM.</p>')+
     (t.turnbacks ? '<p>⏸️ You turned back '+t.turnbacks+(t.turnbacks === 1 ? ' time' : ' times')+' yesterday, and '+esc(N.name)+' kept on exploring.</p>' : '')+
     (tr ? (tr.went ? '<p>🧳 That was travel day number '+N.travel.count+'.'+(tr.pin ? ' '+esc(N.name)+' earned a '+esc(tr.pin.name.toLowerCase())+' '+tr.pin.emoji+' for the backpack!' : '')+'</p>' :

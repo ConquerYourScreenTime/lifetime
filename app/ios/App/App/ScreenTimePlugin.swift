@@ -296,7 +296,7 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
             guard granted else { call.resolve(["granted": false]); return }
             let content = UNMutableNotificationContent()
-            content.body = "\(name)'s next year is ready"
+            content.body = call.getString("body") ?? "\(name)'s next year is ready" // Nomad sends its own morning line
             content.sound = .default
             let trigger = UNCalendarNotificationTrigger(dateMatching: DateComponents(hour: hour, minute: minute), repeats: true)
             center.removePendingNotificationRequests(withIdentifiers: [Self.reminderID])

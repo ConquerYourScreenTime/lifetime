@@ -17,10 +17,10 @@ const PLAN_MAX = 3;                            // activities Blip can have lined
 // ---------- Barcelona ----------
 const ACTS = [
   {id:'es1', kind:'lesson', emoji:'🗣️', title:'Spanish lesson 1: Hello', cost:60, min:15,
-    phrase:'Hola, me llamo {name}. Gracias.', say:'OH-lah, meh YAH-moh {name}. GRAH-see-ahs.', mean:'Hello, my name is {name}. Thank you.',
+    home:'Said it for real: "Hola, me llamo..."', phrase:'Hola, me llamo {name}. Gracias.', say:'OH-lah, meh YAH-moh {name}. GRAH-see-ahs.', mean:'Hello, my name is {name}. Thank you.',
     real:['Spanish works everywhere in Barcelona. Catalan is the city\'s other language, and locals love it when you try "Bon dia" (good morning).', 'Short courses for visitors run all year, from a single morning to a few weeks.', 'Tip: "Gracias" goes a long way. So does a smile when you get it wrong.']},
   {id:'es2', kind:'lesson', emoji:'🥘', title:'Spanish lesson 2: Order food', cost:60, min:15, needs:'es1',
-    phrase:'Una paella para dos, por favor.', say:'OO-nah pah-EH-yah PAH-rah dohs, por fah-VOR.', mean:'A paella for two, please.',
+    home:'Said it for real: "Una paella para dos"', phrase:'Una paella para dos, por favor.', say:'OO-nah pah-EH-yah PAH-rah dohs, por fah-VOR.', mean:'A paella for two, please.',
     real:['Paella is usually made to order for at least two people, so it\'s normal to wait 20 to 30 minutes.', 'Spaniards eat late: lunch around 2 PM and dinner after 9 PM.', 'Tip: a "menú del día" at lunch is the best-value meal in town.']},
   {id:'laia', kind:'meet', emoji:'👋', title:'Meet Laia', cost:80, min:20,
     line:'Laia runs the hostel and knows every rooftop in the city. She takes {name} up to the Bunkers del Carmel for sunset.',
@@ -107,13 +107,15 @@ function rollover(){
     N.hist[y] = under;
     const old = new Date(); old.setDate(old.getDate() - 14);
     for (const k in N.hist) if (k < key(old)) delete N.hist[k];
+    const travel = settleTravel(y, N.credited[y] || pay.miles);
     nsave();
-    return {y, m: r.m, tips, under, pay: N.credited[y] || pay.miles};
+    return {y, m: r.m, tips, under, pay: N.credited[y] || pay.miles, travel};
   });
 }
 
 // ---------- Blip's plan: the running activity plus up to 2 more, done one after another ----------
-const actOf = id => ACTS.find(z => z.id === id);
+const actOf = id => ACTS.find(z => z.id === id) || FESTS.find(z => z.id === id) || GEMS.find(z => z.id === id);
+const kindOf = x => x.gem ? 'Hidden gem' : x.fest ? 'Festival · limited time' : KINDS[x.kind];
 function planIds(){ return (N.act ? [N.act.id] : []).concat(N.queue); }
 function planned(id){ return planIds().indexOf(id) >= 0; }
 // A lesson that needs an earlier one can be lined up once the earlier one is done or already in the plan.
@@ -122,7 +124,9 @@ function begin(id){ const x = actOf(id); N.act = {id, prog:0, need:x.min, at:Dat
 function complete(){
   const x = actOf(N.act.id);
   N.done[x.id] = true; N.ready.push(x.id); N.polaroids.push(x.id);
-  if (x.kind in N.keyp) N.keyp[x.kind] = Math.min(KEY_NEEDS[x.kind], N.keyp[x.kind] + 1);
+  N.fin[todayKey()] = (N.fin[todayKey()] || 0) + 1;
+  if (x.kind === 'meet') N.met[x.id] = todayKey();
+  if (x.kind in N.keyp && !x.fest) N.keyp[x.kind] = Math.min(KEY_NEEDS[x.kind], N.keyp[x.kind] + 1);
   N.act = null;
   if (N.queue.length) begin(N.queue.shift());
 }
@@ -139,10 +143,11 @@ function addDown(mins){
 // It pauses while the phone is in use (or Blip is open) and never resets.
 function advance(nowM, snapDayEnd){
   const now = Date.now(), t = todayKey();
-  if (N.act && N.snap) {
+  if (N.snap) {
     const mins = (now - N.snap.t) / 60000;
     const used = N.snap.day === t ? Math.max(0, nowM - N.snap.m) : nowM + Math.max(0, (snapDayEnd != null ? snapDayEnd : N.snap.m) - N.snap.m);
-    addDown(Math.max(0, mins - used));
+    if (N.act) addDown(Math.max(0, mins - used));
+    checkGem(N.snap.t, mins, used);
   }
   N.snap = {t: now, day: t, m: nowM};
   nsave();
@@ -289,9 +294,10 @@ function reveal(){
   const ids = N.ready.slice(); if (!ids.length) return;
   N.ready = []; nsave(); draw();
   ids.slice().reverse().forEach((id, i) => { const x = actOf(id), last = i === 0;
-    modal('<div class="nrk" style="text-align:center">'+KINDS[x.kind]+' done!</div>'+polaroid(x)+(x.line ? '<p>'+esc(nm(x.line))+'</p>' : '')+realHTML(x)+
+    modal('<div class="nrk" style="text-align:center">'+(x.gem ? 'Hidden gem found!' : kindOf(x)+' done!')+'</div>'+polaroid(x)+(x.line ? '<p>'+esc(nm(x.line))+'</p>' : '')+realHTML(x)+stampBtnHTML(x)+
       (last && keyDone() ? '<p><b>🔑 That\'s everything for the France key!</b></p>' : '')+'<button class="btn" data-close>'+(last ? 'Done' : 'Next photo')+'</button>'); });
   confetti([actOf(ids[0]).emoji, '✨', '📸']);
+  bindExtras();
 }
 // After a good week (5 of the last 7 days under goal), Blip offers 15 minutes less, at most once a week. Saying no is fine,
 // and the goal never changes on its own.
@@ -305,9 +311,15 @@ function raiseReady(){
 function showMorning(t){
   const raise = raiseReady();
   if (raise) { N.raiseAt = todayKey(); nsave(); }
-  modal('<div class="mbig">☀️</div><h2 style="margin:4px 0">Good morning</h2><p>Yesterday '+esc(N.name)+' earned <b>'+t.pay+' '+CUR+'</b> at the hostel.</p>'+
+  const card = nextPostcard(), tr = t.travel;
+  offerTip();
+  modal('<div class="mbig">☀️</div><h2 style="margin:4px 0">Good morning</h2>'+
+    (FEAT.framing ? '<p>'+esc(N.name)+'\'s day yesterday: <b>'+t.pay+' '+CUR+'</b>. '+esc(dayLine(t.y, t.pay))+'</p>' : '<p>Yesterday '+esc(N.name)+' earned <b>'+t.pay+' '+CUR+'</b> at the hostel.</p>')+
     (t.under ? '<p>You finished '+fmtTime(N.goal - t.m)+' under your goal, so guests left <b>'+t.tips+' '+CUR+'</b> in tips. That\'s a full shift toward the France key.</p>' :
       '<p>The shift ended at your goal. '+esc(N.name)+' kept every Coin and is back at the desk at 8 AM.</p>')+
+    (tr ? (tr.went ? '<p>🧳 That was travel day number '+N.travel.count+'.'+(tr.pin ? ' '+esc(N.name)+' earned a '+esc(tr.pin.name.toLowerCase())+' '+tr.pin.emoji+' for the backpack!' : '')+'</p>' :
+      '<p>🧳 '+esc(N.name)+' took a slow day. That\'s part of travelling.</p>') : '')+
+    (card ? postcardHTML(card) : '')+
     (raise ? '<div class="nraise"><p><b>What a week!</b> You were under your goal on 5 of the last 7 days. Want to try 15 minutes less? It\'s your call, and you can change it back any time in Settings.</p>'+
       '<button class="btn" id="nrup" data-close>Try '+fmtTime(N.goal - 15)+'</button><button class="btn ghost" data-close style="margin-top:8px">Keep '+fmtTime(N.goal)+'</button></div>' :
       '<button class="btn" data-close>Let\'s go</button>'));
@@ -348,6 +360,191 @@ function chooseGoal(){
     };
     paint(); document.body.appendChild(m);
   });
+}
+
+// ======================= Build 30 extras (mechanics plan v1, Phase 2 and Monthly) =======================
+// Each one can be switched off here.
+const FEAT = {stamps:true, tips:true, framing:true, travel:true, postcards:true, festivals:true, gems:true};   // all four OK'd by the Lawyer 2026-11-19
+N.fin = N.fin || {};          // day -> activities finished that day (for travel days; kept 14 days)
+N.travel = N.travel || {count:0, days:{}};   // travel-day total, and day -> true/false for the last 14 days
+N.pins = N.pins || [];        // cosmetic backpack pins
+N.real = N.real || {};        // "I did it for real" gold stamps: activity id -> day
+N.tip = N.tip || null;        // the tip card on offer: {id, day}
+N.tipsDone = N.tipsDone || {};
+N.met = N.met || {};          // friend id -> day met (for postcards)
+N.cards = N.cards || [];      // postcards received: {from, text, day}
+N.gems = N.gems || [];        // hidden gems found, by id
+function daysBetween(a, b){ return Math.round((new Date(b) - new Date(a)) / 864e5); }
+function trim14(o){ const d = new Date(); d.setDate(d.getDate() - 14); for (const k in o) if (k < key(d)) delete o[k]; }
+
+// ---- Travel days instead of a streak: a low bar, rest days built in, nothing ever taken away ----
+const TRAVEL_PINS = [{n:3, emoji:'🧭', name:'Compass pin'}, {n:7, emoji:'🎒', name:'Backpack patch'}, {n:14, emoji:'🗺️', name:'Map pin'}, {n:21, emoji:'⛰️', name:'Mountain pin'}, {n:30, emoji:'🌍', name:'Globe pin'}];
+function travelToday(){ return (N.fin[todayKey()] || 0) > 0 || (N.credited[todayKey()] || 0) >= 12; }
+// Called when a day is settled. Returns what the morning note says about it.
+function settleTravel(y, pay){
+  if (!FEAT.travel) return null;
+  const went = (N.fin[y] || 0) > 0 || pay >= 12;
+  N.travel.days[y] = went; trim14(N.travel.days); trim14(N.fin);
+  let pin = null;
+  if (went) { N.travel.count++; pin = TRAVEL_PINS.find(p => p.n === N.travel.count) || null; if (pin && N.pins.indexOf(pin.emoji) < 0) N.pins.push(pin.emoji); }
+  return {went, pin};
+}
+function weekRowHTML(){
+  const d = new Date(); d.setDate(d.getDate() - 6); let s = '';
+  for (let i = 0; i < 7; i++) { const k = key(d), today = k === todayKey(), went = today ? travelToday() : N.travel.days[k];
+    s += '<span class="ntd'+(went ? ' on' : '')+'">'+'SMTWTFS'[d.getDay()]+'</span>'; d.setDate(d.getDate() + 1); }
+  return s;
+}
+function travelCardHTML(){
+  if (!FEAT.travel) return '';
+  const wk = Object.keys(N.travel.days).filter(k => daysBetween(k, todayKey()) < 7 && N.travel.days[k]).length + (travelToday() ? 1 : 0);
+  return '<div class="card ntravel"><div class="nrow" style="justify-content:space-between"><b>🧳 Travel days: '+(N.travel.count + (travelToday() ? 1 : 0))+'</b><span class="muted small">'+Math.min(wk, 7)+' this week</span></div>'+
+    '<div class="ntdrow">'+weekRowHTML()+'</div><p class="muted small" style="margin:6px 0 0">'+(travelToday() ? 'Today counts as a travel day. ✓' :
+      'A day counts when '+esc(N.name)+' finishes something or works an hour of shift. Two slow days a week are part of travelling.')+'</p></div>';
+}
+
+// ---- "I did it for real": honor system, cosmetic gold stamp, no proof, no Coins ----
+function stampable(x){ return FEAT.stamps && x && x.home; }
+function stampBtnHTML(x){
+  if (!stampable(x)) return '';
+  return N.real[x.id] ? '<p class="nreal-ok">🏅 '+esc(x.home)+'</p>' : '<button class="btn ghost nsm nreal-btn" data-real="'+x.id+'">I did it for real</button>';
+}
+function markReal(id){ const x = actOf(id); if (!stampable(x) || N.real[id]) return; N.real[id] = todayKey(); nsave(); confetti(['🏅', '✨']); draw();
+  document.querySelectorAll('[data-real="'+id+'"]').forEach(b => { b.outerHTML = '<p class="nreal-ok">🏅 '+esc(x.home)+'</p>'; }); }
+
+// ---- Real-world tip cards: one every few days, invitations only (Lawyer wording), "I tried it" earns a pin ----
+const TIPS = [
+  {id:'gray', emoji:'⚫', text:'Try grayscale tonight. Settings > Accessibility > Display & Text Size > Color Filters.', pin:'⚫', pinName:'Grayscale pin'},
+  {id:'charge', emoji:'🔌', text:'Tonight, charge your phone outside the bedroom. Use a clock for your alarm if you can.', pin:'⏰', pinName:'Alarm clock pin'},
+  {id:'walk', emoji:'🚶', text:'Take a short walk with your phone in your pocket the whole way.', pin:'👟', pinName:'Walking shoe pin'},
+  {id:'dinner', emoji:'🍽️', text:'Tonight, put your phone in another room while you eat.', pin:'🍴', pinName:'Fork and knife pin'},
+  {id:'home', emoji:'📱', text:'Try moving your most-used app off your home screen for a day.', pin:'🏠', pinName:'Little house pin'},
+  {id:'book', emoji:'📖', text:'Try reading a few pages of a paper book before bed.', pin:'📚', pinName:'Book pin'}
+];
+const TIP_EVERY = 3;   // days between tip cards
+function tipOf(id){ return TIPS.find(t => t.id === id); }
+function offerTip(){
+  if (!FEAT.tips || (N.tip && !N.tip.done)) return;
+  if (N.tip && daysBetween(N.tip.day, todayKey()) < TIP_EVERY) return;
+  const next = TIPS.find(t => !N.tipsDone[t.id]); if (!next) return;
+  N.tip = {id: next.id, day: todayKey()}; nsave();
+}
+function tipCardHTML(){
+  if (!FEAT.tips || !N.tip || N.tip.done) return '';
+  const t = tipOf(N.tip.id); if (!t) return '';
+  return '<div class="card ntip"><small class="nk">An idea from '+esc(N.name)+'</small><p class="ntiptext">'+t.emoji+' '+esc(t.text)+'</p>'+
+    '<div class="nrow"><button class="btn nsm" id="ntipyes">I tried it</button><button class="btn ghost nsm" id="ntipno">Not this time</button></div></div>';
+}
+function answerTip(tried){
+  const t = N.tip && tipOf(N.tip.id); if (!t) return;
+  N.tipsDone[t.id] = tried ? 'tried' : 'skipped'; N.tip.done = true;
+  if (tried && N.pins.indexOf(t.pin) < 0) N.pins.push(t.pin);
+  nsave(); draw();
+  if (tried) { modal('<div class="mbig">'+t.pin+'</div><h2 style="margin:4px 0">Nice one!</h2><p>'+esc(N.name)+' pins a '+esc(t.pinName.toLowerCase())+' to the backpack.</p><button class="btn" data-close>OK</button>'); confetti([t.pin, '✨']); }
+}
+
+// ---- Coins framing: Blip's day, not a pay slip ----
+const DAY_LINES = [
+  'Checked in {n} guests from {c} countries.', 'Swapped travel tips with two cyclists heading for the Pyrenees.', 'Helped a family find the right metro line.',
+  'Made breakfast for {n} sleepy guests.', 'Fixed the wobbly bunk in room 4.', 'Learned the Catalan for "good morning" from the cleaner: "Bon dia!"',
+  'Drew a map to the beach for a group of students.', 'Carried a cello up four flights of stairs for a guest.'
+];
+function dayLine(day, coins){
+  if (!coins) return 'The front desk opens at 8 AM.';
+  let h = 0; for (const ch of day) h = (h * 31 + ch.charCodeAt(0)) % 997;
+  return DAY_LINES[h % DAY_LINES.length].replace('{n}', Math.max(2, Math.floor(coins / 6))).replace('{c}', 2 + h % 5);
+}
+
+// ---- Postcards from friends you met: at the morning note, at most one a morning ----
+const POSTCARDS = {
+  laia: [
+    {after:1, text:'The guests keep asking where you went! Next time, walk the Carretera de les Aigües: flat, quiet, and the whole city below you. Fins aviat! (See you soon!) Laia'},
+    {after:4, text:'Rooftop evening at the hostel on Friday. Everyone brings one phrase in a new language. I\'m doing Italian. Laia'},
+    {after:8, text:'The Christmas market by the Cathedral, the Fira de Santa Llúcia, has run since 1786. Come and see the tiny nativity figures with me in December! Laia'}
+  ]
+};
+const FRIEND_NAMES = {laia:'Laia'};
+function nextPostcard(){
+  if (!FEAT.postcards) return null;
+  for (const f in N.met) {
+    const sent = N.cards.filter(c => c.from === f).length, card = (POSTCARDS[f] || [])[sent];
+    if (card && daysBetween(N.met[f], todayKey()) >= card.after) { const c = {from: f, text: card.text, day: todayKey()}; N.cards.push(c); nsave(); return c; }
+  }
+  return null;
+}
+function postcardHTML(c){ return '<div class="npcard"><div class="npcardfrom">📮 A postcard from '+esc(FRIEND_NAMES[c.from] || c.from)+'</div><p>'+esc(nm(c.text))+'</p></div>'; }
+
+// ---- Real festivals on their real dates: limited-time activities (not part of the key) ----
+const FESTS = [
+  {id:'castanyada', from:'10-25', to:'11-01', kind:'small', fest:true, emoji:'🌰', title:'La Castanyada: roast chestnuts', cost:150, min:30,
+    line:'{name} helps a street stall roast chestnuts and sweet potatoes, and tries panellets, little almond sweets.',
+    real:['La Castanyada is Catalonia\'s chestnut festival around All Saints\' Day (1 November).', 'Chestnut sellers set up street stalls in Barcelona from late October.', 'Tip: panellets are easy to make at home with ground almonds, sugar, egg and pine nuts.']},
+  {id:'santallucia', from:'11-27', to:'12-23', kind:'small', fest:true, emoji:'🎄', title:'Fira de Santa Llúcia Christmas market', cost:150, min:30,
+    line:'{name} wanders the stalls in front of Barcelona Cathedral, full of moss, little trees and hand-painted nativity figures.',
+    real:['The Fira de Santa Llúcia has been held near Barcelona Cathedral since 1786.', 'It usually runs from late November to 23 December. Dates change a little each year, so check before you go.', 'Tip: go on a weekday evening when the lights are on and the crowds are smaller.']},
+  {id:'reis', from:'01-02', to:'01-05', kind:'small', fest:true, emoji:'👑', title:'The Three Kings parade', cost:150, min:30,
+    line:'{name} joins the crowds on the evening of 5 January as the Three Kings arrive by boat and parade through the city.',
+    real:['The Cavalcada de Reis usually takes place on the evening of 5 January, the night before Epiphany.', 'In Barcelona the Kings traditionally arrive at the port by boat, then parade through the city.', 'Tip: find your spot early along the route. Families bring step stools for children to see.']},
+  {id:'gracia', from:'08-14', to:'08-21', kind:'small', fest:true, emoji:'🎏', title:'Festa Major de Gràcia street decorations', cost:150, min:30,
+    line:'{name} helps neighbors hang handmade decorations, turning a whole street into an underwater world.',
+    real:['During the Festa Major de Gràcia, usually in mid-August, neighbors decorate their streets and compete for the best one.', 'The decorations are made by hand over months, often from recycled materials.', 'Tip: visit in the daytime to see the details, and come back at night for the lights and concerts.']},
+  {id:'merce', from:'09-20', to:'09-24', kind:'small', fest:true, emoji:'🏰', title:'Human towers at La Mercè', cost:150, min:30,
+    line:'{name} watches teams of castellers build human towers up to nine people high in Plaça de Sant Jaume.',
+    real:['La Mercè is Barcelona\'s biggest festival, usually held around 24 September.', 'Castells (human towers) are on UNESCO\'s list of Intangible Cultural Heritage.', 'Tip: watch from the crowd and get to Plaça de Sant Jaume early. The square fills up long before the towers start.']}
+];
+function mmdd(d){ return String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function festOn(f, d){ const t = mmdd(d || new Date()); return f.from <= f.to ? t >= f.from && t <= f.to : t >= f.from || t <= f.to; }
+function festsNow(){ return FEAT.festivals ? FESTS.filter(f => festOn(f) || planned(f.id) || N.ready.indexOf(f.id) >= 0) : []; }
+function festNext(){
+  if (!FEAT.festivals) return null;
+  const d = new Date();
+  for (let i = 1; i <= 45; i++) { d.setDate(d.getDate() + 1); const f = FESTS.find(z => z.from === mmdd(d)); if (f) return {f, days: i}; }
+  return null;
+}
+function festCardHTML(){
+  const n = festNext(); if (!n || festsNow().length) return '';
+  return '<div class="card nfest"><small class="nk">Coming up in Barcelona</small><b>'+n.f.emoji+' '+esc(n.f.title)+'</b><div class="muted small">Opens in '+n.days+' day'+(n.days > 1 ? 's' : '')+'. Here for a short time only, like the real thing.</div></div>';
+}
+
+// ---- Hidden gems: a long phone-down stretch (about 2 hours) lets Blip find a lesser-known spot ----
+const GEMS = [
+  {id:'aigues', kind:'small', gem:true, emoji:'🌲', title:'Hidden gem: Carretera de les Aigües', line:'{name} finds a flat old path along the hills, with the whole city and the sea below.',
+    real:['The Carretera de les Aigües is an old service road along the Collserola hills, about 10 km long and almost flat.', 'The Vallvidrera funicular stops close to it.', 'Tip: go early in the morning or near sunset. It is popular with runners and cyclists, so keep to the side.']},
+  {id:'cactus', kind:'small', gem:true, emoji:'🌵', title:'Hidden gem: the Montjuïc cactus garden', line:'{name} discovers a hillside garden of giant cacti looking out over the port.',
+    real:['The Jardins de Mossèn Costa i Llobera on Montjuïc hold one of Europe\'s largest collections of cacti and succulents.', 'Entry is free.', 'Tip: wear proper shoes. The paths are steep, and some of the cacti are taller than you.']},
+  {id:'santpau', kind:'small', gem:true, emoji:'🏛️', title:'Hidden gem: the Sant Pau Art Nouveau site', line:'{name} wanders through a former hospital built like a garden city, with tiled domes and mosaics.',
+    real:['The Sant Pau Recinte Modernista was designed by Lluís Domènech i Montaner and is a UNESCO World Heritage site.', 'It worked as a hospital until 2009 and is now open to visitors.', 'Tip: it is a short walk from the Sagrada Família, so you can see both in one day.']}
+];
+const GEM_MIN = 120;   // minutes Blip was closed, between 8 AM and 10 PM, with Blip's count up less than 5 minutes
+function checkGem(closedAt, mins, used){
+  if (!FEAT.gems || mins < GEM_MIN || used >= 5) return;
+  const a = new Date(closedAt), b = new Date();
+  if (key(a) !== key(b) || a.getHours() < SHIFT_FROM || b.getHours() >= SHIFT_TO) return;
+  if (N.gemDay === todayKey()) return;
+  const g = GEMS.find(z => N.gems.indexOf(z.id) < 0); if (!g) return;
+  N.gems.push(g.id); N.gemDay = todayKey(); N.ready.push(g.id); N.polaroids.push(g.id);
+  N.fin[todayKey()] = (N.fin[todayKey()] || 0) + 1;
+}
+
+// ---- Passport extras: travel pins, gold stamps, postcards, hidden gems ----
+function passportExtrasHTML(){
+  let s = '';
+  const pins = N.pins.slice();
+  if (FEAT.travel || FEAT.tips) s += '<div class="card"><h3 style="margin-top:0">🎒 Backpack pins</h3>'+(pins.length ? '<div class="npins">'+pins.map(p => '<span>'+p+'</span>').join('')+'</div>' :
+    '<p class="muted small">'+(FEAT.travel ? 'Travel days and tips you try add pins to '+esc(N.name)+'\'s backpack.' : 'Tips you try add pins to '+esc(N.name)+'\'s backpack.')+'</p>')+'</div>';
+  const reals = Object.keys(N.real).map(actOf).filter(Boolean);
+  if (FEAT.stamps) s += '<div class="card"><h3 style="margin-top:0">🏅 Made it for real</h3>'+(reals.length ? reals.map(x => '<div class="nkrow"><span>'+x.emoji+' '+esc(x.home)+'</span><b>🏅</b></div>').join('') :
+    '<p class="muted small">Tried a phrase or a recipe in real life? Tap "I did it for real" on its photo for a gold stamp.</p>')+'</div>';
+  if (FEAT.gems) s += '<div class="card"><h3 style="margin-top:0">💎 Hidden gems of Barcelona</h3><p class="muted small">Leave your phone alone for about 2 hours in the daytime and '+esc(N.name)+' may find one.</p>'+
+    GEMS.map(g => '<div class="nkrow"><span>'+(N.gems.indexOf(g.id) >= 0 ? g.emoji+' '+esc(g.title.replace('Hidden gem: ', '')) : '❔ Not found yet')+'</span></div>').join('')+'</div>';
+  if (FEAT.postcards && N.cards.length) s += '<h3 class="nh3">Postcards</h3>'+N.cards.slice().reverse().map(c => '<div class="card">'+postcardHTML(c)+'</div>').join('');
+  return s;
+}
+function bindExtras(){
+  document.querySelectorAll('[data-real]').forEach(b => b.onclick = ev => { ev.stopPropagation(); markReal(b.dataset.real); });
+  const y = document.getElementById('ntipyes'), n = document.getElementById('ntipno');
+  if (y) y.onclick = () => answerTip(true);
+  if (n) n.onclick = () => answerTip(false);
 }
 
 // ---------- the one optional notification: a morning note, never during the day ----------

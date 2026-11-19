@@ -28,6 +28,7 @@ function blip(o){
   s += '<rect x="68" y="'+bodyY+'" width="64" height="'+bodyH+'" rx="24" fill="'+o.shirt+'" '+W+'/>';
   if (o.pack_on) s += '<path d="M76 '+(bodyY+2)+' L80 '+(bodyY+bodyH-6)+' M124 '+(bodyY+2)+' L120 '+(bodyY+bodyH-6)+'" stroke="#8a3a22" stroke-width="7" stroke-linecap="round"/><path d="M79 '+(bodyY+30)+' H121" stroke="#8a3a22" stroke-width="4"/>';
   if (o.sash) s += '<rect x="68" y="'+(bodyY+bodyH-26)+'" width="64" height="14" fill="#1b1b1b" stroke="'+O+'" stroke-width="3"/>';
+  if (o.vest) s += '<path d="M72 '+(bodyY+4)+' Q72 '+(bodyY-2)+' 84 '+(bodyY-2)+' L92 '+(bodyY+bodyH-6)+' L72 '+(bodyY+bodyH-10)+'Z M128 '+(bodyY+4)+' Q128 '+(bodyY-2)+' 116 '+(bodyY-2)+' L108 '+(bodyY+bodyH-6)+' L128 '+(bodyY+bodyH-10)+'Z" fill="#ff8a1f" stroke="'+O+'" stroke-width="3" stroke-linejoin="round"/><path d="M74 '+(bodyY+30)+' H126" stroke="#2b2b2b" stroke-width="4"/><rect x="96" y="'+(bodyY+27)+'" width="8" height="6" fill="#d9d9d9" stroke="'+O+'" stroke-width="1.5"/>';
   if (o.bun) s += '<circle cx="100" cy="28" r="18" fill="'+o.hair+'" '+W+'/>';
   const longHair = o.bun || o.girl;
   if (o.girl && !o.hat) s += '';
@@ -224,6 +225,33 @@ function balloonAt(x, y, s, withBlip, o){
   g += '<rect x="-12" y="20" width="24" height="15" rx="2" fill="#b97c48" stroke="'+O+'" stroke-width="2"/><path d="M-10 17 H10" stroke="#8a5a34" stroke-width="1.5"/></g>';
   return g;
 }
+// Barcelona's odd job: deckhand on a charter sailboat in Port Vell, the old harbor. Barcelona is seen from the sea:
+// Montjuïc and its castle on the left, the low city with the Sagrada Família far off, the beach, and the two tall towers
+// at the Olympic port on the right, with the Collserola hills behind. The boat's name is invented. Sam wears a life jacket.
+function sailboat(o){
+  let g = '<rect width="250" height="194" fill="#9fd8f2"/><circle cx="212" cy="30" r="14" fill="#fff6c8"/>';
+  g += '<path d="M0 92 Q60 70 120 80 Q180 66 250 84 V100 H0Z" fill="#8fa9c4"/>';                                   // Collserola hills
+  g += '<path d="M0 100 Q24 72 56 76 Q78 80 92 100Z" fill="#6a9b58" stroke="'+O+'" stroke-width="1.5"/><rect x="40" y="68" width="18" height="8" fill="#c9b38f" stroke="'+O+'" stroke-width="1"/>'; // Montjuïc + castle
+  g += '<rect x="88" y="92" width="162" height="10" fill="#e8c7a2"/>';
+  for (let k = 0; k < 14; k++) g += '<rect x="'+(90+k*11)+'" y="'+(88+(k*5)%6)+'" width="9" height="'+(8+(k*3)%5)+'" fill="'+(k%2 ? '#f0d9bd' : '#e3c4a0')+'"/>';
+  g += sagradaFull(199, 96, .1, {sw:9, crane:false});
+  g += '<rect x="212" y="58" width="9" height="44" fill="#c9cfd6" stroke="'+O+'" stroke-width="1.2"/><rect x="226" y="60" width="10" height="42" fill="#b07a5a" stroke="'+O+'" stroke-width="1.2"/>';  // the two towers at the Olympic port
+  g += '<rect x="88" y="100" width="162" height="5" fill="#f2deb0"/>';                                           // the beach
+  g += '<rect y="104" width="250" height="90" fill="#1f8fb0"/>';
+  for (let k = 0; k < 8; k++) g += '<path d="M'+(10+k*32)+' '+(118+(k%3)*18)+' q6 -4 12 0 q6 4 12 0" stroke="#bff0ec" stroke-width="2" fill="none" stroke-linecap="round"/>';
+  // the boat: white hull with an invented name, a mast, mainsail and jib
+  g += '<path d="M134 40 V150" stroke="'+O+'" stroke-width="3"/>';
+  g += '<path d="M137 44 Q186 96 188 148 H137Z" fill="#fffaf0" stroke="'+O+'" stroke-width="2.5" stroke-linejoin="round"/><path d="M137 76 Q172 106 176 148" stroke="#e4ddd0" stroke-width="2" fill="none"/>';
+  g += '<path d="M131 50 Q104 102 98 148 H131Z" fill="#fff" stroke="'+O+'" stroke-width="2.5" stroke-linejoin="round"/>';
+  g += '<path d="M30 150 H230 Q222 178 196 180 H60 Q40 178 30 150Z" fill="#ffffff" stroke="'+O+'" stroke-width="3" stroke-linejoin="round"/><path d="M34 160 H226" stroke="#1f7fa8" stroke-width="4"/>';
+  g += T(150, 175, 'GAVINA', '11', 'Lilita One', 'text-anchor="middle" fill="#1f7fa8" letter-spacing="1.5"');
+  g += '<path d="M30 150 L22 140 M230 150 L238 140" stroke="'+O+'" stroke-width="2"/><path d="M22 140 H238" stroke="'+O+'" stroke-width="1.5"/>';  // guard rail
+  // Sam on deck in a life jacket, with a coil of rope
+  g += blipAt(78, 154, 110, Object.assign({}, o, {pack_on:false, vest:true, wave:true}));
+  g += '<g transform="translate(108 148)"><ellipse cx="0" cy="0" rx="13" ry="5" fill="none" stroke="#c9a66b" stroke-width="3"/><ellipse cx="0" cy="-3" rx="10" ry="4" fill="none" stroke="#b08a4f" stroke-width="3"/><ellipse cx="0" cy="-6" rx="7" ry="3" fill="none" stroke="#c9a66b" stroke-width="3"/></g>';
+  g += '<path d="M0 182 Q60 174 125 184 T250 180 V194 H0Z" fill="#1f8fb0"/>';
+  return g;
+}
 function hostelDesk(o){
   return '<rect width="250" height="194" fill="#fbe3c4"/><rect x="0" y="0" width="250" height="70" fill="#f2d3a8"/>'+
     // key board with numbered room keys
@@ -244,7 +272,7 @@ const TILE = {
   es1: () => '<rect width="86" height="72" fill="#d6f1ee"/><rect x="10" y="12" width="66" height="34" rx="12" fill="#fff" stroke="'+O+'" stroke-width="2"/><path d="M24 44 l-4 12 l14 -10" fill="#fff" stroke="'+O+'" stroke-width="2" stroke-linejoin="round"/>'+T(43,36,'¡Hola!','17','Lilita One','text-anchor="middle" fill="#e2603f"'),
   es2: () => '<rect width="86" height="72" fill="#fff0d0"/><rect y="46" width="86" height="26" fill="#e2603f"/><path d="M0 46 H86" stroke="'+O+'" stroke-width="2"/>'+paellaPan(43, 44, 28),
   balloon: () => '<rect width="86" height="72" fill="#ffd9a8"/><circle cx="18" cy="18" r="9" fill="#fff1b8"/><g transform="scale(.344)">'+garrotxa()+'</g>'+balloonAt(58, 40, .42, false),
-  job: () => '<svg viewBox="0 0 250 194" width="86" height="72" preserveAspectRatio="xMidYMid slice">'+hostelDesk({})+'</svg>'
+  job: () => '<svg viewBox="0 0 250 194" width="86" height="72" preserveAspectRatio="xMidYMid slice">'+sailboat({})+'</svg>'
 };
 const tile = (id, o) => TILE[id] ? '<svg viewBox="0 0 86 72" class="ntile" aria-hidden="true">'+TILE[id]()+'</svg>'
   : PHOTO[id] ? '<svg viewBox="0 0 250 194" class="ntile" preserveAspectRatio="xMidYMid slice" aria-hidden="true">'+PHOTO[id](o || {})+'</svg>'
@@ -281,7 +309,7 @@ const PHOTO = {
     '<g transform="translate(205 172) scale(2.3)"><path d="M0 0 L-9 -14 L-6 -30 L0 -36 L6 -30 L9 -14Z" fill="#d8392b" stroke="'+O+'" stroke-width="1.4"/><path d="M0 0 L-4 -18 L0 -36 L4 -18Z" fill="#f4c430"/><circle cx="-5" cy="-22" r="2" fill="#fff"/><circle cx="5" cy="-14" r="2" fill="#fff"/><path d="M0 -36 V-48 M-6 -42 H6" stroke="#d4a017" stroke-width="2"/><circle cx="0" cy="-50" r="3" fill="#fff" stroke="'+O+'" stroke-width="1.2"/><circle cx="-7" cy="-42" r="3" fill="#fff" stroke="'+O+'" stroke-width="1.2"/><circle cx="7" cy="-42" r="3" fill="#fff" stroke="'+O+'" stroke-width="1.2"/></g>'+
     blipAt(92, 222, 150, Object.assign({}, o, {wave:true})),
   balloon: o => '<rect width="250" height="194" fill="#ffcf9a"/><circle cx="48" cy="120" r="26" fill="#fff1b8"/><rect y="118" width="250" height="20" fill="#f2b8a0" opacity=".5"/>'+garrotxa()+balloonAt(170, 82, 1.25, true, o),
-  job: o => hostelDesk(o)
+  job: o => sailboat(o)
 };
 
 // ---------- festivals and hidden gems (photos 250 x 194; tiles reuse the photo, cropped) ----------

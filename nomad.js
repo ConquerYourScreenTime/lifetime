@@ -36,7 +36,7 @@ const ACTS = [
     real:['Balloon flights run near Olot, about 2 hours north of Barcelona, over the Garrotxa Volcanic Zone Natural Park.', 'You meet before dawn. The flight lasts about an hour, and the whole morning takes 3 to 4 hours.', 'Tip: flights depend on the wind, so keep a spare day in case yours is moved.']}
 ];
 const KINDS = {lesson:'Lesson', meet:'Meet someone', small:'Small adventure', big:'Big adventure'};
-const JOB = {emoji:'🛎️', title:'Hostel front desk', line:'{name} works the hostel front desk in exchange for a bed, a common work-exchange for travelers.'};
+const JOB = {emoji:'⛵', title:'Deckhand on a sailing boat', line:'{name} crews a charter sailboat in the old harbor, Port Vell: coiling ropes, setting sails and seeing Barcelona from the sea. Charter boats really do take travelers on as crew.'};
 
 // ---------- save ----------
 function nload(){ try { return JSON.parse(localStorage.getItem(NKEY)) || null; } catch(e){ return null; } }
@@ -175,8 +175,8 @@ function bubbleLine(){
   const h = new Date().getHours(), a = N.act;
   if (a) return 'Off to '+actOf(a.id).title.replace(/^./, c => c.toLowerCase())+'! Put your phone down and I\'ll go.';
   if (live.over) return 'Shift\'s done for today. I keep everything I earned!';
-  if (h >= SHIFT_FROM && h < SHIFT_TO) return 'Hola! I\'m on shift at the hostel until 10 PM.';
-  return h >= 5 && h < SHIFT_FROM ? 'Bon dia! Back at the desk at 8 AM.' : 'Bona nit! Back at the desk at 8 AM.';
+  if (h >= SHIFT_FROM && h < SHIFT_TO) return 'Hola! I\'m crewing a sailboat in the old harbor until 10 PM.';
+  return h >= 5 && h < SHIFT_FROM ? 'Bon dia! Back on the boat at 8 AM.' : 'Bona nit! Back on the boat at 8 AM.';
 }
 
 // ---------- screens ----------
@@ -288,7 +288,7 @@ function calm(){
   c.className = 'ncalm';
   c.innerHTML = '<div class="ncalmin"><div class="nsamw">'+sam()+'</div><h1>'+esc(N.name)+'\'s off!</h1><p class="ncbig">Put your phone down.</p>'+
     '<p>'+now.emoji+' '+esc(now.title)+(later.length ? '<br><span class="ncsoft">then '+later.map(q => q.emoji+' '+esc(q.title)).join(', then ')+'</span>' : '')+'</p>'+
-    '<p class="ncsoft ncfoot">'+esc(N.name)+' is earning '+CUR+' at the hostel the whole time. Tap anywhere to come back.</p></div>';
+    '<p class="ncsoft ncfoot">'+esc(N.name)+' is earning '+CUR+' on the boat the whole time. Tap anywhere to come back.</p></div>';
   c.onclick = () => c.remove();
   document.body.appendChild(c);
 }
@@ -317,9 +317,9 @@ function showMorning(t){
   const card = nextPostcard(), tr = t.travel;
   offerTip(); draw();
   modal('<div class="mbig">☀️</div><h2 style="margin:4px 0">Good morning</h2>'+
-    (FEAT.framing ? '<p>'+esc(N.name)+'\'s day yesterday: <b>'+t.pay+' '+CUR+'</b>. '+esc(dayLine(t.y, t.pay))+'</p>' : '<p>Yesterday '+esc(N.name)+' earned <b>'+t.pay+' '+CUR+'</b> at the hostel.</p>')+
-    (t.under ? '<p>You finished '+fmtTime(N.goal - t.m)+' under your goal, so guests left <b>'+t.tips+' '+CUR+'</b> in tips. That\'s a full shift toward the France key.</p>' :
-      '<p>The shift ended at your goal. '+esc(N.name)+' kept every Coin and is back at the desk at 8 AM.</p>')+
+    (FEAT.framing ? '<p>'+esc(N.name)+'\'s day yesterday: <b>'+t.pay+' '+CUR+'</b>. '+esc(dayLine(t.y, t.pay))+'</p>' : '<p>Yesterday '+esc(N.name)+' earned <b>'+t.pay+' '+CUR+'</b> on the boat.</p>')+
+    (t.under ? '<p>You finished '+fmtTime(N.goal - t.m)+' under your goal, so the passengers left <b>'+t.tips+' '+CUR+'</b> in tips. That\'s a full shift toward the France key.</p>' :
+      '<p>The shift ended at your goal. '+esc(N.name)+' kept every Coin and is back on the boat at 8 AM.</p>')+
     (tr ? (tr.went ? '<p>🧳 That was travel day number '+N.travel.count+'.'+(tr.pin ? ' '+esc(N.name)+' earned a '+esc(tr.pin.name.toLowerCase())+' '+tr.pin.emoji+' for the backpack!' : '')+'</p>' :
       '<p>🧳 '+esc(N.name)+' took a slow day. That\'s part of travelling.</p>') : '')+
     (card ? postcardHTML(card) : '')+
@@ -332,7 +332,7 @@ function showMorning(t){
 function welcome(){
   N.welcomed = true; nsave();
   modal('<div class="nwelcome">'+NART.scene({blip: look(), bx: 180})+'</div><div class="nribbon">'+(N.girl ? 'BENVINGUDA!' : 'BENVINGUT!')+'</div><h2 style="margin:4px 0">'+esc(N.name)+' lands in Barcelona!</h2><p>'+esc(N.name)+' is 18, with a backpack and <b>150 '+CUR+'</b> saved from home.</p>'+
-    '<p class="muted">While your phone is down, '+esc(N.name)+' works the hostel front desk and earns '+CUR+'. Spend them on lessons, friends and adventures. Every one is something you can really do.</p>'+
+    '<p class="muted">While your phone is down, '+esc(N.name)+' crews a sailing boat in the old harbor and earns '+CUR+'. Spend them on lessons, friends and adventures. Every one is something you can really do.</p>'+
     '<p class="muted small">'+(N.girl ? 'Benvinguda' : 'Benvingut')+' is Catalan for "welcome". '+COIN_RULE+'</p><button class="btn" data-close id="nwel">Let\'s explore</button>');
   const w = document.getElementById('nwel'); if (w && !N.goalSet) w.addEventListener('click', chooseGoal);
 }
@@ -448,12 +448,12 @@ function answerTip(tried){
 
 // ---- Coins framing: Blip's day, not a pay slip ----
 const DAY_LINES = [
-  'Checked in {n} guests from {c} countries.', 'Swapped travel tips with two cyclists heading for the Pyrenees.', 'Helped a family find the right metro line.',
-  'Made breakfast for {n} sleepy guests.', 'Fixed the wobbly bunk in room 4.', 'Learned the Catalan for "good morning" from the cleaner: "Bon dia!"',
-  'Drew a map to the beach for a group of students.', 'Carried a cello up four flights of stairs for a guest.'
+  'Sailed {n} passengers from {c} countries past the beaches.', 'Coiled every rope on deck into a perfect spiral.', 'Learned to tie a bowline without looking.',
+  'Helped hoist the mainsail as the boat left Port Vell.', 'Spotted the Sagrada Família towers from out at sea.', 'Learned the Catalan for "good morning" from the skipper: "Bon dia!"',
+  'Scrubbed the deck until it shone.', 'Pointed out Montjuïc to {n} passengers as the sun went down.'
 ];
 function dayLine(day, coins){
-  if (!coins) return 'The front desk opens at 8 AM.';
+  if (!coins) return 'The boat leaves the harbor at 8 AM.';
   let h = 0; for (const ch of day) h = (h * 31 + ch.charCodeAt(0)) % 997;
   return DAY_LINES[h % DAY_LINES.length].replace('{n}', Math.min(12, Math.max(2, Math.floor(coins / 12)))).replace('{c}', 2 + h % 5);
 }
@@ -461,7 +461,7 @@ function dayLine(day, coins){
 // ---- Postcards from friends you met: at the morning note, at most one a morning ----
 const POSTCARDS = {
   laia: [
-    {after:1, text:'The guests keep asking where you went! Next time, walk the Carretera de les Aigües: flat, quiet, and the whole city below you. Fins aviat! (See you soon!) Laia'},
+    {after:1, text:'Everyone at the hostel asks how sailing is going! Next time, walk the Carretera de les Aigües: flat, quiet, and the whole city below you. Fins aviat! (See you soon!) Laia'},
     {after:4, text:'Rooftop evening at the hostel on Friday. Everyone brings one phrase in a new language. I\'m doing Italian. Laia'},
     {after:8, text:'The Christmas market by the Cathedral, the Fira de Santa Llúcia, has run since 1786. Come and see the tiny nativity figures with me in December! Laia'}
   ]

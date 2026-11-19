@@ -191,11 +191,13 @@ function cityHTML(){
     '<div class="npill npay2"><small>Shift pay</small>+'+pay+' today</div></div>'+
     '<div class="nbanner">'+esc(N.city).toUpperCase()+'<small>'+esc(N.name)+', 18 · Spain</small></div><div class="nsay">'+esc(bubbleLine())+'</div></div><div class="nsheet">';
   s += '<div class="card"><div class="npost">'+NART.tile('job')+'<div class="nbody"><small class="nk">Odd job</small><b>'+JOB.title+'</b><div class="muted small">'+esc(nm(JOB.line))+'</div></div></div>'+
-    '<div class="npay">'+esc(N.name)+'\'s pay today: <b>'+pay+' '+CUR+'</b></div>'+
+    (FEAT.framing ? '<div class="npay">'+esc(N.name)+'\'s day: <b>'+pay+' '+CUR+'</b></div><div class="small" style="margin-bottom:4px">'+esc(dayLine(todayKey(), pay))+'</div>' :
+      '<div class="npay">'+esc(N.name)+'\'s pay today: <b>'+pay+' '+CUR+'</b></div>')+
     '<div class="muted small">'+(live.over ? 'You reached your goal, so the shift is over for today. '+esc(N.name)+' keeps everything earned. Back on shift tomorrow at 8 AM.' :
       onShift ? 'On shift until 10 PM. Put your phone down and '+esc(N.name)+' earns 1 Coin every 5 minutes.' : 'The shift runs 8 AM to 10 PM.')+
     (live.today != null ? ' Blip\'s count today: '+fmtTime(live.today)+' of '+fmtTime(N.goal)+'.' : '')+'</div></div>';
   s += '<p class="muted small nrule">'+COIN_RULE+'</p>';
+  s += tipCardHTML()+travelCardHTML()+festCardHTML();
   if (N.ready.length) s += '<div class="card nnow"><b>📸 '+N.ready.length+' new Polaroid'+(N.ready.length > 1 ? 's' : '')+'</b><button class="btn" id="nfin" style="margin-top:10px">See how it went ✨</button></div>';
   if (a) {
     const x = actOf(a.id);
@@ -208,10 +210,10 @@ function cityHTML(){
   }
   s += '<h3 class="nh3">Things to do in Barcelona</h3>';
   const full = planIds().length >= PLAN_MAX;
-  for (const x of ACTS) {
+  for (const x of ACTS.concat(festsNow())) {
     const done = N.done[x.id], inPlan = planned(x.id), locked = !unlocked(x), afford = N.coins >= x.cost;
     const label = inPlan ? 'In the plan' : locked ? 'After lesson 1' : full ? 'Plan is full' : !afford ? 'Need '+(x.cost - N.coins) : a ? 'Add to plan' : 'Go';
-    s += '<div class="card nact'+(done ? ' ndone' : '')+'">'+(done ? '<span class="nstamped">DONE</span>' : '')+'<div class="npost">'+NART.tile(x.id)+'<div class="nbody"><small class="nk">'+KINDS[x.kind]+'</small><b>'+esc(x.title)+'</b>'+
+    s += '<div class="card nact'+(done ? ' ndone' : '')+'">'+(done ? '<span class="nstamped">DONE</span>' : '')+'<div class="npost">'+NART.tile(x.id)+'<div class="nbody"><small class="nk">'+kindOf(x)+'</small><b>'+esc(x.title)+'</b>'+
       '<div class="ncost">'+NART.coin(16)+'<b>'+x.cost+'</b> · '+(x.min >= 60 ? '1 hour' : x.min+' min')+' phone down</div>'+
       (done ? '' : '<button class="btn nsm" data-go="'+x.id+'"'+(inPlan || locked || full || !afford ? ' disabled' : '')+' style="margin-top:8px">'+label+'</button>')+'</div></div></div>';
   }
@@ -229,8 +231,8 @@ function passportHTML(){
   s += '<div class="card" style="margin-top:14px"><div class="nrow2">'+NART.keyIcon('#ffc84a', 36)+'<h3 style="margin:0">France key</h3></div><p class="muted small">Finish Spain\'s goals to earn the key that opens France.</p>'+
     row('Small adventures', k.small, KEY_NEEDS.small)+row('Big adventure', k.big, KEY_NEEDS.big)+row('Spanish lessons', k.lesson, KEY_NEEDS.lesson)+row('Full shifts (a day under your goal)', k.shift, KEY_NEEDS.shift)+
     (keyDone() ? '<p><b>Key earned! France opens in the next version of the prototype.</b></p>' : '')+'</div>';
-  if (N.polaroids.length) s += '<h3 class="nh3">Photos</h3>'+N.polaroids.slice().reverse().map(id => { const x = ACTS.find(z => z.id === id); return x ? '<div class="card">'+polaroid(x)+realHTML(x)+'</div>' : ''; }).join('');
-  return s;
+  if (N.polaroids.length) s += '<h3 class="nh3">Photos</h3>'+N.polaroids.slice().reverse().map(id => { const x = actOf(id); return x ? '<div class="card">'+polaroid(x)+realHTML(x)+stampBtnHTML(x)+'</div>' : ''; }).join('');
+  return s+passportExtrasHTML();
 }
 function settingsHTML(){
   return '<div class="card"><h2 style="margin-top:0">Settings</h2><div class="nrow" style="justify-content:space-between"><span>Daily goal</span><span><button class="btn nsm" id="gm">–</button> <b>'+fmtTime(N.goal)+'</b> <button class="btn nsm" id="gp">+</button></span></div>'+
@@ -252,6 +254,7 @@ function draw(){
   const on = (id, f) => { const e = document.getElementById(id); if (e) e.onclick = f; };
   app.querySelectorAll('[data-unq]').forEach(b => b.onclick = () => unqueue(+b.dataset.unq));
   on('nfin', reveal);
+  bindExtras();
   on('gm', () => { N.goal = Math.max(15, N.goal - 15); nsave(); refresh(false); });
   on('gp', () => { N.goal = Math.min(960, N.goal + 15); nsave(); refresh(false); });
   const rm = document.getElementById('rmon');
@@ -312,7 +315,7 @@ function showMorning(t){
   const raise = raiseReady();
   if (raise) { N.raiseAt = todayKey(); nsave(); }
   const card = nextPostcard(), tr = t.travel;
-  offerTip();
+  offerTip(); draw();
   modal('<div class="mbig">☀️</div><h2 style="margin:4px 0">Good morning</h2>'+
     (FEAT.framing ? '<p>'+esc(N.name)+'\'s day yesterday: <b>'+t.pay+' '+CUR+'</b>. '+esc(dayLine(t.y, t.pay))+'</p>' : '<p>Yesterday '+esc(N.name)+' earned <b>'+t.pay+' '+CUR+'</b> at the hostel.</p>')+
     (t.under ? '<p>You finished '+fmtTime(N.goal - t.m)+' under your goal, so guests left <b>'+t.tips+' '+CUR+'</b> in tips. That\'s a full shift toward the France key.</p>' :
@@ -414,7 +417,7 @@ function markReal(id){ const x = actOf(id); if (!stampable(x) || N.real[id]) ret
 
 // ---- Real-world tip cards: one every few days, invitations only (Lawyer wording), "I tried it" earns a pin ----
 const TIPS = [
-  {id:'gray', emoji:'⚫', text:'Try grayscale tonight. Settings > Accessibility > Display & Text Size > Color Filters.', pin:'⚫', pinName:'Grayscale pin'},
+  {id:'gray', emoji:'⚫', text:'Try grayscale tonight. Settings > Accessibility > Display & Text Size > Color Filters.', pin:'🎞️', pinName:'Black-and-white film pin'},
   {id:'charge', emoji:'🔌', text:'Tonight, charge your phone outside the bedroom. Use a clock for your alarm if you can.', pin:'⏰', pinName:'Alarm clock pin'},
   {id:'walk', emoji:'🚶', text:'Take a short walk with your phone in your pocket the whole way.', pin:'👟', pinName:'Walking shoe pin'},
   {id:'dinner', emoji:'🍽️', text:'Tonight, put your phone in another room while you eat.', pin:'🍴', pinName:'Fork and knife pin'},
@@ -452,7 +455,7 @@ const DAY_LINES = [
 function dayLine(day, coins){
   if (!coins) return 'The front desk opens at 8 AM.';
   let h = 0; for (const ch of day) h = (h * 31 + ch.charCodeAt(0)) % 997;
-  return DAY_LINES[h % DAY_LINES.length].replace('{n}', Math.max(2, Math.floor(coins / 6))).replace('{c}', 2 + h % 5);
+  return DAY_LINES[h % DAY_LINES.length].replace('{n}', Math.min(12, Math.max(2, Math.floor(coins / 12)))).replace('{c}', 2 + h % 5);
 }
 
 // ---- Postcards from friends you met: at the morning note, at most one a morning ----
@@ -573,6 +576,14 @@ document.head.insertAdjacentHTML('beforeend', '<style>'+
   '@keyframes ncin{from{opacity:0}to{opacity:1}}'+
   '.nkrow{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:15px}.nsamw svg{width:140px;height:168px}'+
   '.nnav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#fff;border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}.nnav button{flex:1;border:0;background:none;font-size:12px;color:var(--soft);padding:4px}.nnav button b{display:block;font-size:22px}.nnav button.on{color:var(--accent2);font-weight:600}'+
+  '</style>');
+
+// ---------- mechanics styles (Builder): plain classes for the new screens; the Designer may restyle these ----------
+document.head.insertAdjacentHTML('beforeend', '<style>'+
+  '.ntdrow{display:flex;gap:6px;margin-top:8px}.ntd{flex:1;text-align:center;font-size:12px;font-weight:700;padding:6px 0;border-radius:10px;background:#eee8dd;color:#9a92a8}.ntd.on{background:#ffc84a;color:#3b2a4a}'+
+  '.ntip .ntiptext{font-size:16px;margin:6px 0 10px}.ntip .nrow{gap:8px}.nfest b{display:block}.npins{display:flex;flex-wrap:wrap;gap:10px;font-size:30px}'+
+  '.npcard{background:#fffaf0;border:2px dashed #c9a46a;border-radius:12px;padding:10px 12px;margin:10px 0;text-align:left;transform:rotate(-1deg)}.npcardfrom{font-size:12px;font-weight:700;color:#a8402a;text-transform:uppercase;letter-spacing:.5px}.npcard p{margin:6px 0 0}'+
+  '.nreal-btn{margin:6px 0 4px}.nreal-ok{font-weight:600;color:#a87b00;margin:6px 0}'+
   '</style>');
 
 // ---------- start ----------

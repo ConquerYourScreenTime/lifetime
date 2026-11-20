@@ -13,6 +13,7 @@ const KEY_NEEDS = {small: 2, big: 1, lesson: 2, shift: 5};
 const CUR = 'Coins', CUR_ICON = '🪙';          // the currency's name lives here only (placeholder, may be renamed)
 const COIN_RULE = 'Coins only come from phone-down time. They can\'t be bought.';
 const PLAN_MAX = 3;                            // activities Blip can have lined up (the one running plus 2 more)
+const TIP_MAX = 60;                            // 4 AM tips cap: 1 Coin per minute under goal, at most 60 a day
 
 // ---------- Barcelona ----------
 const ACTS = [
@@ -101,7 +102,7 @@ function rollover(){
   if (!wasYest) return Promise.resolve(null);   // away for more than a day: nothing to settle in the prototype
   return readDay(y).then(r => {
     const pay = shiftPay(y, r.m, r.hours, true); credit(y, pay.miles);
-    const under = r.m < N.goal, tips = under ? N.goal - r.m : 0;
+    const under = r.m < N.goal, tips = under ? Math.min(TIP_MAX, N.goal - r.m) : 0;
     if (tips) N.coins += tips;
     if (under) N.keyp.shift = Math.min(KEY_NEEDS.shift, N.keyp.shift + 1);
     N.hist[y] = under;

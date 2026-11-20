@@ -1,5 +1,6 @@
 import WidgetKit
 import SwiftUI
+import ActivityKit
 
 // Blip's home screen and lock screen widgets (Matthew's picks, 2026-11-13; Lawyer conditions applied):
 //  - shows only Blip's own count for today (the 5-minute steps the monitor saved on this phone), the goal and the player's Blip
@@ -341,7 +342,6 @@ struct BlipWidgetView: View {
     }
 }
 
-@main
 struct BlipWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "BlipCount", provider: Provider()) { e in
@@ -351,5 +351,89 @@ struct BlipWidget: Widget {
         .description("Blip's count for today, your goal, and your Blip.")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
         .disfavoredLocations([.iPhoneWidgetsOnMac], for: [.systemSmall, .systemMedium, .accessoryRectangular])
+    }
+}
+
+
+// ---------- Blip Nomad: the lock-screen countdown (Live Activity) ----------
+// Started only by the player's own tap ("Blip's off!"), from the app. Shows game text only: what Blip is doing and a countdown
+// that assumes the phone stays down. No Screen Time minutes, no goal, no network, no push server.
+// Keep BlipTripAttributes identical to the copy in ScreenTimePlugin.swift (iOS matches them by name and shape).
+struct BlipTripAttributes: ActivityAttributes {
+    public struct ContentState: Codable, Hashable {
+        var title: String
+        var emoji: String
+        var next: String
+        var start: Date
+        var end: Date
+    }
+    var name: String
+}
+
+private func tripIcon() -> UIImage? {
+    guard let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else { return nil }
+    return UIImage(contentsOfFile: dir.appendingPathComponent("live-icon.png").path)
+}
+
+struct TripLockView: View {
+    let ctx: ActivityViewContext<BlipTripAttributes>
+    var body: some View {
+        let s = ctx.state
+        let done = ctx.isStale || Date() >= s.end
+        HStack(spacing: 12) {
+            if let img = tripIcon() { Image(uiImage: img).resizable().scaledToFit().frame(width: 54, height: 64) }
+            else { Text(s.emoji).font(.system(size: 40)) }
+            VStack(alignment: .leading, spacing: 3) {
+                if done {
+                    Text("Time's up!").font(.system(size: 28, weight: .heavy, design: .rounded)).foregroundColor(ink)
+                    Text("Open Blip to see how it went").font(.system(size: 14, weight: .semibold, design: .rounded)).foregroundColor(ink)
+                } else {
+                    Text(timerInterval: s.start...s.end, countsDown: true)
+                        .font(.system(size: 30, weight: .heavy, design: .rounded)).monospacedDigit().foregroundColor(ink)
+                    Text(s.emoji + " " + ctx.attributes.name + ": " + s.title).font(.system(size: 14, weight: .semibold, design: .rounded)).foregroundColor(ink).lineLimit(1)
+                    ProgressView(timerInterval: s.start...s.end, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
+                        .tint(sunset)
+                    Text(s.next.isEmpty ? "If your phone stays down" : "Then: " + s.next + " · if your phone stays down")
+                        .font(.system(size: 11, design: .rounded)).foregroundColor(soft).lineLimit(1)
+                }
+            }
+        }
+        .padding(14)
+    }
+}
+
+struct BlipTripLive: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: BlipTripAttributes.self) { ctx in
+            TripLockView(ctx: ctx)
+                .activityBackgroundTint(cream)
+                .activitySystemActionForegroundColor(ink)
+        } dynamicIsland: { ctx in
+            DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
+                    if let img = tripIcon() { Image(uiImage: img).resizable().scaledToFit().frame(width: 40, height: 48) } else { Text(ctx.state.emoji).font(.title) }
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    Text(timerInterval: ctx.state.start...ctx.state.end, countsDown: true).font(.system(size: 22, weight: .heavy, design: .rounded)).monospacedDigit().frame(maxWidth: 80)
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    Text(ctx.attributes.name + ": " + ctx.state.title).font(.system(size: 14, weight: .semibold, design: .rounded)).lineLimit(1)
+                }
+            } compactLeading: {
+                Text(ctx.state.emoji)
+            } compactTrailing: {
+                Text(timerInterval: ctx.state.start...ctx.state.end, countsDown: true).monospacedDigit().frame(maxWidth: 44)
+            } minimal: {
+                Text(ctx.state.emoji)
+            }
+        }
+    }
+}
+
+@main
+struct BlipWidgets: WidgetBundle {
+    var body: some Widget {
+        BlipWidget()
+        BlipTripLive()
     }
 }

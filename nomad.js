@@ -162,6 +162,7 @@ function refresh(firstOpen){
     const pay = shiftPay(todayKey(), r.m, r.hours, false); credit(todayKey(), pay.miles);
     live.pay = N.credited[todayKey()] || 0; live.over = pay.over;
     nsave(); draw();
+    if (firstOpen) liveSync();
     if (firstOpen && N.ready.length && !document.querySelector('.modal')) reveal();
     if (tip) showMorning(tip);   // added last, so it sits on top: the morning note first, then the Polaroids
   }));
@@ -239,6 +240,7 @@ function settingsHTML(){
   return '<div class="card"><h2 style="margin-top:0">Settings</h2><div class="nrow" style="justify-content:space-between"><span>Daily goal</span><span><button class="btn nsm" id="gm">–</button> <b>'+fmtTime(N.goal)+'</b> <button class="btn nsm" id="gp">+</button></span></div>'+
     '<p class="muted small">You choose the goal, and Blip never changes it on its own. A new goal starts tomorrow in the full game. In the prototype it counts right away.</p></div>'+
     pauseCardHTML()+
+    liveCardHTML()+
     (IS_APP ? '<div class="card"><h3 style="margin-top:0">⏰ Morning note</h3><div class="switch"><span>One note in the morning when '+esc(N.name)+'\'s news is ready. Never during the day.</span><input type="checkbox" id="rmon" '+(N.remind.on ? 'checked' : '')+'></div>'+
       (N.remind.on ? '<div class="switch"><span>Time</span><input type="time" id="rmtime" value="'+String(N.remind.h).padStart(2, '0')+':'+String(N.remind.m).padStart(2, '0')+'"></div>' : '')+
       (remindNote ? '<p class="muted small">'+esc(remindNote)+'</p>' : '')+'</div>' : '')+
@@ -256,7 +258,7 @@ function draw(){
   const on = (id, f) => { const e = document.getElementById(id); if (e) e.onclick = f; };
   app.querySelectorAll('[data-unq]').forEach(b => b.onclick = () => unqueue(+b.dataset.unq));
   on('nfin', reveal);
-  bindExtras(); bindPause(); pauseSync();
+  bindExtras(); bindPause(); pauseSync(); bindLive();
   on('gm', () => { N.goal = Math.max(15, N.goal - 15); nsave(); refresh(false); });
   on('gp', () => { N.goal = Math.min(960, N.goal + 15); nsave(); refresh(false); });
   const rm = document.getElementById('rmon');
@@ -274,14 +276,14 @@ function start(id){
   N.coins -= x.cost;
   if (N.act) N.queue.push(id);
   else { begin(id); N.snap = {t: Date.now(), day: todayKey(), m: live.today || 0}; }
-  nsave(); draw(); calm();
+  nsave(); draw(); calm(); liveSync();
 }
 // Taking something out of the plan gives its Coins back. Anything lined up after it that needed it comes out too.
 function unqueue(i){
   const id = N.queue[i]; if (id == null) return;
   N.queue.splice(i, 1); N.coins += actOf(id).cost;
   for (let j = N.queue.length - 1; j >= 0; j--) { const q = actOf(N.queue[j]); if (!unlocked(q)) { N.queue.splice(j, 1); N.coins += q.cost; } }
-  nsave(); draw();
+  nsave(); draw(); liveSync();
 }
 // The calm screen: nothing to tap but the screen itself. Its only job is to send you off.
 function calm(){
@@ -625,6 +627,36 @@ function turnbacksFor(day){
   const p = P(); if (!p || !p.turnbacks) return Promise.resolve(0);
   return p.turnbacks({day}).then(r => r && r.count || 0).catch(() => 0);
 }
+
+// ======================= Lock-screen countdown (Live Activity) =======================
+// Lawyer OK 2026-11-20: started only by the player's tap, game text only, status only (never shop items, prices or promotions),
+// can be switched off in Settings. The countdown assumes the phone stays down; opening Blip corrects it, or ends it.
+N.live = N.live == null ? true : N.live;
+let liveIconSent = false;
+const liveOK = () => { const p = P(); return !!(p && p.liveStart); };
+function livePNG(){
+  return new Promise((ok, no) => {
+    const w = 120, h = 144, t = NART.blipSVG(look()).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'" ');
+    const img = new Image();
+    img.onload = () => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h); ok(cv.toDataURL('image/png').split(',')[1]); };
+    img.onerror = no; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(t);
+  });
+}
+// Shows (or updates) the countdown for the activity running now, or clears it when nothing is running.
+function liveSync(){
+  if (!liveOK()) return;
+  const p = P();
+  if (!N.live || !N.act) { p.liveEnd().catch(() => {}); return; }
+  const x = actOf(N.act.id), left = Math.max(1, N.act.need - N.act.prog), nx = N.queue[0] ? actOf(N.queue[0]) : null;
+  const send = icon => p.liveStart(Object.assign({name: N.name, title: x.title, emoji: x.emoji, next: nx ? nx.title : '', endsAt: Date.now() + left * 60000}, icon ? {icon} : {})).catch(() => {});
+  if (liveIconSent) send();
+  else livePNG().then(icon => { liveIconSent = true; send(icon); }).catch(() => send());
+}
+function liveCardHTML(){
+  if (!liveOK()) return '';
+  return '<div class="card"><h3 style="margin-top:0">🔒 Lock-screen countdown</h3><div class="switch"><span>When '+esc(N.name)+' heads off, show the countdown on your lock screen.</span><input type="checkbox" id="lvon" '+(N.live ? 'checked' : '')+'></div></div>';
+}
+function bindLive(){ const c = document.getElementById('lvon'); if (c) c.onchange = () => { N.live = c.checked; nsave(); liveSync(); }; }
 
 // ---------- the one optional notification: a morning note, never during the day ----------
 let remindNote = '';

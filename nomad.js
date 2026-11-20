@@ -17,22 +17,22 @@ const TIP_MAX = 60;                            // 4 AM tips cap: 1 Coin per minu
 
 // ---------- Barcelona ----------
 const ACTS = [
-  {id:'es1', kind:'lesson', emoji:'🗣️', title:'Spanish lesson 1: Hello', cost:60, min:15,
+  {id:'es1', short:'for Spanish lesson 1', kind:'lesson', emoji:'🗣️', title:'Spanish lesson 1: Hello', cost:60, min:15,
     home:'Said it for real: "Hola, me llamo..."', phrase:'Hola, me llamo {name}. Gracias.', say:'OH-lah, meh YAH-moh {name}. GRAH-see-ahs.', mean:'Hello, my name is {name}. Thank you.',
     real:['Spanish works everywhere in Barcelona. Catalan is the city\'s other language, and locals love it when you try "Bon dia" (good morning).', 'Short courses for visitors run all year, from a single morning to a few weeks.', 'Tip: "Gracias" goes a long way. So does a smile when you get it wrong.']},
-  {id:'es2', kind:'lesson', emoji:'🥘', title:'Spanish lesson 2: Order food', cost:60, min:15, needs:'es1',
+  {id:'es2', short:'for Spanish lesson 2', kind:'lesson', emoji:'🥘', title:'Spanish lesson 2: Order food', cost:60, min:15, needs:'es1',
     home:'Said it for real: "Una paella para dos"', phrase:'Una paella para dos, por favor.', say:'OO-nah pah-EH-yah PAH-rah dohs, por fah-VOR.', mean:'A paella for two, please.',
     real:['Paella is usually made to order for at least two people, so it\'s normal to wait 20 to 30 minutes.', 'Spaniards eat late: lunch around 2 PM and dinner after 9 PM.', 'Tip: a "menú del día" at lunch is the best-value meal in town.']},
-  {id:'laia', kind:'meet', emoji:'👋', title:'Meet Laia', cost:80, min:20,
+  {id:'laia', short:'to meet Laia', kind:'meet', emoji:'👋', title:'Meet Laia', cost:80, min:20,
     line:'Laia runs the hostel and knows every rooftop in the city. She takes {name} up to the Bunkers del Carmel for sunset.',
     real:['The Bunkers del Carmel are old anti-aircraft gun sites on a hill, with one of the widest free views of Barcelona.', 'Get there about an hour before sunset. It\'s a steep walk up from the nearest bus stop.', 'Tip: bring water and a jacket. It gets windy at the top.']},
-  {id:'montserrat', kind:'small', emoji:'⛰️', title:'Hike up Montserrat', cost:150, min:30,
+  {id:'montserrat', short:'to Montserrat', kind:'small', emoji:'⛰️', title:'Hike up Montserrat', cost:150, min:30,
     line:'{name} hikes up the jagged mountain to the monastery tucked into the rocks.',
     real:['Montserrat is about an hour from Barcelona by train. A rack railway or a cable car takes you up the last part.', 'The monastery sits about 720 m up. Hiking up from the bottom takes about 1.5 to 2 hours.', 'Tip: go early on a weekday. The trails above the monastery are much quieter than the plaza.']},
-  {id:'sagrada', kind:'small', emoji:'⛪', title:'Climb a Sagrada Família tower', cost:150, min:30,
+  {id:'sagrada', short:'to the Sagrada Família', kind:'small', emoji:'⛪', title:'Climb a Sagrada Família tower', cost:150, min:30,
     line:'{name} rides up a tower of Gaudí\'s basilica and walks down the narrow spiral stairs.',
     real:['Tower visits need a timed ticket booked ahead. A lift takes you up and you walk down a tight spiral staircase.', 'The basilica has been under construction since 1882.', 'Tip: book online days ahead, and check the age limit for children before you go.']},
-  {id:'balloon', kind:'big', emoji:'🎈', title:'Sunrise balloon over the Garrotxa volcanoes', cost:400, min:60,
+  {id:'balloon', short:'for the balloon ride', kind:'big', emoji:'🎈', title:'Sunrise balloon over the Garrotxa volcanoes', cost:400, min:60,
     line:'{name} floats over the old volcanoes and beech forests of the Garrotxa at sunrise.',
     real:['Balloon flights run near Olot, about 2 hours north of Barcelona, over the Garrotxa Volcanic Zone Natural Park.', 'You meet before dawn. The flight lasts about an hour, and the whole morning takes 3 to 4 hours.', 'Tip: flights depend on the wind, so keep a spare day in case yours is moved.']}
 ];
@@ -84,7 +84,7 @@ function shiftPay(day, total, hours, final){
     const end = isToday && !final ? Math.min(SHIFT_TO * 60, Math.max(SHIFT_FROM * 60, now.getHours() * 60 + now.getMinutes())) : SHIFT_TO * 60;
     down = over ? 0 : Math.max(0, end - SHIFT_FROM * 60 - total);
   }
-  return {miles: Math.floor(down / 5), over};
+  return {miles: Math.floor(down / 5), over, down};
 }
 function credit(day, miles){
   const had = N.credited[day] || 0;
@@ -115,7 +115,7 @@ function rollover(){
 }
 
 // ---------- Blip's plan: the running activity plus up to 2 more, done one after another ----------
-const actOf = id => ACTS.find(z => z.id === id) || FESTS.find(z => z.id === id) || GEMS.find(z => z.id === id);
+const actOf = id => ACTS.find(z => z.id === id) || FESTS.find(z => z.id === id) || GEMS.find(z => z.id === id) || SUNRISE.find(z => z.id === id);
 const kindOf = x => x.gem ? 'Hidden gem' : x.fest ? 'Festival · limited time' : KINDS[x.kind];
 function planIds(){ return (N.act ? [N.act.id] : []).concat(N.queue); }
 function planned(id){ return planIds().indexOf(id) >= 0; }
@@ -145,7 +145,7 @@ function addDown(mins){
 // Anything that was already finished before the phone came out still counts (benefit of the doubt).
 function interrupt(){
   const x = actOf(N.act.id);
-  N.coins += x.cost; N.missed = x.id; N.act = null;
+  N.coins += x.cost; N.missed = x.id; N.act = null; N.saveFor = null;
   if (N.queue.length) begin(N.queue.shift());
 }
 function showMissed(){
@@ -180,13 +180,16 @@ function refresh(firstOpen){
     live.today = r.m; live.hours = r.hours;
     if (firstOpen) advance(r.m, old ? old.m : null); else if (N.snap) { N.snap.t = Date.now(); N.snap.m = r.m; N.snap.day = todayKey(); nsave(); }
     const pay = shiftPay(todayKey(), r.m, r.hours, false); credit(todayKey(), pay.miles);
-    live.pay = N.credited[todayKey()] || 0; live.over = pay.over;
+    live.pay = N.credited[todayKey()] || 0; live.over = pay.over; live.down = pay.down || 0;
+    const booked = autoBook();
     nsave(); draw();
     if (firstOpen) liveSync();
     if (firstOpen && N.ready.length && !document.querySelector('.modal')) reveal();
     if (firstOpen && N.missed) showMissed();
+    if (booked) showBooked(booked);
     if (tip) showMorning(tip);   // added last, so it sits on top: the morning note first, then the Polaroids
-  }));
+    widgetSync();
+  }).then(() => checkSunrise()));
 }
 
 // ---------- art ----------
@@ -199,6 +202,7 @@ function bubbleLine(){
   if (a) return 'Off to '+actOf(a.id).title.replace(/^./, c => c.toLowerCase())+'! Put your phone down and I\'ll go.';
   if (live.over) return 'Shift\'s done for today. I keep everything I earned!';
   if (h >= SHIFT_FROM && h < SHIFT_TO) return 'Hola! I\'m crewing a sailboat in the old harbor until 10 PM.';
+  if (h >= SHIFT_TO && FEAT.sunrise && sunriseLeft()) return h === SHIFT_TO && new Date().getMinutes() < 30 ? 'Lights out soon! Phone down by 10:30 and I\'ll catch the sunrise.' : 'Bona nit! I\'m up early for the sunrise.';
   return h >= 5 && h < SHIFT_FROM ? 'Bon dia! Back on the boat at 8 AM.' : 'Bona nit! Back on the boat at 8 AM.';
 }
 
@@ -220,6 +224,7 @@ function cityHTML(){
       onShift ? 'On shift until 10 PM. Put your phone down and '+esc(N.name)+' earns 1 Coin every 5 minutes.' : 'The shift runs 8 AM to 10 PM.')+
     (live.today != null ? ' Blip\'s count today: '+fmtTime(live.today)+' of '+fmtTime(N.goal)+'.' : '')+'</div></div>';
   s += '<p class="muted small nrule">'+COIN_RULE+'</p>';
+  s += saveCardHTML();
   s += tipCardHTML()+travelCardHTML()+festCardHTML();
   if (N.ready.length) s += '<div class="card nnow"><b>📸 '+N.ready.length+' new Polaroid'+(N.ready.length > 1 ? 's' : '')+'</b><button class="btn" id="nfin" style="margin-top:10px">See how it went ✨</button></div>';
   if (a) {
@@ -235,10 +240,12 @@ function cityHTML(){
   const full = planIds().length >= PLAN_MAX;
   for (const x of ACTS.concat(festsNow())) {
     const done = N.done[x.id], inPlan = planned(x.id), locked = !unlocked(x), afford = N.coins >= x.cost;
-    const label = inPlan ? 'In the plan' : locked ? 'After lesson 1' : full ? 'Plan is full' : !afford ? 'Need '+(x.cost - N.coins) : a ? 'Add to plan' : 'Go';
+    const saving = !afford && !inPlan && !locked && !done && saveTarget() === x;
+    const label = inPlan ? 'In the plan' : locked ? 'After lesson 1' : full ? 'Plan is full' : !afford ? (saving ? 'Saving for this ✓' : 'Save for this') : a ? 'Add to plan' : 'Go';
     s += '<div class="card nact'+(done ? ' ndone' : '')+'">'+(done ? '<span class="nstamped">DONE</span>' : '')+'<div class="npost">'+NART.tile(x.id)+'<div class="nbody"><small class="nk">'+kindOf(x)+'</small><b>'+esc(x.title)+'</b>'+
       '<div class="ncost">'+NART.coin(16)+'<b>'+x.cost+'</b> · '+(x.min >= 60 ? '1 hour' : x.min+' min')+' phone down</div>'+
-      (done ? '' : '<button class="btn nsm" data-go="'+x.id+'"'+(inPlan || locked || full || !afford ? ' disabled' : '')+' style="margin-top:8px">'+label+'</button>')+'</div></div></div>';
+      (done ? '' : !afford && !inPlan && !locked ? '<button class="btn ghost nsm" data-save="'+x.id+'"'+(saving ? ' disabled' : '')+' style="margin-top:8px">'+label+'</button>' :
+        '<button class="btn nsm" data-go="'+x.id+'"'+(inPlan || locked || full || !afford ? ' disabled' : '')+' style="margin-top:8px">'+label+'</button>')+'</div></div></div>';
   }
   return s+'</div>';
 }
@@ -275,6 +282,7 @@ function draw(){
     (view === 'city' ? cityHTML() : view === 'passport' ? passportHTML() : settingsHTML())+nav;
   app.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { view = b.dataset.v; draw(); window.scrollTo(0, 0); });
   app.querySelectorAll('[data-go]').forEach(b => b.onclick = () => start(b.dataset.go));
+  app.querySelectorAll('[data-save]').forEach(b => b.onclick = () => { N.saveFor = b.dataset.save; nsave(); draw(); widgetSync(); });
   const on = (id, f) => { const e = document.getElementById(id); if (e) e.onclick = f; };
   app.querySelectorAll('[data-unq]').forEach(b => b.onclick = () => unqueue(+b.dataset.unq));
   on('nfin', reveal);
@@ -297,12 +305,12 @@ function start(id){
   N.coins -= x.cost;
   if (N.act) N.queue.push(id);
   else { begin(id); N.snap = {t: Date.now(), day: todayKey(), m: live.today || 0}; }
-  nsave(); draw(); calm(); liveSync();
+  nsave(); draw(); calm(); liveSync(); widgetSync();
 }
 // Taking something out of the plan gives its Coins back. Anything lined up after it that needed it comes out too.
 function unqueue(i){
   const id = N.queue[i]; if (id == null) return;
-  N.queue.splice(i, 1); N.coins += actOf(id).cost;
+  N.queue.splice(i, 1); N.coins += actOf(id).cost; N.saveFor = null;
   for (let j = N.queue.length - 1; j >= 0; j--) { const q = actOf(N.queue[j]); if (!unlocked(q)) { N.queue.splice(j, 1); N.coins += q.cost; } }
   nsave(); draw(); liveSync();
 }
@@ -392,7 +400,7 @@ function chooseGoal(){
 
 // ======================= Build 30 extras (mechanics plan v1, Phase 2 and Monthly) =======================
 // Each one can be switched off here.
-const FEAT = {stamps:true, tips:true, framing:true, travel:true, postcards:true, festivals:true, gems:true};   // all four OK'd by the Lawyer 2026-11-19
+const FEAT = {stamps:true, tips:true, framing:true, travel:true, postcards:true, festivals:true, gems:true, sunrise:true, autobook:true};   // all four OK'd by the Lawyer 2026-11-19
 N.fin = N.fin || {};          // day -> activities finished that day (for travel days; kept 14 days)
 N.travel = N.travel || {count:0, days:{}};   // travel-day total, and day -> true/false for the last 14 days
 N.pins = N.pins || [];        // cosmetic backpack pins
@@ -573,6 +581,8 @@ function passportExtrasHTML(){
     '<p class="muted small">Tried a phrase or a recipe in real life? Tap "I did it for real" on its photo for a gold stamp.</p>')+'</div>';
   if (FEAT.gems) s += '<div class="card"><h3 style="margin-top:0">💎 Hidden gems of Barcelona</h3><p class="muted small">Leave your phone alone for about 2 hours in the daytime and '+esc(N.name)+' may find one.</p>'+
     GEMS.map(g => '<div class="nkrow"><span>'+(N.gems.indexOf(g.id) >= 0 ? g.emoji+' '+esc(g.title.replace('Hidden gem: ', '')) : '❔ Not found yet')+'</span></div>').join('')+'</div>';
+  if (FEAT.sunrise) s += '<div class="card"><h3 style="margin-top:0">🌅 Sunrise gems</h3><p class="muted small">Phone down by 10:30 PM and left alone until morning, and '+esc(N.name)+' catches the sunrise somewhere special.</p>'+
+    SUNRISE.map(g => '<div class="nkrow"><span>'+(N.gems.indexOf(g.id) >= 0 ? g.emoji+' '+esc(g.title.replace('Sunrise gem: ', '')) : '❔ Not found yet')+'</span></div>').join('')+'</div>';
   if (FEAT.postcards && N.cards.length) s += '<h3 class="nh3">Postcards</h3>'+N.cards.slice().reverse().map(c => '<div class="card">'+postcardHTML(c)+'</div>').join('');
   return s;
 }
@@ -581,6 +591,97 @@ function bindExtras(){
   const y = document.getElementById('ntipyes'), n = document.getElementById('ntipno');
   if (y) y.onclick = () => answerTip(true);
   if (n) n.onclick = () => answerTip(false);
+}
+
+// ======================= Build 33: saving goal, Ticket booked, sunrise gems, widgets =======================
+// Lawyer OK 2026-11-20 (all status only, cosmetic, no shop or prices on any widget, no sleep or health claims).
+// ---- Saving for the next trip: when the Coins get there, Blip books it on their own (no "tap to send") ----
+function saveTarget(){
+  const ok = x => x && !N.done[x.id] && !planned(x.id) && unlocked(x) && !x.gem;
+  const trip = x => x.kind === 'small' || x.kind === 'big' ? 0 : 1;   // trips first (the "Ticket booked!" moment), then lessons and friends
+  const cur = N.saveFor && actOf(N.saveFor);
+  if (ok(cur)) return cur;
+  const pick = ACTS.concat(festsNow()).filter(x => ok(x) && x.cost > N.coins).sort((a, b) => trip(a) - trip(b) || a.cost - b.cost)[0] || null;
+  N.saveFor = pick ? pick.id : null;
+  return pick;
+}
+function autoBook(){
+  if (!FEAT.autobook) return null;
+  const x = saveTarget();
+  if (!x || N.coins < x.cost || planIds().length >= PLAN_MAX) return null;
+  N.coins -= x.cost; N.saveFor = null;
+  if (N.act) N.queue.push(x.id);
+  else { begin(x.id); N.snap = {t: Date.now(), day: todayKey(), m: live.today || 0}; }
+  liveSync();
+  return x;
+}
+function showBooked(x){
+  modal('<div class="mbig">🎟️</div><h2 style="margin:4px 0">Ticket booked!</h2><p>You saved up <b>'+x.cost+' '+CUR+'</b>, so '+esc(N.name)+' booked <b>'+esc(x.title)+'</b>.</p>'+
+    '<p>It\'s in the plan. Put your phone down and '+esc(N.name)+' heads off. The Polaroid is waiting at the end.</p><button class="btn" data-close>Bon viatge!</button>');
+  confetti(['🎟️', x.emoji, '✨']);
+}
+function saveCardHTML(){
+  if (!FEAT.autobook) return '';
+  const x = saveTarget(); if (!x) return '';
+  const full = planIds().length >= PLAN_MAX;
+  return '<div class="card nsave"><small class="nk">Saving for</small><div class="nrow" style="justify-content:space-between"><b>'+x.emoji+' '+esc(x.title)+'</b><b>'+Math.min(N.coins, x.cost)+' / '+x.cost+'</b></div>'+bar(N.coins / x.cost, '#ffc84a')+
+    '<p class="muted small" style="margin:6px 0 0">'+(full ? 'Your plan is full. When there\'s room, '+esc(N.name)+' books it on their own.' : 'When your '+CUR+' get there, '+esc(N.name)+' books the ticket on their own. Tap "Save for this" on anything below to change it.')+'</p></div>';
+}
+
+// ---- Sunrise gems: phone down by 10:30 PM and left alone until 6 AM. Cosmetic Polaroid only. Night time never pays Coins. ----
+const SUNRISE = [
+  {id:'sun_bunkers', kind:'small', gem:true, sunrise:true, emoji:'🌅', title:'Sunrise gem: the Bunkers del Carmel at dawn', line:'{name} watches the sun come up over the sea from the old gun pads, with the whole city still asleep below.',
+    real:['The Bunkers del Carmel on the Turó de la Rovira hill are free to visit and face the sea, so the sun rises in front of you.', 'Check the sunrise time the night before and allow about 30 minutes for the steep walk up.', 'Tip: bring a jacket. It is windy and cool up there before the sun is out.']},
+  {id:'sun_beach', kind:'small', gem:true, sunrise:true, emoji:'🌊', title:'Sunrise gem: Barceloneta beach at first light', line:'{name} sits on the sand as the sun climbs out of the Mediterranean and the first swimmers wade in.',
+    real:['Barcelona\'s beaches face southeast, so the sun rises straight out of the sea.', 'Early morning is the quietest time on the beach all year round.', 'Tip: the beach cleaners finish around sunrise, so the sand is at its best then.']}
+];
+const NIGHT_BY = 22 * 60 + 30;   // phone down by 10:30 PM
+const sunriseLeft = () => SUNRISE.find(z => N.gems.indexOf(z.id) < 0) || null;
+// Checked once each morning after 6 AM: yesterday's last step on Blip's count came before 10:30 PM (plus one 5-minute step of grace),
+// and today's count shows nothing from midnight to 6 AM.
+function checkSunrise(){
+  if (!FEAT.sunrise || N.sunDay === todayKey() || new Date().getHours() < 6) return;
+  const g = sunriseLeft(); if (!g) return;
+  const p = P(); if (!p || !p.lastStep) return;
+  const y = yestKey(), eve = new Date(); eve.setDate(eve.getDate() - 1); eve.setHours(22, 0, 0, 0);
+  if ((N.born || Date.now()) > eve.getTime()) { N.sunDay = todayKey(); nsave(); return; }   // not playing yet last night
+  return Promise.all([p.lastStep({day: y}).catch(() => null), readDay(todayKey())]).then(([ls, r]) => {
+    if (N.sunDay === todayKey()) return;
+    N.sunDay = todayKey(); nsave();
+    if (!r.hours) return;
+    let night = 0; for (let h = 0; h < 6; h++) night += r.hours['daily-'+h] || 0;
+    const last = ls && ls.t ? new Date(ls.t) : null;
+    const lastMin = last && key(last) === y ? last.getHours() * 60 + last.getMinutes() : 0;
+    if (night > 0 || lastMin > NIGHT_BY + 5) return;
+    N.gems.push(g.id); N.ready.push(g.id); N.polaroids.push(g.id);
+    nsave(); draw();
+    if (!document.querySelector('.modal')) reveal();
+  });
+}
+
+// ---- Widgets: Blip hands the home and lock screen widgets what Sam is up to. Status only, on this phone only. ----
+let widgetScene = null;
+try { widgetScene = localStorage.getItem('blip-nomad-wscene'); } catch(e) {}
+function scenePNG(id){
+  return new Promise((ok, no) => {
+    const w = 600, h = 466, t = NART.photo(id, look()).replace('<svg ', '<svg width="'+w+'" height="'+h+'" ');
+    const img = new Image();
+    img.onload = () => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h); ok(cv.toDataURL('image/png').split(',')[1]); };
+    img.onerror = no; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(t);
+  });
+}
+function widgetSync(){
+  const p = P(); if (!p || !p.nomadWidget) return;
+  const a = N.act ? actOf(N.act.id) : null, last = N.ready.length ? actOf(N.ready[N.ready.length - 1]) : null;
+  const x = saveTarget(), sceneId = a ? a.id : last ? last.id : 'job';
+  const data = {name: N.name, coins: N.coins, today: N.credited[todayKey()] || 0, down: live.down || 0, count: live.today || 0, t: Date.now(), goal: N.goal, over: !!live.over,
+    act: a ? a.title : '', emoji: a ? a.emoji : '', prog: N.act ? Math.floor(N.act.prog) : 0, need: N.act ? N.act.need : 0, ready: N.ready.length, readyTitle: last ? last.title : '',
+    save: x ? x.title : '', saveShort: x ? (x.short || 'for '+x.title) : '', cost: x ? x.cost : 0,
+    room: planIds().length < PLAN_MAX, sunrise: !!(FEAT.sunrise && sunriseLeft()), job: 'crewing the Gavina'};
+  const skey = sceneId+'|'+N.skin+'|'+N.hair+'|'+(N.girl ? 1 : 0);
+  const send = png => { try { const r = p.nomadWidget(Object.assign(data, png ? {scene: png} : {})); if (r && r.catch) r.catch(() => {}); } catch(e) {} };
+  if (skey === widgetScene) return send();
+  scenePNG(sceneId).then(png => { widgetScene = skey; try { localStorage.setItem('blip-nomad-wscene', skey); } catch(e) {} send(png); }).catch(() => send());
 }
 
 // ======================= Lock-screen countdown (Live Activity) =======================
@@ -646,7 +747,7 @@ document.head.insertAdjacentHTML('beforeend', '<style>'+
   '.ntdrow{display:flex;gap:6px;margin-top:8px}.ntd{flex:1;text-align:center;font-size:12px;font-weight:700;padding:6px 0;border-radius:10px;background:#eee8dd;color:#9a92a8}.ntd.on{background:#ffc84a;color:#3b2a4a}'+
   '.ntipsteps{margin:0 0 8px;padding-left:20px;font-size:14px}.ntipsteps li{margin:3px 0}.ntip .ntiptext{font-size:16px;margin:6px 0 10px}.ntip .nrow{gap:8px}.nfest b{display:block}.npins{display:flex;flex-wrap:wrap;gap:10px;font-size:30px}'+
   '.npcard{background:#fffaf0;border:2px dashed #c9a46a;border-radius:12px;padding:10px 12px;margin:10px 0;text-align:left;transform:rotate(-1deg)}.npcardfrom{font-size:12px;font-weight:700;color:#a8402a;text-transform:uppercase;letter-spacing:.5px}.npcard p{margin:6px 0 0}'+
-  '.nreal-btn{margin:6px 0 4px}.nreal-ok{font-weight:600;color:#a87b00;margin:6px 0}'+
+  '.nsave b{font-size:15px}.nsave .nk{display:block;color:var(--soft);font-size:12px}.nreal-btn{margin:6px 0 4px}.nreal-ok{font-weight:600;color:#a87b00;margin:6px 0}'+
   '</style>');
 
 // ---------- start ----------
@@ -660,7 +761,7 @@ if (p && p.env) p.env().then(r => { TF = !!(r && r.testflight); if (view === 'se
 if (p && p.resync) setTimeout(() => p.resync().catch(() => {}), 1500);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') { document.querySelectorAll('.ncalm').forEach(c => c.remove()); refresh(true); }
-  else if (N.snap) { N.snap.t = Date.now(); nsave(); } // the phone-down clock starts now (Blip open doesn't count)
+  else { if (N.snap) { N.snap.t = Date.now(); nsave(); } widgetSync(); } // the phone-down clock starts now (Blip open doesn't count)
 });
 setInterval(() => { if (document.visibilityState === 'visible') refresh(false); }, 30000);
 })();

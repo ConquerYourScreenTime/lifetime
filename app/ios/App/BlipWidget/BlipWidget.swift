@@ -29,6 +29,7 @@ struct BlipEntry: TimelineEntry {
     let hair: Color
     let girl: Bool
     var glum = false // the Blip's mood comes from the last year it lived, same as everywhere in the app
+    var nomad: NomadSnap? = nil // Blip Nomad (build 33): when set, the widget shows Sam's travels instead of the Classic count
 
     var over: Bool { minutes > goal }
     var progress: Double { goal > 0 ? min(1, Double(minutes) / Double(goal)) : 0 }
@@ -88,12 +89,14 @@ struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> BlipEntry { .sample }
 
     func getSnapshot(in context: Context, completion: @escaping (BlipEntry) -> Void) {
+        if let t = nomadTimeline(now: Date()), let first = t.entries.first { completion(first); return }
         let e = entry(at: Date())
         completion(context.isPreview && !e.ready ? .sample : e)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<BlipEntry>) -> Void) {
         let now = Date()
+        if let n = nomadTimeline(now: now) { completion(n); return }
         var entries = [entry(at: now)]
         // A fresh day starts at 0 at midnight even if nothing wakes the widget.
         if let midnight = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)),
@@ -326,7 +329,11 @@ struct BlipWidgetView: View {
     let e: BlipEntry
     var body: some View {
         Group {
-            if !e.ready {
+            if let n = e.nomad {
+                NomadView(n: n, date: e.date)
+            } else if family == .accessoryCircular || family == .accessoryInline {
+                Text(e.ready ? fmt(e.minutes) : "Blip").privacySensitive()
+            } else if !e.ready {
                 SetupView()
             } else {
                 switch family {
@@ -337,7 +344,9 @@ struct BlipWidgetView: View {
             }
         }
         .containerBackground(for: .widget) {
-            if family == .accessoryRectangular { Color.clear } else { cream }
+            if family == .accessoryRectangular || family == .accessoryCircular || family == .accessoryInline { Color.clear }
+            else if e.nomad != nil { NomadBackground() }
+            else { cream }
         }
     }
 }
@@ -347,10 +356,10 @@ struct BlipWidget: Widget {
         StaticConfiguration(kind: "BlipCount", provider: Provider()) { e in
             BlipWidgetView(e: e)
         }
-        .configurationDisplayName("Blip's count")
-        .description("Blip's count for today, your goal, and your Blip.")
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
-        .disfavoredLocations([.iPhoneWidgetsOnMac], for: [.systemSmall, .systemMedium, .accessoryRectangular])
+        .configurationDisplayName("Blip")
+        .description("What your Blip is up to, your Coins and the time to your next Coin.")
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular, .accessoryInline])
+        .disfavoredLocations([.iPhoneWidgetsOnMac], for: [.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular, .accessoryInline])
     }
 }
 
@@ -393,8 +402,8 @@ struct TripLockView: View {
                     Text(s.emoji + " " + ctx.attributes.name + ": " + s.title).font(.system(size: 14, weight: .semibold, design: .rounded)).foregroundColor(ink).lineLimit(1)
                     ProgressView(timerInterval: s.start...s.end, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
                         .tint(sunset)
-                    Text(s.next.isEmpty ? ctx.attributes.name + "'s out exploring. See you when the timer ends!" : "Then: " + s.next + " · see you when the timer ends!")
-                        .font(.system(size: 11, design: .rounded)).foregroundColor(soft).lineLimit(1)
+                    Text("Back at \(clock(s.end)), with a story")
+                        .font(.system(size: 12, weight: .medium, design: .rounded)).foregroundColor(soft).lineLimit(1)
                 }
             }
         }
@@ -425,6 +434,317 @@ struct BlipTripLive: Widget {
                 Text(timerInterval: ctx.state.start...ctx.state.end, countsDown: true).monospacedDigit().frame(maxWidth: 44)
             } minimal: {
                 Text(ctx.state.emoji)
+            }
+        }
+    }
+}
+
+// ---------- Blip Nomad widgets (build 33; Designer mockups v1 + lock screen v2; Lawyer OK 2026-11-20) ----------
+// Status only: what Sam is doing, the Coins, the next Coin and the saving goal. Never shop items, prices or promotions.
+// Blip writes "nomad" to the App Group when it closes; the widget works out the rest from Blip's count on this phone.
+// Coins are only estimated here (assuming the phone stays down); Blip settles them from Blip's count when it opens.
+
+struct NomadInfo {
+    let name, act, emoji, readyTitle, save, saveShort, job: String
+    let coins, today, count, goal, prog, need, ready, cost: Int
+    let down: Double
+    let t: Date
+    let over, room, sunrise: Bool
+    init?(_ d: [String: Any]?) {
+        guard let d = d, let name = d["name"] as? String else { return nil }
+        func s(_ k: String) -> String { d[k] as? String ?? "" }
+        func i(_ k: String) -> Int { (d[k] as? NSNumber)?.intValue ?? 0 }
+        func b(_ k: String) -> Bool { (d[k] as? NSNumber)?.boolValue ?? false }
+        self.name = name; act = s("act"); emoji = s("emoji"); readyTitle = s("readyTitle"); save = s("save"); saveShort = s("saveShort"); job = s("job")
+        coins = i("coins"); today = i("today"); count = i("count"); goal = i("goal"); prog = i("prog"); need = i("need"); ready = i("ready"); cost = i("cost")
+        down = (d["down"] as? NSNumber)?.doubleValue ?? 0
+        t = Date(timeIntervalSince1970: ((d["t"] as? NSNumber)?.doubleValue ?? 0) / 1000)
+        over = b("over"); room = b("room"); sunrise = b("sunrise")
+    }
+}
+
+enum NomadHome { case act, ready, check, booked, night, early, over, idle }
+enum NomadLock { case countdown, landed, booked, night, early, over }
+
+struct NomadSnap {
+    let info: NomadInfo
+    let coins: Int
+    let next: Date?
+    let landed: Bool
+    let prog: Int
+    let home: NomadHome
+    let lock: NomadLock
+}
+
+private let shiftFrom = 8, shiftTo = 22, nightBy = 22 * 60 + 30
+
+func clock(_ d: Date) -> String {
+    let f = DateFormatter()
+    f.locale = Locale.current
+    f.timeStyle = .short
+    f.dateStyle = .none
+    return f.string(from: d)
+}
+
+private func at(_ d: Date, _ h: Int, _ m: Int = 0) -> Date {
+    Calendar.current.date(bySettingHour: h, minute: m, second: 0, of: d) ?? d
+}
+
+// Minutes of [a, b] that fall inside b's day's shift (8 AM to 10 PM).
+private func shiftMinutes(_ a: Date, _ b: Date) -> Double {
+    let from = max(a, at(b, shiftFrom), Calendar.current.startOfDay(for: b)), to = min(b, at(b, shiftTo))
+    return max(0, to.timeIntervalSince(from) / 60)
+}
+
+func nomadSnap(_ n: NomadInfo, at d: Date, gain: Int, countNow: Int, landed: Bool = false) -> NomadSnap {
+    let cal = Calendar.current
+    let sameDay = cal.isDate(d, inSameDayAs: n.t)
+    let over = (sameDay && n.over) || countNow >= n.goal
+    let down0 = sameDay ? n.down : 0, credited = sameDay ? n.today : 0
+    let from = sameDay ? n.t : cal.startOfDay(for: d)
+    let down = over ? down0 : max(down0, down0 + shiftMinutes(from, d) - Double(gain))
+    let coins = n.coins + max(0, Int(floor(down / 5)) - credited)
+    let h = cal.component(.hour, from: d)
+    var next: Date? = nil
+    if !over, h >= shiftFrom, h < shiftTo {
+        let r = down.truncatingRemainder(dividingBy: 5)
+        let c = d.addingTimeInterval((r < 0.01 ? 5 : 5 - r) * 60)
+        if c <= at(d, shiftTo) { next = c }
+    }
+    // The activity: real time minus Blip's count. A 5-minute step while it runs means the phone came out (Blip offers a retry).
+    var prog = n.prog, home = NomadHome.idle
+    let booked = !n.save.isEmpty && n.cost > 0 && n.room && coins >= n.cost
+    if !n.act.isEmpty {
+        prog = n.prog + Int(max(0, d.timeIntervalSince(n.t) / 60 - Double(gain)))
+        home = gain >= 5 ? .check : prog >= n.need ? .ready : .act
+    } else if n.ready > 0 { home = .ready }
+    else if booked { home = .booked }
+    else if h >= shiftTo || h < 5 { home = .night }
+    else if h < shiftFrom { home = .early }
+    else if over { home = .over }
+    let lock: NomadLock = booked ? .booked : (h >= shiftTo || h < 5) ? .night : h < shiftFrom ? .early : over ? .over : (landed ? .landed : .countdown)
+    return NomadSnap(info: n, coins: coins, next: next, landed: landed, prog: min(prog, max(n.need, 0)), home: home, lock: lock)
+}
+
+extension Provider {
+    func nomadTimeline(now: Date) -> Timeline<BlipEntry>? {
+        let d = UserDefaults(suiteName: group)
+        guard let n = NomadInfo(d?.dictionary(forKey: "nomad")) else { return nil }
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        let countNow = d?.integer(forKey: "minutes-" + f.string(from: now)) ?? 0
+        let gain = Calendar.current.isDate(now, inSameDayAs: n.t) ? max(0, countNow - n.count) : countNow
+        func entry(_ t: Date, landed: Bool = false) -> BlipEntry {
+            var e = BlipEntry(date: t, ready: true, minutes: 0, goal: n.goal, name: n.name, age: 0, streak: 0, skin: Color(hex: "#f1c27d"), hair: ink, girl: false)
+            e.nomad = nomadSnap(n, at: t, gain: gain, countNow: countNow, landed: landed)
+            return e
+        }
+        var entries = [entry(now)]
+        // Each Coin boundary (assuming the phone stays down): "+1 Coin!" for a minute, then the next countdown.
+        if var b = entries[0].nomad?.next {
+            for _ in 0..<30 {
+                entries.append(entry(b, landed: true))
+                entries.append(entry(b.addingTimeInterval(60)))
+                guard let nx = entries.last?.nomad?.next, nx > b else { break }
+                b = nx
+            }
+        }
+        // The activity ending, and the evening, night and morning changes.
+        if !n.act.isEmpty, n.need > n.prog { entries.append(entry(now.addingTimeInterval(Double(n.need - entries[0].nomad!.prog) * 60 + 1))) }
+        for (h, m) in [(shiftTo, 0), (22, 30), (5, 0), (shiftFrom, 0), (0, 0)] {
+            var t = at(now, h, m)
+            if t <= now { t = Calendar.current.date(byAdding: .day, value: 1, to: t) ?? t }
+            entries.append(entry(t))
+        }
+        entries.sort { $0.date < $1.date }
+        var seen = Set<Int>()
+        entries = entries.filter { seen.insert(Int($0.date.timeIntervalSince1970)).inserted }
+        // The monitor asks for a reload on every new 5-minute step on Blip's count; this is the fallback.
+        return Timeline(entries: entries, policy: .after(now.addingTimeInterval(60 * 60)))
+    }
+}
+
+// The evening line: an invitation to put the phone down by 10:30 for a sunrise gem. No sleep or health claims (Lawyer).
+func nightLine(_ i: NomadInfo, _ date: Date, small: Bool) -> String {
+    if !i.sunrise { return "Back on the boat at 8 AM" }
+    let beforeBy = Calendar.current.component(.hour, from: date) >= 22 && date < at(date, 22, 30)
+    if beforeBy { return small ? "Down by 10:30 for sunrise" : "Phone down by 10:30 and \(i.name) catches sunrise" }
+    return "\(i.name)'s up early for the sunrise"
+}
+
+func nomadScene() -> UIImage? {
+    guard let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else { return nil }
+    return UIImage(contentsOfFile: dir.appendingPathComponent("nomad-scene.png").path)
+}
+
+struct NomadBackground: View {
+    var body: some View {
+        if let img = nomadScene() { Image(uiImage: img).resizable().scaledToFill() }
+        else { LinearGradient(colors: [Color(hex: "#9fd8f2"), Color(hex: "#ffe0b0")], startPoint: .top, endPoint: .bottom) }
+    }
+}
+
+struct NomadView: View {
+    @Environment(\.widgetFamily) private var family
+    let n: NomadSnap
+    let date: Date
+    var body: some View {
+        switch family {
+        case .accessoryRectangular: NomadRect(n: n, date: date)
+        case .accessoryCircular: NomadRing(n: n, date: date)
+        case .accessoryInline: Text(inline)
+        case .systemMedium: NomadPostcard(n: n, date: date, small: false)
+        default: NomadPostcard(n: n, date: date, small: true)
+        }
+    }
+    var inline: String {
+        let i = n.info
+        switch n.home {
+        case .act: return "\(i.emoji) \(i.name): \(i.act)"
+        case .ready: return "📸 \(i.name)'s Polaroid is ready"
+        case .check: return "\(i.emoji) How did \(i.name) do?"
+        case .booked: return "🎟️ \(i.name) booked a trip!"
+        case .night: return i.sunrise ? "🌙 Phone down by 10:30 for sunrise" : "🌙 Lights out"
+        case .early: return "🌅 \(i.name) is back on the boat at 8"
+        case .over: return "⛵ Shift's done · \(n.coins) Coins"
+        case .idle: return "⛵ \(i.name) is \(i.job)"
+        }
+    }
+}
+
+// Home screen: a postcard of where Sam is, one status line and the Coins.
+struct NomadPostcard: View {
+    @Environment(\.colorScheme) private var scheme
+    let n: NomadSnap
+    let date: Date
+    let small: Bool
+    var lines: (String, String) {
+        let i = n.info, name = i.name
+        switch n.home {
+        case .act:
+            let back: String = clock(date.addingTimeInterval(Double(max(0, i.need - n.prog)) * 60))
+            if small { return ("\(i.emoji) \(i.act)", "back \(back)") }
+            return ("\(i.emoji) \(name): \(i.act)", "\(n.prog) of \(i.need) min · back at \(back), with a story")
+        case .ready:
+            if small { return ("📸 Your Polaroid is ready", "Open Blip") }
+            return ("📸 Your Polaroid is ready", "Open Blip to see how it went")
+        case .check: return ("\(i.emoji) How did \(name) do?", "Open Blip to find out")
+        case .booked:
+            if small { return ("🎟️ Ticket booked!", i.save) }
+            return ("🎟️ Ticket booked!", "\(name) booked \(i.save). Put your phone down and off they go")
+        case .night: return ("🌙 Lights out", nightLine(i, date, small: small))
+        case .early: return ("🌅 Bon dia!", "\(name) is back on the boat at 8 AM")
+        case .over:
+            if small { return ("⛵ Shift's done", "\(name) keeps every Coin") }
+            return ("⛵ Shift's done", "\(name) keeps every Coin earned today. Back on the boat tomorrow")
+        case .idle:
+            if small { return ("\(name)'s ready", "Pick a plan") }
+            return ("⛵ \(name) is \(i.job)", "Phone down, \(name) earns a Coin every 5 minutes · pick a plan any time")
+        }
+    }
+    var body: some View {
+        let dark = scheme == .dark, l = lines
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Spacer()
+                HStack(spacing: 3) {
+                    Text("🪙").font(.system(size: small ? 11 : 12))
+                    Text("\(n.coins)").font(.system(size: small ? 12 : 13, weight: .heavy, design: .rounded)).foregroundColor(ink)
+                }
+                .padding(.horizontal, 7).padding(.vertical, 3)
+                .background(Capsule().fill(cream)).overlay(Capsule().stroke(ink, lineWidth: 1.5))
+            }
+            Spacer()
+            VStack(alignment: .leading, spacing: 1) {
+                Text(l.0).font(.system(size: small ? 13 : 14, weight: .heavy, design: .rounded)).lineLimit(small ? 2 : 1).minimumScaleFactor(0.8)
+                Text(l.1).font(.system(size: 11, weight: .medium, design: .rounded)).lineLimit(small ? 1 : 2).minimumScaleFactor(0.85)
+                    .opacity(0.8)
+            }
+            .foregroundColor(dark ? cream : ink)
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 12).fill(dark ? Color(hex: "#2a2140").opacity(0.88) : cream.opacity(0.9)))
+        }
+    }
+}
+
+// Lock screen rectangle: the next Coin and the saving goal (one tint, as iOS draws lock screen widgets).
+struct NomadRect: View {
+    let n: NomadSnap
+    let date: Date
+    var showBar: Bool { (n.lock == .countdown || n.lock == .landed || n.lock == .over) && !n.info.save.isEmpty && n.info.cost > 0 }
+    var goalLine: String {
+        let i = n.info
+        if i.save.isEmpty || i.cost == 0 { return "\(n.coins) Coins" }
+        return "\(min(n.coins, i.cost)) of \(i.cost) \(i.saveShort)"
+    }
+    var body: some View {
+        let i = n.info
+        VStack(alignment: .leading, spacing: 2) {
+            switch n.lock {
+            case .countdown:
+                if let nx = n.next { (Text("Next Coin in ") + Text(nx, style: .timer)).font(.system(size: 15, weight: .heavy, design: .rounded)).lineLimit(1) }
+                else { Text("\(n.coins) Coins").font(.system(size: 15, weight: .heavy, design: .rounded)) }
+                Text(goalLine).font(.system(size: 13, design: .rounded)).lineLimit(1)
+            case .landed:
+                Text("+1 Coin!").font(.system(size: 16, weight: .heavy, design: .rounded))
+                Text(goalLine).font(.system(size: 13, design: .rounded)).lineLimit(1)
+            case .booked:
+                Text("Ticket booked! 🎟️").font(.system(size: 15, weight: .heavy, design: .rounded))
+                Text(i.name + " booked " + i.save).font(.system(size: 13, design: .rounded)).lineLimit(2)
+            case .night:
+                Text("Lights out 🌙").font(.system(size: 15, weight: .heavy, design: .rounded))
+                Text(nightLine(i, date, small: false))
+                    .font(.system(size: 13, design: .rounded)).lineLimit(2)
+            case .early:
+                Text("Sunrise soon 🌅").font(.system(size: 15, weight: .heavy, design: .rounded))
+                Text("Back on the boat at 8 AM").font(.system(size: 13, design: .rounded)).lineLimit(1)
+            case .over:
+                Text("Shift's done for today").font(.system(size: 15, weight: .heavy, design: .rounded)).lineLimit(1)
+                Text(goalLine).font(.system(size: 13, design: .rounded)).lineLimit(1)
+            }
+            if showBar {
+                ProgressView(value: Double(min(n.coins, i.cost)), total: Double(i.cost)).progressViewStyle(.linear)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// Lock screen circle: fills over each 5 phone-down minutes, with a live countdown (no refreshes spent).
+struct NomadRing: View {
+    let n: NomadSnap
+    let date: Date
+    var body: some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            switch n.lock {
+            case .countdown:
+                if let nx = n.next {
+                    ProgressView(timerInterval: nx.addingTimeInterval(-300)...nx, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
+                        .progressViewStyle(.circular)
+                    VStack(spacing: 0) {
+                        Text(timerInterval: date...nx, countsDown: true, showsHours: false)
+                            .font(.system(size: 12, weight: .heavy, design: .rounded)).monospacedDigit().multilineTextAlignment(.center).minimumScaleFactor(0.6)
+                        Text("NEXT").font(.system(size: 8, weight: .bold, design: .rounded))
+                    }.padding(6)
+                } else { Text("🪙").font(.title3) }
+            case .landed:
+                Circle().stroke(lineWidth: 4).padding(2)
+                VStack(spacing: 0) {
+                    Text("+1").font(.system(size: 16, weight: .heavy, design: .rounded))
+                    Text("COIN").font(.system(size: 8, weight: .bold, design: .rounded))
+                }
+            case .booked: Text("🎟️").font(.title2)
+            case .night: Text("🌙").font(.title2)
+            case .early: Text("🌅").font(.title2)
+            case .over:
+                VStack(spacing: 0) {
+                    Image(systemName: "checkmark").font(.system(size: 16, weight: .heavy))
+                    Text("DONE").font(.system(size: 8, weight: .bold, design: .rounded))
+                }
             }
         }
     }

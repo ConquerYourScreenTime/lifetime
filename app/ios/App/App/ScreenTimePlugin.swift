@@ -28,7 +28,9 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "env", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "widget", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "liveStart", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "liveEnd", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "liveEnd", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "nomadWidget", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "lastStep", returnType: CAPPluginReturnPromise)
     ]
 
     static let group = "group.io.github.gamesbyvidal.lifetime"
@@ -411,5 +413,32 @@ extension ScreenTimePlugin {
             for a in Activity<BlipTripAttributes>.activities { await a.end(nil, dismissalPolicy: .immediate) }
             call.resolve()
         }
+    }
+}
+
+// Blip Nomad widgets (build 33, Lawyer OK 2026-11-20): what Sam is up to, the Coins and the saving goal. Status only, never shop items,
+// prices or promotions. Kept in the App Group on this phone only; the widget works out the next Coin from Blip's count.
+extension ScreenTimePlugin {
+    @objc func nomadWidget(_ call: CAPPluginCall) {
+        let d = UserDefaults(suiteName: Self.group)
+        var info: [String: Any] = [:]
+        for k in ["name", "act", "emoji", "readyTitle", "save", "saveShort", "job"] { info[k] = call.getString(k) ?? "" }
+        for k in ["coins", "today", "count", "goal", "prog", "need", "ready", "cost"] { info[k] = call.getInt(k) ?? 0 }
+        info["down"] = call.getDouble("down") ?? 0
+        info["t"] = call.getDouble("t") ?? Date().timeIntervalSince1970 * 1000
+        for k in ["over", "room", "sunrise"] { info[k] = call.getBool(k) ?? false }
+        if let b64 = call.getString("scene"), let data = Data(base64Encoded: b64),
+           let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Self.group) {
+            try? data.write(to: dir.appendingPathComponent("nomad-scene.png"), options: .atomic)
+        }
+        d?.set(info, forKey: "nomad")
+        WidgetCenter.shared.reloadAllTimelines()
+        call.resolve()
+    }
+    // When Blip's count took its last 5-minute step on a day (for the sunrise gem). Milliseconds, or 0 if there was none.
+    @objc func lastStep(_ call: CAPPluginCall) {
+        let day = call.getString("day") ?? ""
+        let rec = UserDefaults(suiteName: Self.group)?.dictionary(forKey: "at-daily-" + day) as? [String: Double] ?? [:]
+        call.resolve(["t": (rec["t"] ?? 0) * 1000, "m": rec["m"] ?? 0])
     }
 }

@@ -386,14 +386,14 @@ struct TripLockView: View {
             VStack(alignment: .leading, spacing: 3) {
                 if done {
                     Text("Time's up!").font(.system(size: 28, weight: .heavy, design: .rounded)).foregroundColor(ink)
-                    Text("Open Blip to see how it went").font(.system(size: 14, weight: .semibold, design: .rounded)).foregroundColor(ink)
+                    Text("Open Blip to see if " + ctx.attributes.name + " made it").font(.system(size: 14, weight: .semibold, design: .rounded)).foregroundColor(ink)
                 } else {
                     Text(timerInterval: s.start...s.end, countsDown: true)
                         .font(.system(size: 30, weight: .heavy, design: .rounded)).monospacedDigit().foregroundColor(ink)
                     Text(s.emoji + " " + ctx.attributes.name + ": " + s.title).font(.system(size: 14, weight: .semibold, design: .rounded)).foregroundColor(ink).lineLimit(1)
                     ProgressView(timerInterval: s.start...s.end, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
                         .tint(sunset)
-                    Text(s.next.isEmpty ? "If your phone stays down" : "Then: " + s.next + " · if your phone stays down")
+                    Text(s.next.isEmpty ? "Keep your phone down until the timer ends" : "Then: " + s.next + " · keep your phone down")
                         .font(.system(size: 11, design: .rounded)).foregroundColor(soft).lineLimit(1)
                 }
             }

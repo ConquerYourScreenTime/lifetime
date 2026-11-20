@@ -140,14 +140,34 @@ function addDown(mins){
   }
 }
 
+// A real challenge (Matthew, 2026-11-20): if the phone was used during an activity (Blip's count rose by a 5-minute step),
+// that activity doesn't count. No punishment: its Coins come back, and Blip offers a friendly try again.
+// Anything that was already finished before the phone came out still counts (benefit of the doubt).
+function interrupt(){
+  const x = actOf(N.act.id);
+  N.coins += x.cost; N.missed = x.id; N.act = null;
+  if (N.queue.length) begin(N.queue.shift());
+}
+function showMissed(){
+  const id = N.missed; if (!id) return;
+  N.missed = null; nsave();
+  const x = actOf(id), canRetry = !N.done[id] && !planned(id) && planIds().length < PLAN_MAX && N.coins >= x.cost;
+  modal('<div class="mbig">'+x.emoji+'</div><h2 style="margin:4px 0">So close!</h2>'+
+    '<p>Your phone came out during <b>'+esc(x.title)+'</b>, so '+esc(N.name)+' will have to go again another time. No harm done: your <b>'+x.cost+' '+CUR+'</b> are back.</p>'+
+    '<p class="muted small">For it to count, keep your phone down until the timer ends. Short checks under 5 minutes may not show up in Blip\'s count.</p>'+
+    (canRetry ? '<button class="btn" id="nretry" data-close>Try again</button><button class="btn ghost" data-close style="margin-top:8px">Not now</button>' : '<button class="btn" data-close>OK</button>'));
+  const r = document.getElementById('nretry');
+  if (r) r.addEventListener('click', () => start(id));
+}
+
 // Phone-down progress: real time while Blip is closed, minus what the counter gained meanwhile.
-// It pauses while the phone is in use (or Blip is open) and never resets.
+// Opening Blip doesn't count either way. Using the phone (a 5-minute step on Blip's count) ends the activity in progress.
 function advance(nowM, snapDayEnd){
   const now = Date.now(), t = todayKey();
   if (N.snap) {
     const mins = (now - N.snap.t) / 60000;
     const used = N.snap.day === t ? Math.max(0, nowM - N.snap.m) : nowM + Math.max(0, (snapDayEnd != null ? snapDayEnd : N.snap.m) - N.snap.m);
-    if (N.act) addDown(Math.max(0, mins - used));
+    if (N.act) { addDown(Math.max(0, mins - used)); if (N.act && used >= 5) interrupt(); }
     checkGem(N.snap.t, mins, used);
   }
   N.snap = {t: now, day: t, m: nowM};
@@ -164,6 +184,7 @@ function refresh(firstOpen){
     nsave(); draw();
     if (firstOpen) liveSync();
     if (firstOpen && N.ready.length && !document.querySelector('.modal')) reveal();
+    if (firstOpen && N.missed) showMissed();
     if (tip) showMorning(tip);   // added last, so it sits on top: the morning note first, then the Polaroids
   }));
 }
@@ -208,7 +229,7 @@ function cityHTML(){
     N.queue.forEach((id, i) => { const q = actOf(id);
       s += '<div class="nrow nq"><span class="nsm-tile">'+NART.tile(q.id, look())+'</span><div style="flex:1"><small class="nk">'+(i ? 'Then' : 'Next')+'</small><b>'+esc(q.title)+'</b></div>'+
         '<button class="btn ghost nsm" data-unq="'+i+'">Remove</button></div>'; });
-    s += '<p class="muted small" style="margin:8px 0 0">Close Blip and put your phone down. '+esc(N.name)+' does these one after another. Picking up your phone pauses the plan, and it never resets.</p></div>';
+    s += '<p class="muted small" style="margin:8px 0 0">Close Blip and put your phone down. '+esc(N.name)+' does these one after another. Keep your phone down until each one is done. If your phone comes out, that one won\'t count, but your Coins come back.</p></div>';
   }
   s += '<h3 class="nh3">Things to do in Barcelona</h3>';
   const full = planIds().length >= PLAN_MAX;
@@ -245,7 +266,7 @@ function settingsHTML(){
       (N.remind.on ? '<div class="switch"><span>Time</span><input type="time" id="rmtime" value="'+String(N.remind.h).padStart(2, '0')+':'+String(N.remind.m).padStart(2, '0')+'"></div>' : '')+
       (remindNote ? '<p class="muted small">'+esc(remindNote)+'</p>' : '')+'</div>' : '')+
     '<div class="card"><h3 style="margin-top:0">About this prototype</h3><p class="muted small">Blip Nomad, Barcelona only. Your Blip Classic save is kept as it is and doesn\'t age while you try this.</p>'+
-    (TF ? '<p class="muted small"><b>Test tools</b> (TestFlight only)</p><button class="btn ghost" id="t30">Add 30 phone-down minutes to the activity</button><button class="btn ghost" id="tday" style="margin-top:8px">Pretend a new day started</button><button class="btn ghost" id="treset" style="margin-top:8px">Start Nomad over</button>' : '')+'</div>';
+    (TF ? '<p class="muted small"><b>Test tools</b> (TestFlight only)</p><button class="btn ghost" id="t30">Add 30 phone-down minutes to the activity</button><button class="btn ghost" id="tuse" style="margin-top:8px">Pretend I used my phone during the activity</button><button class="btn ghost" id="tday" style="margin-top:8px">Pretend a new day started</button><button class="btn ghost" id="treset" style="margin-top:8px">Start Nomad over</button>' : '')+'</div>';
 }
 function realHTML(x){ return '<div class="nreal"><div class="nrk">Do it for real</div>'+(x.phrase ? '<p class="nphr">"'+esc(nm(x.phrase))+'"<br><small>Say it: '+esc(nm(x.say))+'<br>Means: '+esc(nm(x.mean))+'</small></p>' : '')+'<ul>'+x.real.map(r => '<li>'+esc(r)+'</li>').join('')+'</ul></div>'; }
 
@@ -267,6 +288,7 @@ function draw(){
   const rt = document.getElementById('rmtime');
   if (rt) rt.onchange = () => { const [h, m] = rt.value.split(':').map(Number); if (isNaN(h)) return; N.remind.h = h; N.remind.m = m || 0; nsave(); nremindSync(); };
   on('t30', () => { if (N.act) { addDown(30); nsave(); refresh(false); if (N.ready.length) reveal(); } });
+  on('tuse', () => { if (N.act) { interrupt(); nsave(); draw(); showMissed(); } });
   on('tday', () => { N.day = yestKey(); nsave(); refresh(false); });
   on('treset', () => { localStorage.removeItem(NKEY); location.reload(); });
 }
@@ -630,7 +652,7 @@ function turnbacksFor(day){
 
 // ======================= Lock-screen countdown (Live Activity) =======================
 // Lawyer OK 2026-11-20: started only by the player's tap, game text only, status only (never shop items, prices or promotions),
-// can be switched off in Settings. The countdown assumes the phone stays down; opening Blip corrects it, or ends it.
+// can be switched off in Settings. The countdown runs on real time; opening Blip corrects it, or ends it (an activity only counts if the phone stays down).
 N.live = N.live == null ? true : N.live;
 let liveIconSent = false;
 const liveOK = () => { const p = P(); return !!(p && p.liveStart); };

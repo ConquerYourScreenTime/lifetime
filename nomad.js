@@ -444,7 +444,12 @@ function markReal(id){ const x = actOf(id); if (!stampable(x) || N.real[id]) ret
 
 // ---- Real-world tip cards: one every few days, invitations only (Lawyer wording), "I tried it" earns a pin ----
 const TIPS = [
-  {id:'gray', emoji:'⚫', text:'Try grayscale tonight. Settings > Accessibility > Display & Text Size > Color Filters.', pin:'🎞️', pinName:'Black-and-white film pin'},
+  {id:'gray', emoji:'⚫', text:'Try grayscale with a triple-click. Set it up once, then switch it on or off from anywhere.', yes:'I set it up', followup:'grayauto',
+    steps:['Open Settings > Accessibility > Display & Text Size > Color Filters and pick Grayscale (leave the switch off).', 'Go back to Accessibility > Accessibility Shortcut and tick Color Filters.', 'Triple-click the side button to turn grayscale on. Triple-click again for color.'],
+    pin:'🎞️', pinName:'Black-and-white film pin'},
+  {id:'grayauto', emoji:'🌙', text:'Want it automatic? Your iPhone can switch to grayscale every evening and back to color in the morning.', yes:'I set it up', followup:true,
+    steps:['Open the Shortcuts app and tap Automation, then +.', 'Pick Time of Day, set 9:00 PM, Daily, and choose Run Immediately.', 'Tap New Blank Automation, add the action Set Color Filters, and set it to On.', 'Make one more for 7:00 AM with Set Color Filters set to Off.'],
+    pin:'🌙', pinName:'Moon pin'},
   {id:'charge', emoji:'🔌', text:'Tonight, charge your phone outside the bedroom. Use a clock for your alarm if you can.', pin:'⏰', pinName:'Alarm clock pin'},
   {id:'walk', emoji:'🚶', text:'Take a short walk with your phone in your pocket the whole way.', pin:'👟', pinName:'Walking shoe pin'},
   {id:'dinner', emoji:'🍽️', text:'Tonight, put your phone in another room while you eat.', pin:'🍴', pinName:'Fork and knife pin'},
@@ -456,19 +461,22 @@ function tipOf(id){ return TIPS.find(t => t.id === id); }
 function offerTip(){
   if (!FEAT.tips || (N.tip && !N.tip.done)) return;
   if (N.tip && daysBetween(N.tip.day, todayKey()) < TIP_EVERY) return;
-  const next = TIPS.find(t => !N.tipsDone[t.id]); if (!next) return;
+  const next = TIPS.find(t => !N.tipsDone[t.id] && t.followup !== true); if (!next) return;
   N.tip = {id: next.id, day: todayKey()}; nsave();
 }
 function tipCardHTML(){
   if (!FEAT.tips || !N.tip || N.tip.done) return '';
   const t = tipOf(N.tip.id); if (!t) return '';
   return '<div class="card ntip"><small class="nk">An idea from '+esc(N.name)+'</small><p class="ntiptext">'+t.emoji+' '+esc(t.text)+'</p>'+
-    '<div class="nrow"><button class="btn nsm" id="ntipyes">I tried it</button><button class="btn ghost nsm" id="ntipno">Not this time</button></div></div>';
+    (t.steps ? '<ol class="ntipsteps">'+t.steps.map(x => '<li>'+esc(x)+'</li>').join('')+'</ol>' : '')+(t.note ? '<p class="muted small">'+esc(t.note)+'</p>' : '')+
+    '<div class="nrow"><button class="btn nsm" id="ntipyes">'+esc(t.yes || 'I tried it')+'</button><button class="btn ghost nsm" id="ntipno">Not this time</button></div></div>';
 }
 function answerTip(tried){
   const t = N.tip && tipOf(N.tip.id); if (!t) return;
   N.tipsDone[t.id] = tried ? 'tried' : 'skipped'; N.tip.done = true;
   if (tried && N.pins.indexOf(t.pin) < 0) N.pins.push(t.pin);
+  // A tip with a follow-up (grayscale -> automatic grayscale) offers it right away, only after "I set it up".
+  if (tried && typeof t.followup === 'string' && !N.tipsDone[t.followup]) N.tip = {id: t.followup, day: todayKey()};
   nsave(); draw();
   if (tried) { modal('<div class="mbig">'+t.pin+'</div><h2 style="margin:4px 0">Nice one!</h2><p>'+esc(N.name)+' pins a '+esc(t.pinName.toLowerCase())+' to the backpack.</p><button class="btn" data-close>OK</button>'); confetti([t.pin, '✨']); }
 }
@@ -711,7 +719,7 @@ document.head.insertAdjacentHTML('beforeend', '<style>'+
 // ---------- mechanics styles (Builder): plain classes for the new screens; the Designer may restyle these ----------
 document.head.insertAdjacentHTML('beforeend', '<style>'+
   '.ntdrow{display:flex;gap:6px;margin-top:8px}.ntd{flex:1;text-align:center;font-size:12px;font-weight:700;padding:6px 0;border-radius:10px;background:#eee8dd;color:#9a92a8}.ntd.on{background:#ffc84a;color:#3b2a4a}'+
-  '.ntip .ntiptext{font-size:16px;margin:6px 0 10px}.ntip .nrow{gap:8px}.nfest b{display:block}.npins{display:flex;flex-wrap:wrap;gap:10px;font-size:30px}'+
+  '.ntipsteps{margin:0 0 8px;padding-left:20px;font-size:14px}.ntipsteps li{margin:3px 0}.ntip .ntiptext{font-size:16px;margin:6px 0 10px}.ntip .nrow{gap:8px}.nfest b{display:block}.npins{display:flex;flex-wrap:wrap;gap:10px;font-size:30px}'+
   '.npcard{background:#fffaf0;border:2px dashed #c9a46a;border-radius:12px;padding:10px 12px;margin:10px 0;text-align:left;transform:rotate(-1deg)}.npcardfrom{font-size:12px;font-weight:700;color:#a8402a;text-transform:uppercase;letter-spacing:.5px}.npcard p{margin:6px 0 0}'+
   '.nreal-btn{margin:6px 0 4px}.nreal-ok{font-weight:600;color:#a87b00;margin:6px 0}'+
   '</style>');

@@ -405,7 +405,35 @@ Object.assign(PHOTO, {
     '<path d="M64 90 Q64 44 105 40 Q146 44 146 90Z" fill="#3e9b5b" stroke="'+O+'" stroke-width="2.5"/>'+
     [0,1,2,3].map(r => [0,1,2,3,4,5,6].map(k => '<path d="M'+(72+k*12)+' '+(86-r*11)+' q6 -7 12 0" stroke="'+['#ffc84a','#1f7fa8','#f4f1de','#ffc84a'][r]+'" stroke-width="2.5" fill="none"/>').join('')).join('')+
     '<path d="M105 40 V28" stroke="'+O+'" stroke-width="2.5"/><circle cx="105" cy="26" r="4" fill="#ffc84a" stroke="'+O+'" stroke-width="1.5"/>'+
-    '<rect y="160" width="250" height="34" fill="#8fbf6a"/>'+blipAt(206, 190, 96, Object.assign({}, o, {wave:true}))
+    '<rect y="160" width="250" height="34" fill="#8fbf6a"/>'+blipAt(206, 190, 96, Object.assign({}, o, {wave:true})),
+  sun_bunkers: o => '<defs><linearGradient id="sb-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a5aa8"/><stop offset=".45" stop-color="#f08a7a"/><stop offset=".8" stop-color="#ffc27a"/><stop offset="1" stop-color="#ffe6a8"/></linearGradient></defs>'+
+    // sunrise from the Bunkers del Carmel: the sun comes up out of the sea, the city grid and the Sagrada Família below, round concrete gun pads in front
+    '<rect width="250" height="194" fill="url(#sb-sky)"/>'+
+    '<circle cx="178" cy="66" r="17" fill="#ffd25a" stroke="#ffb03a" stroke-width="2"/><rect y="66" width="250" height="16" fill="#e98a6a"/><path d="M150 72 H206 M160 77 H196" stroke="#ffd25a" stroke-width="2.5" stroke-linecap="round"/>'+
+    '<rect y="82" width="250" height="44" fill="#c9a0a8"/>'+[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20].map(k => '<rect x="'+(k*12)+'" y="'+(86+(k*5)%12)+'" width="9" height="'+(8+(k*3)%6)+'" fill="#b48a96"/>').join('')+
+    sagradaFull(70, 112, .09, {sw:8, crane:false})+
+    '<path d="M0 118 Q60 108 130 116 T250 112 V194 H0Z" fill="#9a8a78" stroke="'+O+'" stroke-width="2"/>'+
+    // two round gun pads: a flat concrete circle with a raised ring in the middle
+    '<ellipse cx="200" cy="150" rx="46" ry="12" fill="#bdb3a4" stroke="'+O+'" stroke-width="2"/><ellipse cx="200" cy="147" rx="16" ry="4.5" fill="#a89e90" stroke="'+O+'" stroke-width="1.5"/>'+
+    '<ellipse cx="40" cy="136" rx="34" ry="8" fill="#bdb3a4" stroke="'+O+'" stroke-width="2"/><ellipse cx="40" cy="134" rx="12" ry="3.5" fill="#a89e90" stroke="'+O+'" stroke-width="1.5"/>'+
+    // Sam sits on the low concrete wall at the edge, legs hidden behind it
+    blipAt(118, 196, 92, Object.assign({}, o, {wave:true}))+
+    '<path d="M60 166 H180 V194 H60Z" fill="#c9bfae" stroke="'+O+'" stroke-width="2.5"/><path d="M60 166 H180" stroke="#e2d9c8" stroke-width="3"/><path d="M84 176 l6 4 M150 182 l8 -3" stroke="#a89e90" stroke-width="1.5"/>',
+  sun_beach: o => '<defs><linearGradient id="sbe-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6a6ab8"/><stop offset=".5" stop-color="#f49a7e"/><stop offset="1" stop-color="#ffd89a"/></linearGradient></defs>'+
+    // sunrise on Barceloneta beach: the sun rises out of the sea, the sail-shaped hotel far off to the right
+    '<rect width="250" height="194" fill="url(#sbe-sky)"/>'+
+    '<circle cx="110" cy="92" r="20" fill="#ffd25a" stroke="#ffb03a" stroke-width="2"/>'+
+    // the breakwater and the hotel: a tall glass sail, curved on the sea side and straight behind, on a low base
+    '<path d="M196 92 L250 86 V92Z" fill="#8a7a7a" stroke="'+O+'" stroke-width="1.5"/>'+
+    '<path d="M214 86 Q214 58 238 38 L240 38 V86Z" fill="#a9c2d6" stroke="'+O+'" stroke-width="1.5"/><path d="M220 72 Q226 58 238 48 M217 80 Q224 64 239 56" stroke="#e8f0f6" stroke-width="1" fill="none"/><rect x="208" y="82" width="38" height="5" fill="#c9c0b8" stroke="'+O+'" stroke-width="1.2"/>'+
+    '<rect y="90" width="250" height="44" fill="#e98a7a"/>'+
+    '<path d="M80 98 H140 M88 106 H132 M96 114 H124 M102 122 H118" stroke="#ffd25a" stroke-width="3" stroke-linecap="round"/>'+
+    '<path d="M0 132 Q60 126 125 132 T250 130" fill="none" stroke="#fff4e0" stroke-width="3" stroke-linecap="round"/>'+
+    '<path d="M0 134 Q125 126 250 134 V194 H0Z" fill="#f2cf98" stroke="'+O+'" stroke-width="2"/>'+
+    [[30,170],[200,180],[230,160]].map(([x,y]) => '<path d="M'+x+' '+y+' q3 -3 6 0" stroke="#d9b07a" stroke-width="1.5" fill="none"/>').join('')+
+    // Sam sits on the sand, a little dune of sand in front hides the legs
+    blipAt(150, 194, 90, Object.assign({}, o, {wave:true}))+
+    '<path d="M100 194 Q112 168 150 170 Q190 168 204 194Z" fill="#f2cf98" stroke="'+O+'" stroke-width="2.5"/><path d="M118 182 q4 -3 8 0 M170 184 q4 -3 8 0" stroke="#d9b07a" stroke-width="1.5" fill="none"/>'
 });
 
 function photo(id, o){

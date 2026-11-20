@@ -212,7 +212,7 @@ function cityHTML(){
   const a = N.act, pay = live.pay, h = new Date().getHours(), onShift = h >= SHIFT_FROM && h < SHIFT_TO && !live.over;
   let s = '<div class="nhero1a">'+NART.scene({blip: look()})+'<div class="nhud"><div class="npill">'+NART.coin(26)+N.coins+' <small>'+CUR+'</small></div>'+
     '<div class="npill npay2"><small>Shift pay</small>+'+pay+' today</div></div>'+
-    '<div class="nbanner">'+esc(N.city).toUpperCase()+'<small>'+esc(N.name)+', 18 · Spain</small></div><div class="nsay">'+esc(bubbleLine())+'</div></div><div class="nsheet">';
+    '<div class="nbanner">'+esc(N.city).toUpperCase()+'<small>'+esc(N.name)+' · Spain</small></div><div class="nsay">'+esc(bubbleLine())+'</div></div><div class="nsheet">';
   s += '<div class="card"><div class="npost">'+NART.tile('job')+'<div class="nbody"><small class="nk">Odd job</small><b>'+JOB.title+'</b><div class="muted small">'+esc(nm(JOB.line))+'</div></div></div>'+
     (FEAT.framing ? '<div class="npay">'+esc(N.name)+'\'s day: <b>'+pay+' '+CUR+'</b></div><div class="small" style="margin-bottom:4px">'+esc(dayLine(todayKey(), pay))+'</div>' :
       '<div class="npay">'+esc(N.name)+'\'s pay today: <b>'+pay+' '+CUR+'</b></div>')+
@@ -358,7 +358,7 @@ function showMorning(t){
 }
 function welcome(){
   N.welcomed = true; nsave();
-  modal('<div class="nwelcome">'+NART.scene({blip: look(), bx: 180})+'</div><div class="nribbon">'+(N.girl ? 'BENVINGUDA!' : 'BENVINGUT!')+'</div><h2 style="margin:4px 0">'+esc(N.name)+' lands in Barcelona!</h2><p>'+esc(N.name)+' is 18, with a backpack and <b>150 '+CUR+'</b> saved from home.</p>'+
+  modal('<div class="nwelcome">'+NART.scene({blip: look(), bx: 180})+'</div><div class="nribbon">'+(N.girl ? 'BENVINGUDA!' : 'BENVINGUT!')+'</div><h2 style="margin:4px 0">'+esc(N.name)+' lands in Barcelona!</h2><p>'+esc(N.name)+' arrives with a backpack and <b>150 '+CUR+'</b> saved from home.</p>'+
     '<p class="muted">While your phone is down, '+esc(N.name)+' crews a sailing boat in the old harbor and earns '+CUR+'. Spend them on lessons, friends and adventures. Every one is something you can really do.</p>'+
     '<p class="muted small">'+(N.girl ? 'Benvinguda' : 'Benvingut')+' is Catalan for "welcome". '+COIN_RULE+'</p><button class="btn" data-close id="nwel">Let\'s explore</button>');
   const w = document.getElementById('nwel'); if (w && !N.goalSet) w.addEventListener('click', chooseGoal);

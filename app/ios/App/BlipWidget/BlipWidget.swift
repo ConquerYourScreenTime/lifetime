@@ -393,7 +393,7 @@ struct TripLockView: View {
                     Text(s.emoji + " " + ctx.attributes.name + ": " + s.title).font(.system(size: 14, weight: .semibold, design: .rounded)).foregroundColor(ink).lineLimit(1)
                     ProgressView(timerInterval: s.start...s.end, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
                         .tint(sunset)
-                    Text(s.next.isEmpty ? "Keep your phone down until the timer ends" : "Then: " + s.next + " · keep your phone down")
+                    Text(s.next.isEmpty ? ctx.attributes.name + "'s out exploring. See you when the timer ends!" : "Then: " + s.next + " · see you when the timer ends!")
                         .font(.system(size: 11, design: .rounded)).foregroundColor(soft).lineLimit(1)
                 }
             }

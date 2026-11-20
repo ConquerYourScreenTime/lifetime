@@ -154,7 +154,7 @@ function showMissed(){
   const x = actOf(id), canRetry = !N.done[id] && !planned(id) && planIds().length < PLAN_MAX && N.coins >= x.cost;
   modal('<div class="mbig">'+x.emoji+'</div><h2 style="margin:4px 0">So close!</h2>'+
     '<p>Your phone came out during <b>'+esc(x.title)+'</b>, so '+esc(N.name)+' will have to go again another time. No harm done: your <b>'+x.cost+' '+CUR+'</b> are back.</p>'+
-    '<p class="muted small">For it to count, keep your phone down until the timer ends. Short checks under 5 minutes may not show up in Blip\'s count.</p>'+
+    '<p class="muted small">Next time, let '+esc(N.name)+' finish the adventure before you pick up your phone. Short checks under 5 minutes may not show up in Blip\'s count.</p>'+
     (canRetry ? '<button class="btn" id="nretry" data-close>Try again</button><button class="btn ghost" data-close style="margin-top:8px">Not now</button>' : '<button class="btn" data-close>OK</button>'));
   const r = document.getElementById('nretry');
   if (r) r.addEventListener('click', () => start(id));
@@ -229,7 +229,7 @@ function cityHTML(){
     N.queue.forEach((id, i) => { const q = actOf(id);
       s += '<div class="nrow nq"><span class="nsm-tile">'+NART.tile(q.id, look())+'</span><div style="flex:1"><small class="nk">'+(i ? 'Then' : 'Next')+'</small><b>'+esc(q.title)+'</b></div>'+
         '<button class="btn ghost nsm" data-unq="'+i+'">Remove</button></div>'; });
-    s += '<p class="muted small" style="margin:8px 0 0">Close Blip and put your phone down. '+esc(N.name)+' does these one after another. Keep your phone down until each one is done. If your phone comes out, that one won\'t count, but your Coins come back.</p></div>';
+    s += '<p class="muted small" style="margin:8px 0 0">Close Blip and put your phone down. '+esc(N.name)+' does these one after another. Let '+esc(N.name)+' finish each one before you pick up your phone. If your phone comes out early, that one won\'t count, but your Coins come back.</p></div>';
   }
   s += '<h3 class="nh3">Things to do in Barcelona</h3>';
   const full = planIds().length >= PLAN_MAX;

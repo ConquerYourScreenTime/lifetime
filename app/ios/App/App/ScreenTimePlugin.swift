@@ -6,6 +6,7 @@ import DeviceActivity
 import ManagedSettings
 import UserNotifications
 import WidgetKit
+import ActivityKit
 
 // Bridge between the game (index.html) and Apple's Screen Time API.
 // Only "the day's total passed N minutes" comes back; never which apps were used.
@@ -25,7 +26,9 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "remindOn", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "remindOff", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "env", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "widget", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "widget", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "liveStart", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "liveEnd", returnType: CAPPluginReturnPromise)
     ]
 
     static let group = "group.io.github.gamesbyvidal.lifetime"
@@ -356,6 +359,57 @@ private struct PickerView: View {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { done(nil) } }
                     ToolbarItem(placement: .confirmationAction) { Button("Done") { done(selection) } }
                 }
+        }
+    }
+}
+
+// ---------- Blip Nomad: the lock-screen countdown (Live Activity), started from the app ----------
+// Keep BlipTripAttributes identical to the copy in BlipWidget.swift.
+struct BlipTripAttributes: ActivityAttributes {
+    public struct ContentState: Codable, Hashable {
+        var title: String
+        var emoji: String
+        var next: String
+        var start: Date
+        var end: Date
+    }
+    var name: String
+}
+
+extension ScreenTimePlugin {
+    // Starts the countdown, or updates the one already showing. endsAt is in milliseconds (JavaScript time).
+    @objc func liveStart(_ call: CAPPluginCall) {
+        guard #available(iOS 16.2, *) else { call.resolve(["ok": false, "reason": "ios"]); return }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { call.resolve(["ok": false, "reason": "off"]); return }
+        if let b64 = call.getString("icon"), let data = Data(base64Encoded: b64),
+           let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Self.group) {
+            try? data.write(to: dir.appendingPathComponent("live-icon.png"), options: .atomic)
+        }
+        let end = Date(timeIntervalSince1970: (call.getDouble("endsAt") ?? Date().timeIntervalSince1970 * 1000) / 1000)
+        let state = BlipTripAttributes.ContentState(title: call.getString("title") ?? "", emoji: call.getString("emoji") ?? "🎒",
+                                                    next: call.getString("next") ?? "", start: Date(), end: max(end, Date().addingTimeInterval(60)))
+        let content = ActivityContent(state: state, staleDate: state.end)
+        let name = call.getString("name") ?? "Blip"
+        Task {
+            if let a = Activity<BlipTripAttributes>.activities.first, a.attributes.name == name {
+                await a.update(content)
+                call.resolve(["ok": true])
+                return
+            }
+            for a in Activity<BlipTripAttributes>.activities { await a.end(nil, dismissalPolicy: .immediate) }
+            do {
+                _ = try Activity.request(attributes: BlipTripAttributes(name: name), content: content, pushType: nil)
+                call.resolve(["ok": true])
+            } catch {
+                call.resolve(["ok": false, "reason": error.localizedDescription])
+            }
+        }
+    }
+    @objc func liveEnd(_ call: CAPPluginCall) {
+        guard #available(iOS 16.2, *) else { call.resolve(); return }
+        Task {
+            for a in Activity<BlipTripAttributes>.activities { await a.end(nil, dismissalPolicy: .immediate) }
+            call.resolve()
         }
     }
 }

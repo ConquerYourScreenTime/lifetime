@@ -73,7 +73,7 @@ table.costs td:last-child{text-align:right;font-weight:700}
 // =====================================================================================
 // Blip friends game, build 1 (plan v2, Lawyer OK 2026-11-25).
 // You and a friend each start the day with 1,000 points. Every 15 minutes in a tier spends points:
-// Red 40, Orange 20, Yellow 10, Free 0. The same for everyone. After midnight, whoever kept more wins.
+// Red 40, Orange 20, Free 0 (Yellow dropped 2026-11-25 to make setup easier). The same for everyone. After midnight, whoever kept more wins.
 // Privacy: minutes per tier stay on this phone. Only the day's points total goes online, after the day ends,
 // tied to an anonymous player ID and the match code. No names: you name your friend on your own phone.
 // =====================================================================================
@@ -82,10 +82,11 @@ const CFG = window.FRIENDS_CONFIG || {};
 const BANK = 1000, STEP = 15;
 const TIERS = [
   {id:'red', name:'Red', cost:40, color:'var(--red)', ticks:['Social','Entertainment'], note:'Social media, short video and streaming.'},
-  {id:'orange', name:'Orange', cost:20, color:'var(--orange)', ticks:['Games','Shopping & Food','Safari (search for it and add it)'], note:'Games, shopping and web browsing.'},
-  {id:'yellow', name:'Yellow', cost:10, color:'var(--yellow)', ticks:['Creativity','Information & Reading','Health & Fitness','Other'], note:'Everything else that isn\'t useful.'},
+  {id:'orange', name:'Orange', cost:20, color:'var(--orange)', ticks:['Games','Shopping & Food','Safari (search for it)'], note:'Games, shopping and web browsing.'},
 ];
-const FREE_TICKS = ['Productivity & Finance','Education','Utilities','Travel (Maps)','Messages and Phone'];
+// How many of each Apple should report back: Safari is an app, the rest are categories.
+TIERS[0].want = {categories:2, apps:0}; TIERS[1].want = {categories:2, apps:1};
+const FREE_TICKS = ['Messages and Phone','Maps','Productivity & Finance','Education','Reading','Health & Fitness','Creativity','Utilities'];
 const KEY = 'blip-friends';
 
 // ---------- native bridge (same approach as Blip: no bundler, talk to the bridge directly) ----------
@@ -103,11 +104,11 @@ const fakeST = {
   _d(){ return S.demo = S.demo || {auth:false, tiers:{}, min:{}, since:''}; },
   async status(){ return {authorized: this._d().auth}; },
   async authorize(){ this._d().auth = true; save(); return {authorized:true}; },
-  async tierPick({tier}){ const d = this._d(); d.tiers[tier] = 2; save(); return {picked:true, tomorrow: !!d.ready}; },
+  async tierPick({tier, categories, apps}){ const d = this._d(); d.tiers[tier] = categories; save(); return {picked:true, tomorrow: !!d.ready, categories, apps}; },
   async tierStatus(){ const d = this._d(); const o = {ready: !!d.ready, pending:false, since: d.since}; TIERS.forEach(t => o[t.id] = {apps:0, categories: d.tiers[t.id] || 0}); return o; },
   async friendsStart(){ const d = this._d(); d.ready = true; d.since = d.since || today(); save(); return {started:true}; },
   async friendsResync(){ return {resynced:false}; },
-  async friendsMinutes({day}){ const m = this._d().min[day] || {}; const o = {red:m.red||0, orange:m.orange||0, yellow:m.yellow||0}; o.points = points(o); o.sent = !!(S.sent||{})[day]; return o; },
+  async friendsMinutes({day}){ const m = this._d().min[day] || {}; const o = {red:m.red||0, orange:m.orange||0}; o.points = points(o); o.sent = !!(S.sent||{})[day]; return o; },
   async friendsSync(){ return {}; }, async friendsWipe(){ delete S.demo; return {}; },
   async remindOn(){ return {granted:true}; }, async remindOff(){ return {}; },
   async env(){ return {testflight:true}; },
@@ -258,7 +259,7 @@ async function trimOld(){
 }
 
 // ---------- the daily cycle: send finished days, fetch the friend's, find what to reveal ----------
-let tierInfo = null, todayMin = {red:0, orange:0, yellow:0, points:BANK}, busy = false, offline = false;
+let tierInfo = null, todayMin = {red:0, orange:0, points:BANK}, busy = false, offline = false;
 async function refresh(){
   if (busy) return; busy = true;
   try {
@@ -320,13 +321,13 @@ function setupView(){
   if (st === 'tiers') {
     const t = TIERS[setupTier];
     return `
-    <p class="faint" style="margin-top:24px">Step ${setupTier+1} of 3</p>
+    <p class="faint" style="margin-top:24px">Step ${setupTier+1} of ${TIERS.length}</p>
     <h1><span class="dot" style="display:inline-block;background:${t.color};margin-right:8px"></span>${t.name}: ${t.cost} points per 15 min</h1>
-    <p class="dim">In Apple's list, tick exactly these, then tap Done:</p>
     <div class="card"><ul class="ticks">${t.ticks.map(x => `<li><b>${esc(x)}</b></li>`).join('')}</ul>
-      <p class="faint">Everyone ticks the same ones, so the game is fair. Leave everything else unticked.</p></div>
-    ${setupTier === 2 ? `<p class="faint">Not ticked anywhere, so free: ${FREE_TICKS.map(esc).join(', ')}.</p>` : ''}
-    <button class="main" onclick="pickTier()">Open Apple's list</button>`;
+      <p class="faint">This list stays at the top of Apple's screen while you tick, so there's nothing to remember. Everyone ticks the same ones, so the game is fair.</p></div>
+    ${setupTier === TIERS.length - 1 ? `<p class="faint">Everything else is free, like ${FREE_TICKS.map(esc).join(', ')}.</p>` : ''}
+    ${S.tickWrong ? `<p class="faint" style="color:var(--lose)">That doesn't look right. Tick only the ones listed, then tap Done.</p>` : ''}
+    <button class="main" onclick="pickTier()">${S.tickWrong ? 'Try again' : 'Open Apple\'s list'}</button>`;
   }
   if (st === 'ready') return `
     <h1 style="margin-top:32px">You're set up</h1>
@@ -339,10 +340,18 @@ async function connectST(){
   const r = await ST.authorize().catch(() => ({authorized:false}));
   if (r.authorized) { S.stDenied = false; setupTier = 0; go('tiers'); } else { S.stDenied = true; save(); render(); }
 }
+// Opens Apple's list with what to tick pinned above it. Resolves true when the counts match what we asked for.
+async function openPicker(t){
+  const r = await ST.tierPick({tier:t.id, ticks:t.ticks, categories:t.want.categories, apps:t.want.apps}).catch(() => ({picked:false}));
+  if (!r.picked) return null;
+  return r.categories === undefined || (r.categories === t.want.categories && r.apps === t.want.apps);
+}
 async function pickTier(){
-  const r = await ST.tierPick({tier:TIERS[setupTier].id}).catch(() => ({picked:false}));
-  if (!r.picked) return;
-  if (setupTier < 2) { setupTier++; render(); return; }
+  const ok = await openPicker(TIERS[setupTier]);
+  if (ok === null) return;
+  S.tickWrong = !ok; save();
+  if (!ok) { render(); return; }
+  if (setupTier < TIERS.length - 1) { setupTier++; render(); return; }
   try { await ST.friendsStart(); go('ready'); } catch(e) { toast('Screen Time didn\'t start. Try again.'); }
 }
 function finishSetup(){ S.setup = true; delete S.setupStep; save(); refresh(); }
@@ -519,11 +528,19 @@ async function setNotify(){ S.notify = {on:$('#non').checked, time:$('#ntime').v
 async function changeTiers(){
   for (const t of TIERS) {
     const ok = await new Promise(res => {
-      sheet(`<div class="stack"><h2>${t.name}: tick exactly these</h2><ul class="ticks">${t.ticks.map(x => `<li><b>${esc(x)}</b></li>`).join('')}</ul><button class="main" id="ok">Open Apple's list</button><button class="link" id="no">Stop</button></div>`);
+      sheet(`<div class="stack"><h2>${t.name}: ${t.cost} points per 15 min</h2><ul class="ticks">${t.ticks.map(x => `<li><b>${esc(x)}</b></li>`).join('')}</ul><p class="faint">This list stays on screen while you tick.</p><button class="main" id="ok">Open Apple's list</button><button class="link" id="no">Stop</button></div>`);
       $('#ok').onclick = () => res(true); $('#no').onclick = () => res(false);
     });
     closeSheet(); if (!ok) break;
-    await ST.tierPick({tier:t.id}).catch(()=>{});
+    let good = await openPicker(t);
+    while (good === false) {
+      const again = await new Promise(res => {
+        sheet(`<div class="stack"><h2>That doesn't look right</h2><p class="dim">For ${t.name}, tick only: ${t.ticks.map(esc).join(', ')}.</p><button class="main" id="ok">Try again</button><button class="link" id="no">Skip</button></div>`);
+        $('#ok').onclick = () => res(true); $('#no').onclick = () => res(false);
+      });
+      closeSheet(); if (!again) break;
+      good = await openPicker(t);
+    }
   }
   toast('Saved. Your changes start tomorrow.'); refresh();
 }

@@ -452,14 +452,14 @@ extension ScreenTimePlugin {
 }
 
 // ---------- Blip friends game (build 1, plan v2 + Lawyer OK 2026-11-25) ----------
-// Three tiers, each a fixed set of Apple categories the player ticks in Apple's picker: Red (Social, Entertainment),
-// Orange (Games, Shopping & Food, Safari), Yellow (Creativity, Information & Reading, Health & Fitness, Other).
+// Two tiers, each a fixed set of Apple categories the player ticks in Apple's picker: Red (Social, Entertainment),
+// Orange (Games, Shopping & Food, Safari). Two tiers only (Matthew 2026-11-25: Yellow dropped to make setup easier).
 // Anything not picked costs nothing (Free). Each tier is watched in 15-minute steps; only the highest step per tier per day
 // is kept, in the App Group on this phone. The only thing that ever leaves the phone is the day's points total
 // (BlipMonitor uploads it just after midnight; see MonitorExtension.swift). Never minutes, apps or tiers.
 enum Friends {
-    static let tiers = ["red", "orange", "yellow"]
-    static let cost = ["red": 40, "orange": 20, "yellow": 10]   // points per 15 minutes, the same for every player
+    static let tiers = ["red", "orange"]
+    static let cost = ["red": 40, "orange": 20]   // points per 15 minutes, the same for every player
     static let bank = 1000
     static let step = 15
     static let maxMinutes = 16 * 60
@@ -469,8 +469,8 @@ enum Friends {
         let f = DateFormatter(); f.calendar = Calendar(identifier: .gregorian); f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd"; return f.string(from: date)
     }
-    static func points(red: Int, orange: Int, yellow: Int) -> Int {
-        let spent = (red / step) * cost["red"]! + (orange / step) * cost["orange"]! + (yellow / step) * cost["yellow"]!
+    static func points(red: Int, orange: Int) -> Int {
+        let spent = (red / step) * cost["red"]! + (orange / step) * cost["orange"]!
         return max(0, bank - spent)
     }
     static func selection(_ d: UserDefaults?, _ tier: String) -> FamilyActivitySelection? {
@@ -524,42 +524,69 @@ enum Friends {
     }
 }
 
+// Apple's list with a card pinned above it that keeps showing what to tick, so the player never has to remember it
+// or go back. The card counts ticks as they happen (Apple gives counts, never names) and goes green when they match.
 private struct TierPickerView: View {
     @State var selection: FamilyActivitySelection
     let title: String
+    let ticks: [String]
+    let wantCategories: Int
+    let wantApps: Int
     let done: (FamilyActivitySelection?) -> Void
+    private var cats: Int { selection.categoryTokens.count }
+    private var apps: Int { selection.applicationTokens.count }
+    private var matches: Bool { cats == wantCategories && apps == wantApps }
     var body: some View {
         NavigationView {
-            FamilyActivityPicker(selection: $selection)
-                .navigationTitle(title)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { done(nil) } }
-                    ToolbarItem(placement: .confirmationAction) { Button("Done") { done(selection) } }
+            VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Tick these, then tap Done").font(.subheadline).foregroundColor(.secondary)
+                    ForEach(ticks, id: \.self) { t in
+                        HStack(spacing: 8) { Image(systemName: "checkmark.circle"); Text(t).fontWeight(.semibold) }
+                    }
+                    HStack(spacing: 6) {
+                        Image(systemName: matches ? "checkmark.seal.fill" : "circle.dashed")
+                        Text(matches ? "All set" : "Ticked: \(cats) of \(wantCategories) categories" + (wantApps > 0 ? ", \(apps) of \(wantApps) app" : ""))
+                    }
+                    .font(.footnote).foregroundColor(matches ? .green : .secondary).padding(.top, 2)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(Color(UIColor.secondarySystemBackground))
+                FamilyActivityPicker(selection: $selection)
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { done(nil) } }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { done(selection) } }
+            }
         }
     }
 }
 
 extension ScreenTimePlugin {
-    // tier: red | orange | yellow. Opens Apple's picker with the tier's own title (the screen before it lists what to tick).
+    // tier: red | orange. ticks: the names to show above Apple's list. categories/apps: how many to expect.
+    // Resolves with the counts picked, so the web side can say "that doesn't look right" if they don't match.
     @objc func tierPick(_ call: CAPPluginCall) {
         let tier = call.getString("tier") ?? ""
         guard Friends.tiers.contains(tier) else { call.reject("Unknown tier"); return }
         let d = UserDefaults(suiteName: Self.group)
-        let titles = ["red": "Red: Social, Entertainment", "orange": "Orange: Games, Shopping, Safari", "yellow": "Yellow: the rest"]
+        let titles = ["red": "Red: 40 points per 15 min", "orange": "Orange: 20 points per 15 min"]
+        let ticks = (call.getArray("ticks", String.self) ?? []).filter { !$0.isEmpty }
+        let wantCategories = call.getInt("categories") ?? 0, wantApps = call.getInt("apps") ?? 0
         DispatchQueue.main.async {
             var saved = FamilyActivitySelection(includeEntireCategory: true)
             let key = d?.data(forKey: "tier-next-" + tier) != nil ? "tier-next-" + tier : "tier-" + tier
             if let data = d?.data(forKey: key), let old = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) { saved = old }
-            let picker = TierPickerView(selection: saved, title: titles[tier]!) { picked in
+            let picker = TierPickerView(selection: saved, title: titles[tier]!, ticks: ticks, wantCategories: wantCategories, wantApps: wantApps) { picked in
                 self.bridge?.viewController?.dismiss(animated: true)
                 guard let picked = picked, let data = try? JSONEncoder().encode(picked) else { call.resolve(["picked": false]); return }
                 // Before the first start, picks apply right away. After that, they apply from tomorrow.
                 let later = d?.bool(forKey: "friends-ready") == true
                 if later { d?.set(data, forKey: "tier-next-" + tier); d?.set(Friends.dayString(), forKey: "tier-next-day") }
                 else { d?.set(data, forKey: "tier-" + tier) }
-                call.resolve(["picked": true, "tomorrow": later])
+                call.resolve(["picked": true, "tomorrow": later, "categories": picked.categoryTokens.count, "apps": picked.applicationTokens.count])
             }
             self.bridge?.viewController?.present(UIHostingController(rootView: picker), animated: true)
         }
@@ -605,7 +632,7 @@ extension ScreenTimePlugin {
         var out: [String: Any] = [:]
         var m: [String: Int] = [:]
         for t in Friends.tiers { let v = d?.integer(forKey: "fmin-" + t + "-" + day) ?? 0; m[t] = v; out[t] = v }
-        out["points"] = Friends.points(red: m["red"]!, orange: m["orange"]!, yellow: m["yellow"]!)
+        out["points"] = Friends.points(red: m["red"]!, orange: m["orange"]!)
         out["sent"] = d?.bool(forKey: "fsent-" + day) == true
         Friends.purge(d)
         call.resolve(out)

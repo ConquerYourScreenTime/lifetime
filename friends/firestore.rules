@@ -1,0 +1,42 @@
+rules_version = '2';
+// Blip friends game. Paste into Firebase console > Firestore Database > Rules, then Publish.
+// matches/{code}: a = inviter's anonymous ID, b = joiner's ('' until someone joins), startDay, ended, created.
+// matches/{code}/days/{day}_{uid}: one player's points total for one finished day. Nothing else is stored.
+service cloud.firestore {
+  match /databases/{db}/documents {
+    match /matches/{code} {
+      function signedIn() { return request.auth != null; }
+      function member() { return signedIn() && (resource.data.a == request.auth.uid || resource.data.b == request.auth.uid); }
+      function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+      // Reading one match needs its code (that is how a friend joins). Listing all matches is never allowed.
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn() && code.size() == 6
+        && request.resource.data.keys().hasOnly(['a', 'b', 'startDay', 'ended', 'created'])
+        && request.resource.data.a == request.auth.uid && request.resource.data.b == '' && request.resource.data.ended == false;
+      allow update: if signedIn() && (
+        // Joining: only an empty seat, only by someone else, only the seat and the start day change.
+        (resource.data.b == '' && resource.data.ended == false && resource.data.a != request.auth.uid
+          && request.resource.data.b == request.auth.uid && changed().hasOnly(['b', 'startDay'])
+          && request.resource.data.startDay is string && request.resource.data.startDay.size() == 10)
+        // Ending (either player), and on "Delete my data" clearing your own seat.
+        || (member() && request.resource.data.ended == true && changed().hasOnly(['ended', 'a', 'b'])
+          && (request.resource.data.a == resource.data.a || (resource.data.a == request.auth.uid && request.resource.data.a == 'deleted'))
+          && (request.resource.data.b == resource.data.b || (resource.data.b == request.auth.uid && request.resource.data.b == 'deleted')))
+      );
+      allow delete: if false;
+
+      match /days/{id} {
+        function m() { return get(/databases/$(db)/documents/matches/$(code)).data; }
+        function isMember() { return request.auth != null && (m().a == request.auth.uid || m().b == request.auth.uid); }
+        allow read: if isMember();
+        allow create, update: if isMember() && m().ended == false
+          && request.resource.data.keys().hasOnly(['uid', 'day', 'points', 'at'])
+          && request.resource.data.uid == request.auth.uid
+          && id == request.resource.data.day + '_' + request.auth.uid
+          && request.resource.data.points is int && request.resource.data.points >= 0 && request.resource.data.points <= 1000;
+        allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      }
+    }
+  }
+}

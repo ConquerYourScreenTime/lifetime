@@ -30,7 +30,15 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "liveStart", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "liveEnd", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "nomadWidget", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "lastStep", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "lastStep", returnType: CAPPluginReturnPromise),
+        // Blip friends game (build 1)
+        CAPPluginMethod(name: "tierPick", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "tierStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "friendsStart", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "friendsResync", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "friendsMinutes", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "friendsSync", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "friendsWipe", returnType: CAPPluginReturnPromise)
     ]
 
     static let group = "group.io.github.gamesbyvidal.lifetime"
@@ -440,5 +448,185 @@ extension ScreenTimePlugin {
         let day = call.getString("day") ?? ""
         let rec = UserDefaults(suiteName: Self.group)?.dictionary(forKey: "at-daily-" + day) as? [String: Double] ?? [:]
         call.resolve(["t": (rec["t"] ?? 0) * 1000, "m": rec["m"] ?? 0])
+    }
+}
+
+// ---------- Blip friends game (build 1, plan v2 + Lawyer OK 2026-11-25) ----------
+// Three tiers, each a fixed set of Apple categories the player ticks in Apple's picker: Red (Social, Entertainment),
+// Orange (Games, Shopping & Food, Safari), Yellow (Creativity, Information & Reading, Health & Fitness, Other).
+// Anything not picked costs nothing (Free). Each tier is watched in 15-minute steps; only the highest step per tier per day
+// is kept, in the App Group on this phone. The only thing that ever leaves the phone is the day's points total
+// (BlipMonitor uploads it just after midnight; see MonitorExtension.swift). Never minutes, apps or tiers.
+enum Friends {
+    static let tiers = ["red", "orange", "yellow"]
+    static let cost = ["red": 40, "orange": 20, "yellow": 10]   // points per 15 minutes, the same for every player
+    static let bank = 1000
+    static let step = 15
+    static let maxMinutes = 16 * 60
+    static let keepDays = 31   // the plan keeps daily totals 30 days
+
+    static func dayString(_ date: Date = Date()) -> String {
+        let f = DateFormatter(); f.calendar = Calendar(identifier: .gregorian); f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"; return f.string(from: date)
+    }
+    static func points(red: Int, orange: Int, yellow: Int) -> Int {
+        let spent = (red / step) * cost["red"]! + (orange / step) * cost["orange"]! + (yellow / step) * cost["yellow"]!
+        return max(0, bank - spent)
+    }
+    static func selection(_ d: UserDefaults?, _ tier: String) -> FamilyActivitySelection? {
+        guard let data = d?.data(forKey: "tier-" + tier) else { return nil }
+        return try? JSONDecoder().decode(FamilyActivitySelection.self, from: data)
+    }
+    // A tier change made after setup waits until the next day ("tier-next-..."), so nothing can change mid-day.
+    static func applyPending(_ d: UserDefaults?) -> Bool {
+        guard let d = d, let day = d.string(forKey: "tier-next-day"), day < dayString() else { return false }
+        for t in tiers { if let data = d.data(forKey: "tier-next-" + t) { d.set(data, forKey: "tier-" + t); d.removeObject(forKey: "tier-next-" + t) } }
+        d.removeObject(forKey: "tier-next-day")
+        return true
+    }
+    // Starts (or replaces) one watcher per tier plus "fclock", which only wakes BlipMonitor at midnight to send yesterday's total.
+    static func startWatchers(_ d: UserDefaults?) throws {
+        let center = DeviceActivityCenter()
+        // Blip Classic / Nomad watchers are not used by this game: stop them (iOS allows only 20 at once).
+        let mine = Set((tiers.map { "tier-" + $0 } + ["fclock"]).map { DeviceActivityName($0) })
+        center.stopMonitoring(center.activities.filter { !mine.contains($0) })
+        let schedule = DeviceActivitySchedule(intervalStart: DateComponents(hour: 0, minute: 0),
+                                              intervalEnd: DateComponents(hour: 23, minute: 59, second: 59), repeats: true)
+        for t in tiers {
+            let name = DeviceActivityName("tier-" + t)
+            guard let sel = selection(d, t), !(sel.applicationTokens.isEmpty && sel.categoryTokens.isEmpty) else { center.stopMonitoring([name]); continue }
+            var events: [DeviceActivityEvent.Name: DeviceActivityEvent] = [:]
+            for m in stride(from: step, through: maxMinutes, by: step) {
+                let n = DeviceActivityEvent.Name("m\(m)")
+                if #available(iOS 17.4, *) {
+                    events[n] = DeviceActivityEvent(applications: sel.applicationTokens, categories: sel.categoryTokens, webDomains: [], threshold: DateComponents(minute: m), includesPastActivity: true)
+                } else {
+                    events[n] = DeviceActivityEvent(applications: sel.applicationTokens, categories: sel.categoryTokens, webDomains: [], threshold: DateComponents(minute: m))
+                }
+            }
+            // Same lesson as Blip's counter: replace without stopping first, stop+start only if iOS refuses.
+            do { try center.startMonitoring(name, during: schedule, events: events) }
+            catch { center.stopMonitoring([name]); try center.startMonitoring(name, during: schedule, events: events) }
+        }
+        let clock = DeviceActivityName("fclock")
+        do { try center.startMonitoring(clock, during: schedule) }
+        catch { center.stopMonitoring([clock]); try center.startMonitoring(clock, during: schedule) }
+        d?.set(true, forKey: "friends-ready")
+        if d?.string(forKey: "friends-since") == nil { d?.set(dayString(), forKey: "friends-since") }  // first day that counts
+    }
+    static func purge(_ d: UserDefaults?) {
+        guard let d = d, let cutoff = Calendar.current.date(byAdding: .day, value: -keepDays, to: Date()) else { return }
+        let oldest = dayString(cutoff)
+        for key in d.dictionaryRepresentation().keys where key.hasPrefix("fmin-") || key.hasPrefix("fsent-") || key.hasPrefix("at-tier-") {
+            let day = key.split(separator: "-").suffix(3).joined(separator: "-")
+            if day < oldest { d.removeObject(forKey: key) }
+        }
+    }
+}
+
+private struct TierPickerView: View {
+    @State var selection: FamilyActivitySelection
+    let title: String
+    let done: (FamilyActivitySelection?) -> Void
+    var body: some View {
+        NavigationView {
+            FamilyActivityPicker(selection: $selection)
+                .navigationTitle(title)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { done(nil) } }
+                    ToolbarItem(placement: .confirmationAction) { Button("Done") { done(selection) } }
+                }
+        }
+    }
+}
+
+extension ScreenTimePlugin {
+    // tier: red | orange | yellow. Opens Apple's picker with the tier's own title (the screen before it lists what to tick).
+    @objc func tierPick(_ call: CAPPluginCall) {
+        let tier = call.getString("tier") ?? ""
+        guard Friends.tiers.contains(tier) else { call.reject("Unknown tier"); return }
+        let d = UserDefaults(suiteName: Self.group)
+        let titles = ["red": "Red: Social, Entertainment", "orange": "Orange: Games, Shopping, Safari", "yellow": "Yellow: the rest"]
+        DispatchQueue.main.async {
+            var saved = FamilyActivitySelection(includeEntireCategory: true)
+            let key = d?.data(forKey: "tier-next-" + tier) != nil ? "tier-next-" + tier : "tier-" + tier
+            if let data = d?.data(forKey: key), let old = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) { saved = old }
+            let picker = TierPickerView(selection: saved, title: titles[tier]!) { picked in
+                self.bridge?.viewController?.dismiss(animated: true)
+                guard let picked = picked, let data = try? JSONEncoder().encode(picked) else { call.resolve(["picked": false]); return }
+                // Before the first start, picks apply right away. After that, they apply from tomorrow.
+                let later = d?.bool(forKey: "friends-ready") == true
+                if later { d?.set(data, forKey: "tier-next-" + tier); d?.set(Friends.dayString(), forKey: "tier-next-day") }
+                else { d?.set(data, forKey: "tier-" + tier) }
+                call.resolve(["picked": true, "tomorrow": later])
+            }
+            self.bridge?.viewController?.present(UIHostingController(rootView: picker), animated: true)
+        }
+    }
+    // How many apps and categories each tier has (counts only; Apple never tells us which).
+    @objc func tierStatus(_ call: CAPPluginCall) {
+        let d = UserDefaults(suiteName: Self.group)
+        var out: [String: Any] = ["ready": d?.bool(forKey: "friends-ready") == true, "pending": d?.string(forKey: "tier-next-day") != nil,
+                                  "since": d?.string(forKey: "friends-since") ?? ""]
+        for t in Friends.tiers {
+            let s = Friends.selection(d, t)
+            out[t] = ["apps": s?.applicationTokens.count ?? 0, "categories": s?.categoryTokens.count ?? 0]
+        }
+        call.resolve(out)
+    }
+    @objc func friendsStart(_ call: CAPPluginCall) {
+        let d = UserDefaults(suiteName: Self.group)
+        Self.work.async {
+            do { try Friends.startWatchers(d); d?.set(Date().timeIntervalSince1970, forKey: "friends-resync"); call.resolve(["started": true]) }
+            catch { call.reject("Could not start: \(error.localizedDescription)") }
+        }
+    }
+    // Each app open: apply tomorrow's tier changes once the day has turned, and (iOS 17.4+, at most every 10 minutes)
+    // restart the watchers so iOS re-sends any 15-minute steps it missed.
+    @objc func friendsResync(_ call: CAPPluginCall) {
+        let d = UserDefaults(suiteName: Self.group)
+        guard d?.bool(forKey: "friends-ready") == true, AuthorizationCenter.shared.authorizationStatus == .approved else { call.resolve(["resynced": false]); return }
+        let applied = Friends.applyPending(d)
+        var due = applied
+        if #available(iOS 17.4, *) { due = due || Date().timeIntervalSince1970 - (d?.double(forKey: "friends-resync") ?? 0) > 600 }
+        guard due else { call.resolve(["resynced": false]); return }
+        d?.set(Date().timeIntervalSince1970, forKey: "friends-resync")
+        Self.work.async {
+            do { try Friends.startWatchers(d); call.resolve(["resynced": true, "applied": applied]) }
+            catch { call.resolve(["resynced": false]) }
+        }
+    }
+    // day: "YYYY-MM-DD". Minutes per tier (15-minute steps) and the day's points, on this phone only.
+    @objc func friendsMinutes(_ call: CAPPluginCall) {
+        let d = UserDefaults(suiteName: Self.group)
+        d?.synchronize()
+        let day = call.getString("day") ?? Friends.dayString()
+        var out: [String: Any] = [:]
+        var m: [String: Int] = [:]
+        for t in Friends.tiers { let v = d?.integer(forKey: "fmin-" + t + "-" + day) ?? 0; m[t] = v; out[t] = v }
+        out["points"] = Friends.points(red: m["red"]!, orange: m["orange"]!, yellow: m["yellow"]!)
+        out["sent"] = d?.bool(forKey: "fsent-" + day) == true
+        Friends.purge(d)
+        call.resolve(out)
+    }
+    // What BlipMonitor needs to send the points total at midnight: the online service's public key and project,
+    // this player's anonymous sign-in token and the match code. Pass nothing to clear it.
+    @objc func friendsSync(_ call: CAPPluginCall) {
+        let d = UserDefaults(suiteName: Self.group)
+        if let sent = call.getString("sentDay") { d?.set(true, forKey: "fsent-" + sent); call.resolve(); return }
+        var info: [String: String] = [:]
+        for k in ["apiKey", "projectId", "refreshToken", "uid", "match"] { if let v = call.getString(k), !v.isEmpty { info[k] = v } }
+        if info.count == 5 { d?.set(info, forKey: "friends-sync") } else { d?.removeObject(forKey: "friends-sync") }
+        call.resolve()
+    }
+    // "Delete my data": stops the watchers and removes everything this game kept on the phone.
+    @objc func friendsWipe(_ call: CAPPluginCall) {
+        let d = UserDefaults(suiteName: Self.group)
+        DeviceActivityCenter().stopMonitoring((Friends.tiers.map { "tier-" + $0 } + ["fclock"]).map { DeviceActivityName($0) })
+        for key in (d?.dictionaryRepresentation() ?? [:]).keys where key.hasPrefix("fmin-") || key.hasPrefix("fsent-") || key.hasPrefix("at-tier-")
+            || key.hasPrefix("tier-") || key.hasPrefix("friends-") { d?.removeObject(forKey: key) }
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.reminderID])
+        call.resolve()
     }
 }

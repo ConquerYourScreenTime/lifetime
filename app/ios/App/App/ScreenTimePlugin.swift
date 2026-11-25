@@ -525,10 +525,22 @@ enum Friends {
 }
 
 // Apple's list with a card pinned above it that keeps showing what to tick, so the player never has to remember it
-// or go back. The card counts ticks as they happen (Apple gives counts, never names) and goes green when they match.
+// or go back. The card counts ticks as they happen (Apple gives counts, never names) and turns green when they match.
+// Styled in Blip Friends' Black and Gold look; the sheet is forced dark so Apple's list matches the card.
+private enum BlipStyle {
+    static let bg = Color(red: 0x0d/255, green: 0x0d/255, blue: 0x0f/255)
+    static let card = Color(red: 0x1c/255, green: 0x1c/255, blue: 0x21/255)
+    static let ink = Color(red: 0xf5/255, green: 0xf1/255, blue: 0xe6/255)
+    static let dim = Color(red: 0xb5/255, green: 0xad/255, blue: 0x99/255)
+    static let ivory = Color(red: 0xec/255, green: 0xe4/255, blue: 0xd0/255)
+    static let free = Color(red: 0x6f/255, green: 0xc2/255, blue: 0x9b/255)
+    static let red = Color(red: 0xe8/255, green: 0x6a/255, blue: 0x74/255)
+    static let orange = Color(red: 0xdc/255, green: 0x9c/255, blue: 0x55/255)
+}
 private struct TierPickerView: View {
     @State var selection: FamilyActivitySelection
     let title: String
+    let tier: String
     let ticks: [String]
     let wantCategories: Int
     let wantApps: Int
@@ -536,32 +548,54 @@ private struct TierPickerView: View {
     private var cats: Int { selection.categoryTokens.count }
     private var apps: Int { selection.applicationTokens.count }
     private var matches: Bool { cats == wantCategories && apps == wantApps }
+    private var tierColor: Color { tier == "red" ? BlipStyle.red : BlipStyle.orange }
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Tick these, then tap Done").font(.subheadline).foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Tick these, then tap Done").font(.subheadline).foregroundColor(BlipStyle.dim)
                     ForEach(ticks, id: \.self) { t in
-                        HStack(spacing: 8) { Image(systemName: "checkmark.circle"); Text(t).fontWeight(.semibold) }
+                        HStack(spacing: 10) {
+                            Image(systemName: "checkmark.circle").foregroundColor(tierColor)
+                            Text(t).fontWeight(.semibold).foregroundColor(BlipStyle.ink)
+                        }
                     }
                     HStack(spacing: 6) {
-                        Image(systemName: matches ? "checkmark.seal.fill" : "circle.dashed")
-                        Text(matches ? "All set" : "Ticked: \(cats) of \(wantCategories) categories" + (wantApps > 0 ? ", \(apps) of \(wantApps) app" : ""))
+                        Image(systemName: matches ? "checkmark.circle.fill" : "circle.dashed")
+                        Text(matches ? "All set. Tap Done." : "Ticked: \(cats) of \(wantCategories) categories" + (wantApps > 0 ? ", \(apps) of \(wantApps) app" : ""))
                     }
-                    .font(.footnote).foregroundColor(matches ? .green : .secondary).padding(.top, 2)
+                    .font(matches ? Font.footnote.weight(.semibold) : Font.footnote)
+                    .foregroundColor(matches ? BlipStyle.free : BlipStyle.dim)
+                    .padding(.top, 4)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
-                .background(Color(UIColor.secondarySystemBackground))
+                .padding(16)
+                .background(RoundedRectangle(cornerRadius: 18).fill(BlipStyle.card))
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(matches ? BlipStyle.free.opacity(0.6) : Color.white.opacity(0.08), lineWidth: 1))
+                .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 4)
+                .background(BlipStyle.bg)
                 FamilyActivityPicker(selection: $selection)
             }
-            .navigationTitle(title)
+            .background(BlipStyle.bg.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { done(nil) } }
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { done(selection) } }
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 8) {
+                        Circle().fill(tierColor).frame(width: 10, height: 10)
+                        Text(title).font(.system(.headline, design: .serif)).foregroundColor(BlipStyle.ink)
+                    }
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { done(nil) }.foregroundColor(BlipStyle.dim)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(action: { done(selection) }) { Text("Done").fontWeight(.semibold) }.foregroundColor(BlipStyle.ivory)
+                }
             }
         }
+        .navigationViewStyle(.stack)
+        .accentColor(BlipStyle.ivory)
+        .preferredColorScheme(.dark)
     }
 }
 
@@ -579,7 +613,7 @@ extension ScreenTimePlugin {
             var saved = FamilyActivitySelection(includeEntireCategory: true)
             let key = d?.data(forKey: "tier-next-" + tier) != nil ? "tier-next-" + tier : "tier-" + tier
             if let data = d?.data(forKey: key), let old = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) { saved = old }
-            let picker = TierPickerView(selection: saved, title: titles[tier]!, ticks: ticks, wantCategories: wantCategories, wantApps: wantApps) { picked in
+            let picker = TierPickerView(selection: saved, title: titles[tier]!, tier: tier, ticks: ticks, wantCategories: wantCategories, wantApps: wantApps) { picked in
                 self.bridge?.viewController?.dismiss(animated: true)
                 guard let picked = picked, let data = try? JSONEncoder().encode(picked) else { call.resolve(["picked": false]); return }
                 // Before the first start, picks apply right away. After that, they apply from tomorrow.
@@ -588,7 +622,9 @@ extension ScreenTimePlugin {
                 else { d?.set(data, forKey: "tier-" + tier) }
                 call.resolve(["picked": true, "tomorrow": later, "categories": picked.categoryTokens.count, "apps": picked.applicationTokens.count])
             }
-            self.bridge?.viewController?.present(UIHostingController(rootView: picker), animated: true)
+            let host = UIHostingController(rootView: picker)
+            host.overrideUserInterfaceStyle = .dark  // Apple's list follows this, so it matches the Black and Gold card
+            self.bridge?.viewController?.present(host, animated: true)
         }
     }
     // How many apps and categories each tier has (counts only; Apple never tells us which).

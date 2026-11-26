@@ -348,7 +348,7 @@ async function checkMatches(){
     const doc = Net.dec(await Net.call('GET', 'matches/' + m.code));
     if (!doc) continue;
     if (doc.ended) { m.ended = true; m.active = false; save(); await syncNative(); continue; }
-    if (!m.active && doc.b) { Object.assign(m, {active:true, other:doc.b, startDay:doc.startDay}); save(); await syncNative(); applyNotify().catch(()=>{}); toast(m.name + ' joined. Your first match day is ' + (doc.startDay === today() ? 'today' : weekday(doc.startDay)) + '.'); }
+    if (!m.active && doc.b) { Object.assign(m, {active:true, other:doc.b, startDay:doc.startDay}); save(); await syncNative(); applyNotify().catch(()=>{}); toast(m.name + ' joined. Your first battle day is ' + (doc.startDay === today() ? 'today' : weekday(doc.startDay)) + '.'); }
     if (m.active) m.checked = today();
   }
 }
@@ -520,7 +520,7 @@ function invitedView(){
     <p class="dim s15">Conquer Your Screen Time is invitation only. Every player gets just five, and a friend gave one of theirs to you.</p>
     <p class="dim s15">They think you can take the crown. Your place is paid for, and it's yours for good.</p>
     <div class="card"><p class="lbl" style="margin-top:0">Your seat includes</p>
-      <div class="perk"><span>◆</span><div>A match with the friend who chose you</div></div>
+      <div class="perk"><span>◆</span><div>A battle with the friend who chose you</div></div>
       <div class="perk" style="padding-bottom:0"><span>◆</span><div>Five invitations of your own to give</div></div></div>
     <button class="main" onclick="claimSeat()">Claim your seat</button>
     <p class="faint" style="text-align:center">Free to play. Ages 13 and up.</p>`;
@@ -587,9 +587,9 @@ function matchCard(){
   const rs = rivals(), w = waiting();
   if (!rs.length) {
     if (w.length) return `<div class="card stack"><h2>Waiting for ${esc(listNames(w.map(m => m.name)))}</h2>
-      <p class="dim s15">Your match starts the day they join with your code.</p><button class="main" onclick="openPage('invites')">See your invites</button></div>`;
+      <p class="dim s15">Your battle starts the day they join with your code.</p><button class="main" onclick="openPage('invites')">See your invites</button></div>`;
     return `<div class="card stack"><h2>Play a friend</h2>
-      <p class="dim s15">Send a friend one of your five invitations. Once they join, every day is a match.</p>
+      <p class="dim s15">Send a friend one of your five invitations. Once they join, every day is a battle.</p>
       ${Net.on() ? `<button class="main" onclick="openPage('invites')">Invite a friend</button>` : ''}
       ${!inviter() && Net.on() ? `<button onclick="openJoin()">I have a code</button>` : ''}
       ${testMode() ? `<button onclick="addPractice()">Add a pretend rival</button><p class="faint">Test builds only.</p>` : ''}</div>`;
@@ -607,7 +607,7 @@ function matchCard(){
   }
   return `<button class="card row ${dc.of && !unseen && dc.won * 2 > dc.of ? 'win' : ''}" style="text-align:left;font-weight:400;padding:16px" onclick="${tap}">
     <div class="seals">${rs.slice(0, 4).map(() => seal(34)).join('')}</div>
-    <div class="grow"><b style="font-size:17px">${rs.length} matches</b><div class="faint">${unseen ? 'Results are in. Tap to break the seal.' : 'All sealed until 8 AM'}</div></div>
+    <div class="grow"><b style="font-size:17px">${rs.length} battles</b><div class="faint">${unseen ? 'Results are in. Tap to break the seal.' : 'All sealed until 8 AM'}</div></div>
     ${dc.of && !unseen ? `<div style="text-align:right"><div class="lbl">Crowns held</div><div class="d gold" style="font-size:22px">${dc.won} of ${dc.of}</div></div>` : ''}
   </button>`;
 }
@@ -640,7 +640,7 @@ function nameSheet(title, action, fn){
 // What counts (board 4b): view only. Changes happen only in Settings › My app colors.
 function openCounts(){
   sheet(`<div class="spread"><h2 style="margin:0">What counts</h2><button class="ib" onclick="closeSheet()" aria-label="Close">×</button></div>
-    <p class="dim s15">The same for every player, so every match is fair.</p>
+    <p class="dim s15">The same for every player, so every battle is fair.</p>
     ${TIERS.map(t => `<div class="card"><div class="spread"><div class="row"><span class="dot" style="background:${t.color}"></span><b>${t.name}</b></div><div><b class="num" style="color:${t.color}">−${t.cost}</b> <span class="faint">per 15 min</span></div></div>
       <div style="margin-top:10px">${t.ticks.map(x => `<span class="pill" style="color:var(--ink)">${esc(x)}</span>`).join('')}</div><p class="faint" style="margin:2px 0 0">${esc(t.note)}</p></div>`).join('')}
     <div class="card"><div class="spread"><div class="row"><span class="dot" style="background:var(--free)"></span><b>Free</b></div><b class="num" style="color:var(--free)">0</b></div>
@@ -654,7 +654,7 @@ function matchesView(){
   const tabs = [['day','Yesterday'],['week','Week'],['m30','30 days'],['all','All time']];
   let body = '';
   if (tab === 'all') body = goldPitch();
-  else if (!rs.length) body = '<p class="dim s15">No matches yet. Invite a friend to start one.</p>';
+  else if (!rs.length) body = '<p class="dim s15">No battles yet. Invite a friend to start one.</p>';
   else {
     const from = tab === 'day' ? open : tab === 'week' ? weekStart(open) : addDays(open, -29);
     const rows = rs.map(m => ({m, ...totals(m, from, open)}));
@@ -672,12 +672,12 @@ function matchesView(){
     const group = (label, list, fn, win) => list.length ? `<p class="lbl" style="margin-top:18px">${label} · ${list.length}</p><div class="card ${win ? 'win' : ''}" style="padding:4px 16px;margin-top:6px">${list.map(fn).join('')}</div>` : '';
     body = `${has.length ? `<h2>${head}</h2>` : ''}<p class="faint">${rule}</p>
       ${group(won ? 'You won' : 'You lead', ahead, row, true)}${group(won ? 'They won' : 'You trail', behind, row)}
-      ${group('No result yet', none, r => `<div class="mrow">${avatar(r.m)}<div class="grow"><b>${esc(r.m.name)}</b><div class="faint">${r.m.startDay >= today() ? 'First match day is today. Results at 8 AM tomorrow.' : 'Waiting for ' + esc(r.m.name) + '\'s phone to send its total.'}</div></div></div>`)}`;
+      ${group('No result yet', none, r => `<div class="mrow">${avatar(r.m)}<div class="grow"><b>${esc(r.m.name)}</b><div class="faint">${r.m.startDay >= today() ? 'First battle day is today. Results at 8 AM tomorrow.' : 'Waiting for ' + esc(r.m.name) + '\'s phone to send its total.'}</div></div></div>`)}`;
   }
-  return `${backBar('Your matches')}
+  return `${backBar('Your battles')}
     <div class="tabs">${tabs.map(t => `<button class="${t[0] === tab ? 'on' : ''}" onclick="pageState.tab='${t[0]}';repaint()">${t[1]}</button>`).join('')}</div>
     ${body}
-    <p class="faint" style="text-align:center;margin-top:22px">One score counts in every match. To end a match, go to Settings.</p>`;
+    <p class="faint" style="text-align:center;margin-top:22px">One score counts in every battle. To end a battle, go to Settings.</p>`;
 }
 function goldPitch(){
   return `<div class="card" style="text-align:center;padding:28px 20px">
@@ -765,7 +765,7 @@ function invitesView(){
       <button class="small" onclick="newInvite()">${free ? 'Free' : '$0.99'}</button></div>`;
     if (m.active) return `<div class="slot"><div class="ico" style="background:var(--free)">${ICON.check}</div><div class="grow"><b>Joined</b><div class="faint">You named them ${esc(m.name)}</div></div></div>`;
     const age = diffDays(m.made, today());
-    if (m.ended || age >= RETURN_DAYS) return `<div class="slot"><div class="ico">${ICON.back}</div><div class="grow"><b>Back to you</b><div class="faint">${m.ended ? 'This match ended.' : 'No one used it in 7 days.'} Send it again for free.</div></div>
+    if (m.ended || age >= RETURN_DAYS) return `<div class="slot"><div class="ico">${ICON.back}</div><div class="grow"><b>Back to you</b><div class="faint">${m.ended ? 'This battle ended.' : 'No one used it in 7 days.'} Send it again for free.</div></div>
       <button class="small main" onclick="resend('${m.code}')">Send again</button></div>`;
     const left = RETURN_DAYS - age;
     return `<div class="slot"><div class="ico">${ICON.clock}</div><div class="grow"><b>Waiting · ${esc(m.code)}</b><div class="faint">For ${esc(m.name)}. Comes back to you in ${left} ${left === 1 ? 'day' : 'days'} if no one uses it</div></div>
@@ -868,7 +868,7 @@ function showReveal(day){
   closePage(); closeSheet();
   const old = $('#reveal'); if (old) old.remove();
   const o = document.createElement('div'); o.className = 'reveal'; o.id = 'reveal';
-  const head = esc(weekday(day)).toUpperCase() + ' · ' + (rs.length === 1 ? 'YOU AND ' + esc(rs[0].name).toUpperCase() : rs.length + ' MATCHES');
+  const head = esc(weekday(day)).toUpperCase() + ' · ' + (rs.length === 1 ? 'YOU AND ' + esc(rs[0].name).toUpperCase() : rs.length + ' BATTLES');
   o.innerHTML = `<div class="stage"><p class="lbl">${head}</p>
     <button class="sealwrap bf-bob" id="sealbtn" aria-label="Break the seal"><div class="bf-l">${seal(200)}</div><div class="bf-r">${seal(200)}</div></button>
     <h2 style="margin-top:28px">Tap to break the seal</h2><p class="dim s15" style="margin:0">${rs.length === 1 ? 'Both scores are in.' : 'All ' + rs.length + ' results are in.'}</p></div>`;
@@ -909,7 +909,7 @@ function showResult(day, rs, head){
   const delay = i => reduced() ? 0 : .35 + i * .45;
   o.innerHTML = `<div class="stage" style="justify-content:flex-start;text-align:left;align-items:stretch;overflow:auto"><p class="lbl">${head}</p>
     <div class="d bf-pop" style="font-size:64px;line-height:1.05;color:var(--gold)">${wins} of ${res.length}</div>
-    <p class="dim s15">You hold ${wins} of ${res.length} crowns today. Your ${fmt(me)} counted in every match.</p>
+    <p class="dim s15">You hold ${wins} of ${res.length} crowns today. Your ${fmt(me)} counted in every battle.</p>
     <div class="rlist">${res.map((r, i) => { const w = me > r.b, t = me === r.b;
       return `<div class="mrow bf-up" style="animation-delay:${delay(i)}s">${crown(26, w ? 'gold' : 'pewter')}<div class="grow"><b>${w ? 'You beat ' + esc(r.m.name) : t ? 'You tied ' + esc(r.m.name) : esc(r.m.name) + ' won'}</b></div><span class="num faint">${fmt(me)} to ${fmt(r.b)}</span></div>`; }).join('')}</div>
     <p class="faint bf-up" style="animation-delay:${delay(res.length)}s">${lost.length ? esc(listNames(lost.map(r => r.m.name))) + ' got you this time. New day, new 1,000 points.' : 'A clean sweep. New day, new 1,000 points.'}</p></div>
@@ -931,10 +931,10 @@ function settingsView(){
       <button class="setrow plain" onclick="changeTiers()"><div class="grow"><b class="s15">My app colors</b><div class="faint">Changes start tomorrow</div></div><span class="chev">›</span></button>
       <div class="setrow"><div class="grow"><b class="s15">Share my daily score</b><div class="faint">Needed to play</div></div><label class="sw"><input type="checkbox" checked disabled><i></i></label></div>
     </div>
-    <p class="lbl" style="margin-top:18px">Your matches</p>
-    <div class="card" style="padding:4px 16px">${rs.length ? rs.map(m => `<div class="mrow">${avatar(m)}<div class="grow"><b class="s15">${m.ended ? 'Your match with ' + esc(m.name) + ' has ended' : 'Playing with ' + esc(m.name)}</b><div class="faint">${m.ended ? '' : 'Since ' + since(m.startDay)}${m.role === 'p' ? ' · pretend rival' : ''}</div></div>
-      ${m.ended ? `<button class="small" onclick="removeEnded('${m.code}')">Clear</button>` : `<button class="small" onclick="confirmEnd('${m.code}')">End match</button>`}</div>`).join('')
-      : `<div class="mrow"><div class="grow"><b class="s15">No match right now</b></div><button class="small" onclick="openPage('invites')">Invite a friend</button></div>`}</div>
+    <p class="lbl" style="margin-top:18px">Your battles</p>
+    <div class="card" style="padding:4px 16px">${rs.length ? rs.map(m => `<div class="mrow">${avatar(m)}<div class="grow"><b class="s15">${m.ended ? 'Your battle with ' + esc(m.name) + ' has ended' : 'Battle with ' + esc(m.name)}</b><div class="faint">${m.ended ? '' : 'Since ' + since(m.startDay)}${m.role === 'p' ? ' · pretend rival' : ''}</div></div>
+      ${m.ended ? `<button class="small" onclick="removeEnded('${m.code}')">Clear</button>` : `<button class="small" onclick="confirmEnd('${m.code}')">End battle</button>`}</div>`).join('')
+      : `<div class="mrow"><div class="grow"><b class="s15">No battle right now</b></div><button class="small" onclick="openPage('invites')">Invite a friend</button></div>`}</div>
     <p class="lbl" style="margin-top:18px">What we share</p>
     <div class="card"><p class="faint" style="margin:0">Just your point total for the day. Never how long you were on your phone, which apps you used, or anyone's name. Scores are deleted after ${KEEP_DAYS} days.</p></div>
     <div class="card" style="padding:4px 16px">
@@ -965,15 +965,15 @@ async function changeTiers(){
 }
 function confirmEnd(code){
   const m = S.matches.find(x => x.code === code); if (!m) return;
-  sheet(`<div class="stack"><h2>End your match with ${esc(m.name)}?</h2><p class="dim s15">Are you sure? Your scores and history with ${esc(m.name)} will be cleared, and ${esc(m.name)} will see that the match ended. You can't undo this.</p>
-    <button class="danger" id="yes">Yes, end the match</button><button class="link" onclick="closeSheet()">Keep playing</button></div>`);
+  sheet(`<div class="stack"><h2>End your battle with ${esc(m.name)}?</h2><p class="dim s15">Are you sure? Your scores and history with ${esc(m.name)} will be cleared, and ${esc(m.name)} will see that the battle ended. You can't undo this.</p>
+    <button class="danger" id="yes">Yes, end the battle</button><button class="link" onclick="closeSheet()">Keep playing</button></div>`);
   $('#yes').onclick = async () => { try { await endMatch(m); closeSheet(); render(); } catch(e) { toast('Couldn\'t reach the server. Try again.'); } };
 }
 function removeEnded(code){ const m = S.matches.find(x => x.code === code); if (m) { S.matches = S.matches.filter(x => x !== m); delete S.res[m.code]; delete S.sentTo[m.code]; save(); } render(); }
 function confirmDelete(){
   const names = rivals().map(m => m.name);
   sheet(`<div class="stack"><h2>Delete my data?</h2><p class="dim s15">This deletes your account and all your daily scores from our server, and clears the app on this phone.</p>
-    <ul class="dim s15" style="padding-left:20px;margin:0">${names.length ? `<li>Your ${names.length === 1 ? 'match' : 'matches'} with ${esc(listNames(names))} will end.</li>` : ''}<li>Your wins and history will be gone.</li><li>Unused invites can't be refunded.</li></ul>
+    <ul class="dim s15" style="padding-left:20px;margin:0">${names.length ? `<li>Your ${names.length === 1 ? 'battle' : 'battles'} with ${esc(listNames(names))} will end.</li>` : ''}<li>Your wins and history will be gone.</li><li>Unused invites can't be refunded.</li></ul>
     <button class="danger" id="del" onclick="doDelete()">Delete everything</button><button class="link" onclick="closeSheet()">Cancel</button></div>`);
 }
 async function doDelete(){

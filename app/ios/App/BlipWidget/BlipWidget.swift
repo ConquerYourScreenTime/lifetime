@@ -227,10 +227,10 @@ struct MediumView: View {
                 if e.rivals > 0 {
                     HStack(spacing: 8) {
                         HStack(spacing: -8) { ForEach(0..<min(e.rivals, 4), id: \.self) { _ in Seal().frame(width: 20) } }
-                        Text("\(e.rivals == 1 ? "Your match" : "\(e.rivals) matches") sealed till 8 AM").font(.system(size: 11)).foregroundColor(dim).lineLimit(2)
+                        Text("\(e.rivals == 1 ? "Your battle" : "\(e.rivals) battles") sealed till 8 AM").font(.system(size: 11)).foregroundColor(dim).lineLimit(2)
                     }
                 } else {
-                    Text("Invite a friend to start a match.").font(.system(size: 11)).foregroundColor(dim)
+                    Text("Invite a friend to start a battle.").font(.system(size: 11)).foregroundColor(dim)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

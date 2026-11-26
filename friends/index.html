@@ -4,59 +4,61 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Blip</title>
-<meta name="theme-color" content="#2b2350">
+<meta name="theme-color" content="#0d0d0f">
 <style>
 :root{
-  --bg:#211a40; --card:#2f2758; --card2:#3a3168; --ink:#fbf8ff; --dim:#c3b9e6; --faint:#8e84b8; --line:rgba(255,255,255,.1);
-  --red:#ff5d6c; --orange:#ffa24a; --yellow:#ffd84d; --free:#5fd6a4; --accent:#8b7bff; --win:#5fd6a4; --lose:#ff8a95;
+  /* Black and Gold (Matthew, 2026-11-25). Gold is only for winning moments; everyday buttons are ivory. */
+  --bg:#0d0d0f; --card:#1c1c21; --card2:#2a2a31; --ink:#f5f1e6; --dim:#b5ad99; --faint:#9a937f; --line:rgba(255,255,255,.1);
+  --red:#e86a74; --orange:#dc9c55; --free:#6fc29b; --accent:#ece4d0; --accent-ink:#141210; --gold:#c9a54a; --win:#c9a54a; --lose:#f08f97;
+  --well:#141418; --serif:ui-serif,"New York",Georgia,serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif}
 body{min-height:100vh}
 .app{max-width:480px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
-h1{font-size:28px;margin:8px 0 4px;letter-spacing:-.3px}
-h2{font-size:20px;margin:0 0 8px}
+h1{font-family:var(--serif);font-size:28px;margin:8px 0 4px;letter-spacing:.2px}
+h2{font-family:var(--serif);font-size:21px;margin:0 0 8px}
 p{margin:6px 0}
 .dim{color:var(--dim)} .faint{color:var(--faint);font-size:14px}
 .card{background:var(--card);border-radius:20px;padding:16px;margin:12px 0}
 .row{display:flex;align-items:center;gap:12px}
 .spread{display:flex;align-items:center;justify-content:space-between;gap:12px}
 button{font:inherit;border:0;border-radius:14px;padding:14px 16px;font-weight:600;cursor:pointer;color:var(--ink);background:var(--card2);width:100%}
-button.main{background:var(--accent);color:#fff}
+button.main{background:var(--accent);color:var(--accent-ink)}
 button.small{width:auto;padding:8px 12px;font-size:14px;border-radius:10px}
 button.link{background:none;color:var(--dim);padding:8px;width:auto;font-weight:500;text-decoration:underline}
-button.danger{background:#5a2238;color:#ffd3da}
+button.danger{background:#3a1a1f;color:#f6c9cf}
 button:disabled{opacity:.5}
 .stack>*+*{margin-top:10px}
-input[type=text],input[type=time]{font:inherit;width:100%;padding:14px;border-radius:14px;border:1px solid var(--line);background:#1a1435;color:var(--ink)}
+input[type=text],input[type=time]{font:inherit;width:100%;padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--well);color:var(--ink)}
 input.code{text-transform:uppercase;letter-spacing:6px;text-align:center;font-size:24px;font-weight:700}
 .dot{width:14px;height:14px;border-radius:50%;flex:none}
 .tier{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
 .tier:first-child{border-top:0}
 .tier .what{flex:1;min-width:0}
 .tier .cost{font-weight:700;font-variant-numeric:tabular-nums}
-.big{font-size:64px;font-weight:800;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums}
-.bar{height:10px;border-radius:6px;background:#1a1435;overflow:hidden;margin:12px 0 4px;display:flex}
+.big{font-family:var(--serif);font-size:64px;font-weight:700;letter-spacing:1px;line-height:1.05;font-variant-numeric:tabular-nums}
+.bar{height:10px;border-radius:6px;background:var(--card);overflow:hidden;margin:12px 0 4px;display:flex}
 .bar i{display:block;height:100%}
 .pill{display:inline-block;padding:4px 10px;border-radius:99px;background:var(--card2);font-size:13px;font-weight:600}
-.codebox{font-size:34px;font-weight:800;letter-spacing:8px;text-align:center;padding:12px;background:#1a1435;border-radius:14px;margin:8px 0}
+.codebox{font-size:34px;font-weight:800;letter-spacing:8px;text-align:center;padding:12px;background:var(--well);border-radius:14px;margin:8px 0}
 .topbar{display:flex;justify-content:space-between;align-items:center}
 .gear{width:auto;background:var(--card);padding:10px 12px;border-radius:12px;font-size:15px}
 .step{display:flex;gap:12px;align-items:flex-start}
 .step .n{width:28px;height:28px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
-.step.done .n{background:var(--free);color:#123}
+.step.done .n{background:var(--free);color:#0d0d0f}
 .ticks{margin:6px 0 10px;padding-left:20px;color:var(--dim)}
 .ticks li{margin:2px 0}
-.overlay{position:fixed;inset:0;background:rgba(14,9,32,.86);display:flex;align-items:flex-end;justify-content:center;z-index:20;animation:fade .2s}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:flex-end;justify-content:center;z-index:20;animation:fade .2s}
 .sheet{background:var(--bg);width:100%;max-width:480px;max-height:92vh;overflow:auto;border-radius:24px 24px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom))}
-.reveal{position:fixed;inset:0;z-index:30;background:radial-gradient(circle at 50% 30%,#4a3c94,#1a1435 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;animation:fade .3s}
+.reveal{position:fixed;inset:0;z-index:30;background:radial-gradient(circle at 50% 30%,#2a2416,#0d0d0f 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;animation:fade .3s}
 .vs{display:flex;gap:16px;width:100%;max-width:380px;margin:24px 0}
 .vs>div{flex:1;background:rgba(255,255,255,.07);border-radius:20px;padding:18px 8px}
-.vs .score{font-size:44px;font-weight:800;font-variant-numeric:tabular-nums}
+.vs .score{font-family:var(--serif);font-size:44px;font-weight:700;font-variant-numeric:tabular-nums}
 .vs .won{outline:3px solid var(--win)}
-.verdict{font-size:34px;font-weight:800;opacity:0;transform:scale(.8);transition:all .5s cubic-bezier(.2,1.6,.4,1)}
+.verdict{font-family:var(--serif);font-size:34px;font-weight:700;opacity:0;transform:scale(.8);transition:all .5s cubic-bezier(.2,1.6,.4,1)}
 .verdict.show{opacity:1;transform:scale(1)}
-.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#000c;color:#fff;padding:10px 16px;border-radius:12px;z-index:40;font-size:14px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--card2);color:var(--ink);border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:40;font-size:14px}
 table.costs{width:100%;border-collapse:collapse;margin:8px 0}
 table.costs td{padding:8px 4px;border-top:1px solid var(--line)}
 table.costs td:last-child{text-align:right;font-weight:700}
@@ -73,19 +75,23 @@ table.costs td:last-child{text-align:right;font-weight:700}
 // =====================================================================================
 // Blip friends game, build 1 (plan v2, Lawyer OK 2026-11-25).
 // You and a friend each start the day with 1,000 points. Every 15 minutes in a tier spends points:
-// Red 40, Orange 20, Yellow 10, Free 0. The same for everyone. After midnight, whoever kept more wins.
+// Red 40, Orange 20, Free 0 (Yellow dropped 2026-11-25 to make setup easier). The same for everyone. After midnight, whoever kept more wins, and everyone sees results at 8 AM their time (Matthew 2026-11-25).
 // Privacy: minutes per tier stay on this phone. Only the day's points total goes online, after the day ends,
 // tied to an anonymous player ID and the match code. No names: you name your friend on your own phone.
 // =====================================================================================
 const IS_APP = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
 const CFG = window.FRIENDS_CONFIG || {};
-const BANK = 1000, STEP = 15;
+const BANK = 1000, STEP = 15, REVEAL_HOUR = 8;
+// The newest day whose result is open: yesterday from 8 AM, the day before until then.
+function resultDay(){ return addDays(today(), new Date().getHours() >= REVEAL_HOUR ? -1 : -2); }
+function dayLabel(d){ return d === addDays(today(), -1) ? 'Yesterday' : d === addDays(today(), -2) ? 'Two days ago' : d; }
 const TIERS = [
   {id:'red', name:'Red', cost:40, color:'var(--red)', ticks:['Social','Entertainment'], note:'Social media, short video and streaming.'},
-  {id:'orange', name:'Orange', cost:20, color:'var(--orange)', ticks:['Games','Shopping & Food','Safari (search for it and add it)'], note:'Games, shopping and web browsing.'},
-  {id:'yellow', name:'Yellow', cost:10, color:'var(--yellow)', ticks:['Creativity','Information & Reading','Health & Fitness','Other'], note:'Everything else that isn\'t useful.'},
+  {id:'orange', name:'Orange', cost:20, color:'var(--orange)', ticks:['Games','Shopping & Food','Safari (search for it)'], note:'Games, shopping and web browsing.'},
 ];
-const FREE_TICKS = ['Productivity & Finance','Education','Utilities','Travel (Maps)','Messages and Phone'];
+// How many of each Apple should report back: Safari is an app, the rest are categories.
+TIERS[0].want = {categories:2, apps:0}; TIERS[1].want = {categories:2, apps:1};
+const FREE_TICKS = ['Messages and Phone','Maps','Productivity & Finance','Education','Reading','Health & Fitness','Creativity','Utilities'];
 const KEY = 'blip-friends';
 
 // ---------- native bridge (same approach as Blip: no bundler, talk to the bridge directly) ----------
@@ -103,11 +109,11 @@ const fakeST = {
   _d(){ return S.demo = S.demo || {auth:false, tiers:{}, min:{}, since:''}; },
   async status(){ return {authorized: this._d().auth}; },
   async authorize(){ this._d().auth = true; save(); return {authorized:true}; },
-  async tierPick({tier}){ const d = this._d(); d.tiers[tier] = 2; save(); return {picked:true, tomorrow: !!d.ready}; },
+  async tierPick({tier, categories, apps}){ const d = this._d(); d.tiers[tier] = categories; save(); return {picked:true, tomorrow: !!d.ready, categories, apps}; },
   async tierStatus(){ const d = this._d(); const o = {ready: !!d.ready, pending:false, since: d.since}; TIERS.forEach(t => o[t.id] = {apps:0, categories: d.tiers[t.id] || 0}); return o; },
   async friendsStart(){ const d = this._d(); d.ready = true; d.since = d.since || today(); save(); return {started:true}; },
   async friendsResync(){ return {resynced:false}; },
-  async friendsMinutes({day}){ const m = this._d().min[day] || {}; const o = {red:m.red||0, orange:m.orange||0, yellow:m.yellow||0}; o.points = points(o); o.sent = !!(S.sent||{})[day]; return o; },
+  async friendsMinutes({day}){ const m = this._d().min[day] || {}; const o = {red:m.red||0, orange:m.orange||0}; o.points = points(o); o.sent = !!(S.sent||{})[day]; return o; },
   async friendsSync(){ return {}; }, async friendsWipe(){ delete S.demo; return {}; },
   async remindOn(){ return {granted:true}; }, async remindOff(){ return {}; },
   async env(){ return {testflight:true}; },
@@ -258,10 +264,11 @@ async function trimOld(){
 }
 
 // ---------- the daily cycle: send finished days, fetch the friend's, find what to reveal ----------
-let tierInfo = null, todayMin = {red:0, orange:0, yellow:0, points:BANK}, busy = false, offline = false;
+let tierInfo = null, todayMin = {red:0, orange:0, points:BANK}, busy = false, offline = false;
 async function refresh(){
   if (busy) return; busy = true;
   try {
+    if (S.notify && S.notify.time !== '08:00') { S.notify.time = '08:00'; save(); applyNotify().catch(()=>{}); }  // older builds let players pick a time
     await ST.friendsResync().catch(()=>{});
     tierInfo = await ST.tierStatus().catch(() => null);
     todayMin = await ST.friendsMinutes({day:today()}).catch(() => todayMin);
@@ -305,7 +312,7 @@ function setupView(){
   const st = S.setupStep || 'hello';
   if (st === 'hello') return `
     <h1 style="margin-top:32px">Beat a friend at putting your phone down.</h1>
-    <p class="dim">You both start every day with ${fmt(BANK)} points. Time on your phone spends them, and social media spends them fastest. Just after midnight you find out who kept more.</p>
+    <p class="dim">You both start every day with ${fmt(BANK)} points. Time on your phone spends them, and social media spends them fastest. At 8 AM the next morning you find out who kept more.</p>
     <div class="card stack">
       ${TIERS.map(t => `<div class="row"><span class="dot" style="background:${t.color}"></span><div style="flex:1"><b>${t.name}</b> <span class="faint">${esc(t.note)}</span></div><b>${t.cost}</b></div>`).join('')}
       <div class="row"><span class="dot" style="background:var(--free)"></span><div style="flex:1"><b>Free</b> <span class="faint">Messages, Maps, work and school apps.</span></div><b>0</b></div>
@@ -320,13 +327,13 @@ function setupView(){
   if (st === 'tiers') {
     const t = TIERS[setupTier];
     return `
-    <p class="faint" style="margin-top:24px">Step ${setupTier+1} of 3</p>
+    <p class="faint" style="margin-top:24px">Step ${setupTier+1} of ${TIERS.length}</p>
     <h1><span class="dot" style="display:inline-block;background:${t.color};margin-right:8px"></span>${t.name}: ${t.cost} points per 15 min</h1>
-    <p class="dim">In Apple's list, tick exactly these, then tap Done:</p>
     <div class="card"><ul class="ticks">${t.ticks.map(x => `<li><b>${esc(x)}</b></li>`).join('')}</ul>
-      <p class="faint">Everyone ticks the same ones, so the game is fair. Leave everything else unticked.</p></div>
-    ${setupTier === 2 ? `<p class="faint">Not ticked anywhere, so free: ${FREE_TICKS.map(esc).join(', ')}.</p>` : ''}
-    <button class="main" onclick="pickTier()">Open Apple's list</button>`;
+      <p class="faint">This list stays at the top of Apple's screen while you tick, so there's nothing to remember. Everyone ticks the same ones, so the game is fair.</p></div>
+    ${setupTier === TIERS.length - 1 ? `<p class="faint">Everything else is free, like ${FREE_TICKS.map(esc).join(', ')}.</p>` : ''}
+    ${S.tickWrong ? `<p class="faint" style="color:var(--lose)">That doesn't look right. Tick only the ones listed, then tap Done.</p>` : ''}
+    <button class="main" onclick="pickTier()">${S.tickWrong ? 'Try again' : 'Open Apple\'s list'}</button>`;
   }
   if (st === 'ready') return `
     <h1 style="margin-top:32px">You're set up</h1>
@@ -339,10 +346,18 @@ async function connectST(){
   const r = await ST.authorize().catch(() => ({authorized:false}));
   if (r.authorized) { S.stDenied = false; setupTier = 0; go('tiers'); } else { S.stDenied = true; save(); render(); }
 }
+// Opens Apple's list with what to tick pinned above it. Resolves true when the counts match what we asked for.
+async function openPicker(t){
+  const r = await ST.tierPick({tier:t.id, ticks:t.ticks, categories:t.want.categories, apps:t.want.apps}).catch(() => ({picked:false}));
+  if (!r.picked) return null;
+  return r.categories === undefined || (r.categories === t.want.categories && r.apps === t.want.apps);
+}
 async function pickTier(){
-  const r = await ST.tierPick({tier:TIERS[setupTier].id}).catch(() => ({picked:false}));
-  if (!r.picked) return;
-  if (setupTier < 2) { setupTier++; render(); return; }
+  const ok = await openPicker(TIERS[setupTier]);
+  if (ok === null) return;
+  S.tickWrong = !ok; save();
+  if (!ok) { render(); return; }
+  if (setupTier < TIERS.length - 1) { setupTier++; render(); return; }
   try { await ST.friendsStart(); go('ready'); } catch(e) { toast('Screen Time didn\'t start. Try again.'); }
 }
 function finishSetup(){ S.setup = true; delete S.setupStep; save(); refresh(); }
@@ -370,9 +385,9 @@ function homeView(){
 
 function record(){
   const r = S.results || {}, m = S.match; let w = 0, l = 0, t = 0, ww = 0, wl = 0;
-  const wk = weekStart(addDays(today(), -1));
+  const open = resultDay(), wk = weekStart(open);
   for (const d in r) {
-    if (!m || d < m.startDay || d >= today() || r[d].me == null || r[d].them == null) continue;
+    if (!m || d < m.startDay || d > open || r[d].me == null || r[d].them == null) continue;
     const res = r[d].me > r[d].them ? 1 : r[d].me < r[d].them ? -1 : 0;
     if (res > 0) w++; else if (res < 0) l++; else t++;
     if (d >= wk) { if (res > 0) ww++; else if (res < 0) wl++; }
@@ -381,7 +396,7 @@ function record(){
 }
 function lastResult(){
   const m = S.match; if (!m || !m.active) return null;
-  const y = addDays(today(), -1); if (y < m.startDay) return null;
+  const y = resultDay(); if (y < m.startDay) return null;
   return {day:y, ...(S.results && S.results[y] || {})};
 }
 function matchView(){
@@ -407,17 +422,17 @@ function matchView(){
   let lastLine = '';
   if (last && last.me != null && last.them != null) {
     const diff = Math.abs(last.me - last.them);
-    lastLine = `<button onclick="showReveal('${last.day}')">${last.me > last.them ? 'Yesterday: you won by ' + fmt(diff) : last.me < last.them ? 'Yesterday: ' + esc(friend()) + ' won by ' + fmt(diff) : 'Yesterday: a tie'} · Replay</button>`;
+    lastLine = `<button onclick="showReveal('${last.day}')">${last.me > last.them ? dayLabel(last.day) + ': you won by ' + fmt(diff) : last.me < last.them ? dayLabel(last.day) + ': ' + esc(friend()) + ' won by ' + fmt(diff) : dayLabel(last.day) + ': a tie'} · Replay</button>`;
   } else if (last) {
-    lastLine = `<p class="dim">Yesterday: waiting for ${esc(friend())}'s phone to send its total.${offline ? ' (No connection right now.)' : ''}</p>`;
+    lastLine = `<p class="dim">${dayLabel(last.day)}: waiting for ${esc(friend())}'s phone to send its total.${offline ? ' (No connection right now.)' : ''}</p>`;
   }
   return `
     <div class="card stack">
       <div class="spread"><h2 style="margin:0">You vs ${esc(friend())}</h2>${m.practice ? '<span class="pill">Practice</span>' : ''}</div>
-      <p class="dim">${esc(friend())}'s score is hidden until midnight.</p>
+      <p class="dim">${esc(friend())}'s score is hidden until 8 AM tomorrow.</p>
       <div class="spread"><span>This week</span><b>You ${rec.ww} · ${esc(friend())} ${rec.wl}</b></div>
       <div class="spread"><span>All time</span><b>${rec.w} won · ${rec.l} lost${rec.t ? ' · ' + rec.t + ' tied' : ''}</b></div>
-      ${m.startDay === today() ? '<p class="faint">Today is your first match day. Results arrive just after midnight.</p>' : ''}
+      ${m.startDay === today() ? '<p class="faint">Today is your first match day. Results arrive at 8 AM tomorrow.</p>' : ''}
       ${lastLine}
     </div>`;
 }
@@ -448,17 +463,16 @@ async function shareCode(){
 function startPractice(){ S.match = {code:'P' + Date.now().toString(36).toUpperCase(), name:'Pat', practice:true, active:true, startDay:today()}; save(); askNotify().then(refresh); }
 function clearMatch(){ S.match = null; save(); render(); }
 
-// ---------- morning notification (never at midnight) ----------
+// ---------- morning notification: 8 AM for everyone, the moment results open ----------
 async function askNotify(){
-  if (S.notify) return;
+  if (S.notify) { if (S.notify.time !== '08:00') { S.notify.time = '08:00'; save(); await applyNotify(); } return; }
   S.notify = {on:true, time:'08:00'}; save();
   await applyNotify();
 }
 async function applyNotify(){
   const n = S.notify;
   if (!n || !n.on || !S.match) return ST.remindOff().catch(()=>{});
-  const [h, m] = n.time.split(':').map(Number);
-  const r = await ST.remindOn({hour:h, minute:m, name:'Blip', body:'Yesterday\'s results are in. See who won.'}).catch(() => ({granted:false}));
+  const r = await ST.remindOn({hour:REVEAL_HOUR, minute:0, name:'Blip', body:'Yesterday\'s results are in. See who won.'}).catch(() => ({granted:false}));
   if (!r.granted) { n.on = false; save(); toast('Notifications are off for Blip in iPhone Settings.'); }
 }
 
@@ -473,7 +487,7 @@ function showReveal(day){
   S.seen = [S.seen || '', day].sort().pop(); save();
   const o = document.createElement('div'); o.className = 'reveal'; o.id = 'reveal';
   const name = esc(friend());
-  o.innerHTML = `<p class="dim">${day === addDays(today(), -1) ? 'Yesterday' : esc(day)}</p>
+  o.innerHTML = `<p class="dim">${esc(dayLabel(day))}</p>
     <div class="vs"><div id="vme"><div class="dim">You</div><div class="score" id="sme">0</div></div>
     <div id="vthem"><div class="dim">${name}</div><div class="score" id="sthem">0</div></div></div>
     <div class="verdict" id="verdict"></div><p class="dim" id="by" style="min-height:24px"></p>
@@ -499,9 +513,8 @@ function openSettings(){
   sheet(`<div class="stack">
     <div class="spread"><h2 style="margin:0">Settings</h2><button class="small" onclick="closeSheet()">Done</button></div>
     <div class="card">
-      <div class="switch"><span>Morning results notification</span><input type="checkbox" id="non" ${n.on ? 'checked' : ''} onchange="setNotify()"></div>
-      <div class="switch"><span class="dim">Time</span><input type="time" id="ntime" value="${n.time}" style="width:140px" onchange="setNotify()"></div>
-      <p class="faint">Results are ready just after midnight. The notification waits until this time.</p>
+      <div class="switch"><span>Tell me when results are in</span><input type="checkbox" id="non" ${n.on ? 'checked' : ''} onchange="setNotify()"></div>
+      <p class="faint">Results open for everyone at 8 AM, your time.</p>
     </div>
     <div class="card"><h2>How points work</h2>
       <table class="costs">${TIERS.map(t => `<tr><td><span class="dot" style="display:inline-block;background:${t.color};margin-right:8px"></span>${t.name}: ${t.ticks.map(esc).join(', ')}</td><td>${t.cost}</td></tr>`).join('')}
@@ -515,15 +528,23 @@ function openSettings(){
       <button class="danger" onclick="confirmDelete()">Delete my data</button></div>
   </div>`);
 }
-async function setNotify(){ S.notify = {on:$('#non').checked, time:$('#ntime').value || '08:00'}; save(); await applyNotify(); }
+async function setNotify(){ S.notify = {on:$('#non').checked, time:'08:00'}; save(); await applyNotify(); }
 async function changeTiers(){
   for (const t of TIERS) {
     const ok = await new Promise(res => {
-      sheet(`<div class="stack"><h2>${t.name}: tick exactly these</h2><ul class="ticks">${t.ticks.map(x => `<li><b>${esc(x)}</b></li>`).join('')}</ul><button class="main" id="ok">Open Apple's list</button><button class="link" id="no">Stop</button></div>`);
+      sheet(`<div class="stack"><h2>${t.name}: ${t.cost} points per 15 min</h2><ul class="ticks">${t.ticks.map(x => `<li><b>${esc(x)}</b></li>`).join('')}</ul><p class="faint">This list stays on screen while you tick.</p><button class="main" id="ok">Open Apple's list</button><button class="link" id="no">Stop</button></div>`);
       $('#ok').onclick = () => res(true); $('#no').onclick = () => res(false);
     });
     closeSheet(); if (!ok) break;
-    await ST.tierPick({tier:t.id}).catch(()=>{});
+    let good = await openPicker(t);
+    while (good === false) {
+      const again = await new Promise(res => {
+        sheet(`<div class="stack"><h2>That doesn't look right</h2><p class="dim">For ${t.name}, tick only: ${t.ticks.map(esc).join(', ')}.</p><button class="main" id="ok">Try again</button><button class="link" id="no">Skip</button></div>`);
+        $('#ok').onclick = () => res(true); $('#no').onclick = () => res(false);
+      });
+      closeSheet(); if (!again) break;
+      good = await openPicker(t);
+    }
   }
   toast('Saved. Your changes start tomorrow.'); refresh();
 }

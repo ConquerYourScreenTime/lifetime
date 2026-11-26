@@ -163,8 +163,8 @@ class MonitorExtension: DeviceActivityMonitor {
 // ---------- Blip friends game: midnight send ----------
 // Keep this copy of Friends identical to the one in ScreenTimePlugin.swift (the app and this extension can't share a file).
 enum Friends {
-    static let tiers = ["red", "orange", "yellow"]
-    static let cost = ["red": 40, "orange": 20, "yellow": 10]   // points per 15 minutes, the same for every player
+    static let tiers = ["red", "orange"]
+    static let cost = ["red": 40, "orange": 20]   // points per 15 minutes, the same for every player
     static let bank = 1000
     static let step = 15
     static let maxMinutes = 16 * 60
@@ -174,8 +174,8 @@ enum Friends {
         let f = DateFormatter(); f.calendar = Calendar(identifier: .gregorian); f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd"; return f.string(from: date)
     }
-    static func points(red: Int, orange: Int, yellow: Int) -> Int {
-        let spent = (red / step) * cost["red"]! + (orange / step) * cost["orange"]! + (yellow / step) * cost["yellow"]!
+    static func points(red: Int, orange: Int) -> Int {
+        let spent = (red / step) * cost["red"]! + (orange / step) * cost["orange"]!
         return max(0, bank - spent)
     }
     static func selection(_ d: UserDefaults?, _ tier: String) -> FamilyActivitySelection? {
@@ -245,7 +245,7 @@ extension MonitorExtension {
         guard defaults?.bool(forKey: "fsent-" + day) != true, let s = defaults?.dictionary(forKey: "friends-sync") as? [String: String],
               let key = s["apiKey"], let project = s["projectId"], let refresh = s["refreshToken"], let uid = s["uid"], let match = s["match"] else { return }
         let m = Friends.tiers.map { defaults?.integer(forKey: "fmin-" + $0 + "-" + day) ?? 0 }
-        let points = Friends.points(red: m[0], orange: m[1], yellow: m[2])
+        let points = Friends.points(red: m[0], orange: m[1])
         if sendPoints(apiKey: key, project: project, refresh: refresh, uid: uid, match: match, day: day, points: points) {
             defaults?.set(true, forKey: "fsent-" + day); log("friends: sent \(day)")
         } else { log("friends: send failed, the app will retry when opened") }

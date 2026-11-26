@@ -3,10 +3,11 @@
 The phone app now runs `friends/index.html` (see `app/scripts/copy-web.js`). The website (`index.html` on main) and
 Blip Classic (branch `blip-classic`) are unchanged.
 
-- Points: everyone starts each day with 1,000. Every 15 minutes in a tier costs Red 40, Orange 20, Yellow 10, Free 0.
+- Points: everyone starts each day with 1,000. Every 15 minutes in a tier costs Red 40, Orange 20, Free 0 (Yellow dropped 2026-11-25).
   Same for every player. Tiers are fixed Apple categories the player ticks in Apple's picker.
+  While picking, what to tick stays pinned above Apple's list with a live count; a wrong count asks the player to try again.
 - Native: `ScreenTimePlugin.swift` (`tierPick`, `tierStatus`, `friendsStart`, `friendsResync`, `friendsMinutes`,
-  `friendsSync`, `friendsWipe`) and `BlipMonitor/MonitorExtension.swift` (watchers `tier-red|orange|yellow` in
+  `friendsSync`, `friendsWipe`) and `BlipMonitor/MonitorExtension.swift` (watchers `tier-red|orange` in
   15-minute steps; `fclock` wakes it just after midnight to send yesterday's points total). The `Friends` enum is
   copied in both files: keep them identical.
 - Online: Firebase (anonymous sign-in + Firestore, REST, no SDK). Keys in `friends/config.js`, rules in

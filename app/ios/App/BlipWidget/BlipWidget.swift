@@ -1,6 +1,5 @@
 import WidgetKit
 import SwiftUI
-import CoreText
 
 // Conquer Your Screen Time widgets (design handoff 2026-11-25, Widgets board; build 4).
 //  - Lock Screen: a line above the clock ("Leading 4 of 6 this week"), a ring with points left, and a wide widget
@@ -21,18 +20,10 @@ private let red = Color(red: 0.910, green: 0.416, blue: 0.455)     // #e86a74
 private let orange = Color(red: 0.863, green: 0.612, blue: 0.333)  // #dc9c55
 private let card = Color(red: 0.110, green: 0.110, blue: 0.129)    // #1c1c21
 
-// Playfair Display Bold: the app copies its bundled font (SIL OFL) into the App Group; registered here once.
+// Playfair Display Bold (SIL OFL), bundled in this extension and listed under UIAppFonts. Fonts registered at
+// run time from the App Group don't reach the Home Screen renderer, which left the Home widgets blank in build 4.
 private enum Display {
-    static let registered: Bool = {
-        guard let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else { return false }
-        let url = dir.appendingPathComponent("PlayfairDisplay-Bold.ttf")
-        guard FileManager.default.fileExists(atPath: url.path) else { return false }
-        CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
-        return true
-    }()
-    static func font(_ size: CGFloat) -> Font {
-        registered ? .custom("PlayfairDisplay-Bold", size: size) : .system(size: size, weight: .bold, design: .serif)
-    }
+    static func font(_ size: CGFloat) -> Font { .custom("PlayfairDisplay-Bold", size: size) }
 }
 
 private func fmt(_ n: Int) -> String {
@@ -142,20 +133,31 @@ extension Color {
     }
 }
 
+// One facet of the crown, in the 84 x 68 box of the icon art. Drawn as plain shapes: Canvas isn't safe in widgets.
+struct Facet: Shape {
+    let pts: [CGPoint]
+    func path(in r: CGRect) -> Path {
+        let k = min(r.width / 84, r.height / 68)
+        let ox = r.minX + (r.width - 84 * k) / 2, oy = r.minY + (r.height - 68 * k) / 2
+        var p = Path()
+        p.addLines(pts.map { CGPoint(x: ox + ($0.x - 8) * k, y: oy + ($0.y - 11) * k) })
+        p.closeSubpath()
+        return p
+    }
+}
+
 struct Crown: View {
     var fills: [String] = crownGold
     var mono: Color? = nil
     var body: some View {
-        Canvas { ctx, size in
-            let k = min(size.width / 84, size.height / 68)
-            let ox = (size.width - 84 * k) / 2, oy = (size.height - 68 * k) / 2
-            for (i, pts) in crownPoints.enumerated() {
-                var p = Path()
-                p.addLines(pts.map { CGPoint(x: ox + ($0.x - 8) * k, y: oy + ($0.y - 11) * k) })
-                p.closeSubpath()
+        ZStack {
+            ForEach(0..<crownPoints.count, id: \.self) { i in
                 let c = mono ?? Color(hex: fills[i])
-                ctx.fill(p, with: .color(c))
-                if mono != nil { ctx.stroke(p, with: .color(c), lineWidth: 0.5) }
+                if mono != nil {
+                    Facet(pts: crownPoints[i]).fill(c).overlay(Facet(pts: crownPoints[i]).stroke(c, lineWidth: 0.5))
+                } else {
+                    Facet(pts: crownPoints[i]).fill(c)
+                }
             }
         }
         .aspectRatio(84 / 68, contentMode: .fit)

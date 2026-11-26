@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B1E9C0DE0000000000000021 /* PlayfairDisplay-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B1E9C0DE0000000000000020 /* PlayfairDisplay-Bold.ttf */; };
 		B1E9C0DE0000000000000005 /* BlipWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E9C0DE0000000000000001 /* BlipWidget.swift */; };
 		B1E9C0DE0000000000000006 /* BlipWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B1E9C0DE0000000000000002 /* BlipWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		102487B447FBA24DCA9EB04C /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A3AA586F1275ACCD00BC97FD /* Foundation.framework */; };
@@ -60,6 +61,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		B1E9C0DE0000000000000020 /* PlayfairDisplay-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PlayfairDisplay-Bold.ttf"; sourceTree = "<group>"; };
 		B1E9C0DE0000000000000001 /* BlipWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BlipWidget.swift; sourceTree = "<group>"; };
 		B1E9C0DE0000000000000003 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B1E9C0DE0000000000000004 /* BlipWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = BlipWidget.entitlements; sourceTree = "<group>"; };
@@ -118,6 +120,7 @@
 			isa = PBXGroup;
 			children = (
 				B1E9C0DE0000000000000001 /* BlipWidget.swift */,
+				B1E9C0DE0000000000000020 /* PlayfairDisplay-Bold.ttf */,
 				B1E9C0DE0000000000000003 /* Info.plist */,
 				B1E9C0DE0000000000000004 /* BlipWidget.entitlements */,
 			);
@@ -299,6 +302,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B1E9C0DE0000000000000021 /* PlayfairDisplay-Bold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,5 +1,6 @@
 import DeviceActivity
 import FamilyControls
+import ManagedSettings
 import WidgetKit
 import Foundation
 
@@ -32,6 +33,12 @@ class MonitorExtension: DeviceActivityMonitor {
     override func intervalDidEnd(for activity: DeviceActivityName) {
         super.intervalDidEnd(for: activity)
         log(activity.rawValue + " end")
+        // Shield Wall (Dynasty): the time the player chose is up, so the wall comes down.
+        if activity == DeviceActivityName("wall") {
+            ManagedSettingsStore(named: ManagedSettingsStore.Name("wall")).clearAllSettings()
+            defaults?.removeObject(forKey: "wall-until")
+            WidgetCenter.shared.reloadAllTimelines()
+        }
     }
 
     override func intervalDidStart(for activity: DeviceActivityName) {
@@ -41,6 +48,7 @@ class MonitorExtension: DeviceActivityMonitor {
         // so a day still counts even if Blip isn't opened (Nov 15: daily was missing from midnight until Blip was opened).
         // Blip friends game: "fclock" wakes us at midnight to send yesterday's points total. Its watchers never restart Classic's counter.
         if activity == DeviceActivityName("fclock") { friendsMidnight(); return }
+        if activity == DeviceActivityName("wall") { return }
         if activity.rawValue.hasPrefix("tier-") { return }
         if activity != DeviceActivityName("daily"), !DeviceActivityCenter().activities.contains(DeviceActivityName("daily")) { restartDaily() }
         let key = "minutes-" + today()
@@ -194,7 +202,7 @@ enum Friends {
     static func startWatchers(_ d: UserDefaults?) throws {
         let center = DeviceActivityCenter()
         // Blip Classic / Nomad watchers are not used by this game: stop them (iOS allows only 20 at once).
-        let mine = Set((tiers.map { "tier-" + $0 } + ["fclock"]).map { DeviceActivityName($0) })
+        let mine = Set((tiers.map { "tier-" + $0 } + ["fclock", "wall"]).map { DeviceActivityName($0) })  // "wall" = Shield Wall
         center.stopMonitoring(center.activities.filter { !mine.contains($0) })
         let schedule = DeviceActivitySchedule(intervalStart: DateComponents(hour: 0, minute: 0),
                                               intervalEnd: DateComponents(hour: 23, minute: 59, second: 59), repeats: true)

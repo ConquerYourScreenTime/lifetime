@@ -210,6 +210,9 @@ const fakeST = {
   async friendsSync(){ return {}; }, async friendsWipe(){ delete S.demo; return {}; },
   async notifySchedule(){ return {granted:true}; }, async remindOff(){ return {}; },
   async conquerWidget(){ return {}; }, async haptic(){ return {}; },
+  async wallStart({hours}){ const until = Date.now()/1000 + hours*3600; this._d().wall = until; save(); return {until}; },
+  async wallStop(){ delete this._d().wall; save(); return {}; },
+  async wallStatus(){ const u = this._d().wall || 0; return {until: u > Date.now()/1000 ? u : 0}; },
   async env(){ return {testflight:true}; },
 };
 const ST = nativePlugin('ScreenTime') || fakeST;
@@ -403,13 +406,14 @@ async function trimOld(){
 }
 
 // ---------- the daily cycle: send finished days, fetch rivals' totals, find what to reveal ----------
-let tierInfo = null, todayMin = {red:0, orange:0, points:BANK}, busy = false, offline = false;
+let tierInfo = null, todayMin = {red:0, orange:0, points:BANK}, busy = false, offline = false, wallUntil = 0;
 async function refresh(){
   if (busy) return; busy = true;
   try {
     await ST.friendsResync().catch(()=>{});
     tierInfo = await ST.tierStatus().catch(() => null);
     todayMin = await ST.friendsMinutes({day:today()}).catch(() => todayMin);
+    wallUntil = dynasty() ? ((await ST.wallStatus().catch(() => ({until:0}))).until || 0) : 0;
     offline = false;
     await checkMatches().catch(() => { offline = true; });
     const since = (tierInfo && tierInfo.since) || '';
@@ -580,6 +584,7 @@ function todayView(){
   </div>
   ${tierInfo && tierInfo.pending ? '<p class="faint">Your app color changes start tomorrow.</p>' : ''}
   ${matchCard()}
+  ${dynasty() ? wallCard() : ''}
   <p class="dim s15" style="text-align:center;margin-top:36px">You're all caught up.<br>Put your phone down to keep your ${fmt(pts)}.</p>
   ${!IS_APP ? demoTools() : ''}`;
 }
@@ -852,6 +857,33 @@ function pushWidget(){
     revealed, revealedAt: revealed ? Math.round((S.seenAt || 0) / 1000) : 0, resultDay:open, rows}).catch(()=>{});
 }
 
+// ---------- Dynasty tools. Purchases aren't live yet, so TestFlight builds have a test switch in Settings. ----------
+// Whether someone has Dynasty never leaves this phone, and no tool changes scoring.
+function dynasty(){ return testMode() && !!S.dynastyTest; }
+// Shield Wall: one tap locks the Red apps for 1, 2 or 4 hours (Apple's shield). Leaving early takes a 30-second wait.
+function clock(sec){ return new Date(sec * 1000).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}); }
+function wallCard(){
+  if (wallUntil * 1000 > Date.now()) return `<div class="card stack"><p class="lbl gold" style="margin:0">Shield Wall</p>
+    <h2>The wall is up until ${clock(wallUntil)}</h2><p class="dim s15" style="margin-top:0">Your Red apps are locked. Hold the line.</p>
+    <button onclick="leaveWall()">Leave early</button></div>`;
+  return `<div class="card stack"><p class="lbl gold" style="margin:0">Shield Wall</p>
+    <p class="dim s15" style="margin-top:0">Lock your Red apps for a while. One tap, and they stay shut until the time is up.</p>
+    <div class="row">${[1,2,4].map(h => `<button class="small" style="flex:1" onclick="raiseWall(${h})">${h} hr</button>`).join('')}</div></div>`;
+}
+async function raiseWall(hours){
+  try { const r = await ST.wallStart({hours}); wallUntil = r.until || 0; render(); toast('Shield Wall is up until ' + clock(wallUntil) + '.'); }
+  catch(e) { toast('Pick your Red apps first, in Settings › My app colors.'); }
+}
+let wallTimer = null;
+function leaveWall(){
+  let left = 30;
+  sheet(`<div class="stack" style="text-align:center"><h2>Leave the wall early?</h2><p class="dim s15">Take a breath first. You can lower it in <b id="wl">30</b> seconds.</p>
+    <button class="main" onclick="clearInterval(wallTimer);closeSheet()">Hold the line</button><button id="wgo" disabled>Lower the wall</button></div>`);
+  clearInterval(wallTimer);
+  wallTimer = setInterval(() => { left--; const l = $('#wl'), b = $('#wgo'); if (!l) { clearInterval(wallTimer); return; } l.textContent = left;
+    if (left <= 0) { clearInterval(wallTimer); b.disabled = false; b.onclick = async () => { await ST.wallStop().catch(()=>{}); wallUntil = 0; closeSheet(); render(); }; } }, 1000);
+}
+
 // ---------- haptics and sound (handoff section 13): seal, win and loss only ----------
 function fx(kind){ if (S.fx !== false) ST.haptic({kind}).catch(()=>{}); }
 
@@ -928,6 +960,8 @@ function settingsView(){
         <label class="sw"><input type="checkbox" id="non" ${n.on ? 'checked' : ''} onchange="setNotify()"><i></i></label></div>
       <div class="setrow"><div class="grow"><b class="s15">Sounds and haptics</b><div class="faint">When you break the seal and see who won. Follows the silent switch.</div></div>
         <label class="sw"><input type="checkbox" id="fxon" ${S.fx !== false ? 'checked' : ''} onchange="S.fx=this.checked;save()"><i></i></label></div>
+      ${testMode() ? `<div class="setrow"><div class="grow"><b class="s15">Dynasty (test builds)</b><div class="faint">Turns on Dynasty tools for testing. Nothing is charged.</div></div>
+        <label class="sw"><input type="checkbox" ${S.dynastyTest ? 'checked' : ''} onchange="S.dynastyTest=this.checked;save();render()"><i></i></label></div>` : ''}
       <button class="setrow plain" onclick="changeTiers()"><div class="grow"><b class="s15">My app colors</b><div class="faint">Changes start tomorrow</div></div><span class="chev">›</span></button>
       <div class="setrow"><div class="grow"><b class="s15">Share my daily score</b><div class="faint">Needed to play</div></div><label class="sw"><input type="checkbox" checked disabled><i></i></label></div>
     </div>

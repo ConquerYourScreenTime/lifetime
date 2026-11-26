@@ -44,7 +44,11 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         // Conquer Your Screen Time (build 4)
         CAPPluginMethod(name: "notifySchedule", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "conquerWidget", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "haptic", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "haptic", returnType: CAPPluginReturnPromise),
+        // Dynasty tools (build 5)
+        CAPPluginMethod(name: "wallStart", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "wallStop", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "wallStatus", returnType: CAPPluginReturnPromise)
     ]
 
     static let group = "group.io.github.gamesbyvidal.lifetime"
@@ -500,7 +504,7 @@ enum Friends {
     static func startWatchers(_ d: UserDefaults?) throws {
         let center = DeviceActivityCenter()
         // Blip Classic / Nomad watchers are not used by this game: stop them (iOS allows only 20 at once).
-        let mine = Set((tiers.map { "tier-" + $0 } + ["fclock"]).map { DeviceActivityName($0) })
+        let mine = Set((tiers.map { "tier-" + $0 } + ["fclock", "wall"]).map { DeviceActivityName($0) })  // "wall" = Shield Wall
         center.stopMonitoring(center.activities.filter { !mine.contains($0) })
         let schedule = DeviceActivitySchedule(intervalStart: DateComponents(hour: 0, minute: 0),
                                               intervalEnd: DateComponents(hour: 23, minute: 59, second: 59), repeats: true)
@@ -702,6 +706,7 @@ extension ScreenTimePlugin {
         for key in (d?.dictionaryRepresentation() ?? [:]).keys where key.hasPrefix("fmin-") || key.hasPrefix("fsent-") || key.hasPrefix("at-tier-")
             || key.hasPrefix("tier-") || key.hasPrefix("friends-") { d?.removeObject(forKey: key) }
         d?.removeObject(forKey: Conquer.widgetKey)
+        Conquer.lowerWall(d)
         WidgetCenter.shared.reloadAllTimelines()
         Conquer.clearMornings { UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.reminderID]); call.resolve() }
     }
@@ -756,6 +761,39 @@ extension ScreenTimePlugin {
         call.resolve()
     }
 
+    // ---------- Shield Wall (Dynasty): one tap locks the Red apps for 1, 2 or 4 hours ----------
+    // Uses the Red apps and categories the player ticked at setup. Apple's standard shield covers them until the time
+    // is up; BlipMonitor lowers it when the "wall" interval ends, even if the app is closed. Scoring is unchanged.
+    @objc func wallStart(_ call: CAPPluginCall) {
+        let d = UserDefaults(suiteName: Self.group)
+        let hours = max(1, min(4, call.getInt("hours") ?? 1))
+        guard let sel = Friends.selection(d, "red"), !(sel.applicationTokens.isEmpty && sel.categoryTokens.isEmpty) else { call.reject("No Red apps picked"); return }
+        let now = Date(), end = now.addingTimeInterval(Double(hours) * 3600)
+        let store = ManagedSettingsStore(named: ManagedSettingsStore.Name("wall"))
+        store.shield.applications = sel.applicationTokens.isEmpty ? nil : sel.applicationTokens
+        store.shield.applicationCategories = sel.categoryTokens.isEmpty ? nil : .specific(sel.categoryTokens)
+        store.shield.webDomainCategories = sel.categoryTokens.isEmpty ? nil : .specific(sel.categoryTokens)
+        d?.set(end.timeIntervalSince1970, forKey: "wall-until")
+        let cal = Calendar.current, parts: Set<Calendar.Component> = [.year, .month, .day, .hour, .minute, .second]
+        let schedule = DeviceActivitySchedule(intervalStart: cal.dateComponents(parts, from: now.addingTimeInterval(-60)),
+                                              intervalEnd: cal.dateComponents(parts, from: end), repeats: false)
+        let center = DeviceActivityCenter(), name = DeviceActivityName("wall")
+        center.stopMonitoring([name])
+        do { try center.startMonitoring(name, during: schedule) } catch { /* the app also lowers it when opened after the end */ }
+        call.resolve(["until": end.timeIntervalSince1970])
+    }
+    // Leaving early (after the 30-second wait in the app) or when time is up.
+    @objc func wallStop(_ call: CAPPluginCall) {
+        Conquer.lowerWall(UserDefaults(suiteName: Self.group))
+        call.resolve()
+    }
+    @objc func wallStatus(_ call: CAPPluginCall) {
+        let d = UserDefaults(suiteName: Self.group)
+        let until = d?.double(forKey: "wall-until") ?? 0
+        if until > 0 && until <= Date().timeIntervalSince1970 { Conquer.lowerWall(d); call.resolve(["until": 0]); return }
+        call.resolve(["until": until])
+    }
+
     // Handoff section 13: seal = one firm tap; win = success haptic + one short chime; loss = one soft tap. Nothing else.
     @objc func haptic(_ call: CAPPluginCall) {
         let kind = call.getString("kind") ?? ""
@@ -789,6 +827,11 @@ enum Conquer {
         UNUserNotificationCenter.current().add(req) { _ in done() }
     }
 
+    static func lowerWall(_ d: UserDefaults?) {
+        ManagedSettingsStore(named: ManagedSettingsStore.Name("wall")).clearAllSettings()
+        DeviceActivityCenter().stopMonitoring([DeviceActivityName("wall")])
+        d?.removeObject(forKey: "wall-until")
+    }
     static func registerCategory() {
         let open = UNNotificationAction(identifier: actionBreak, title: "Break the seal", options: [.foreground])
         let later = UNNotificationAction(identifier: actionLater, title: "Remind me in an hour", options: [])

@@ -860,25 +860,25 @@ function pushWidget(){
 // ---------- Dynasty tools. Purchases aren't live yet, so TestFlight builds have a test switch in Settings. ----------
 // Whether someone has Dynasty never leaves this phone, and no tool changes scoring.
 function dynasty(){ return testMode() && !!S.dynastyTest; }
-// Shield Wall: one tap locks the Red apps for 1, 2 or 4 hours (Apple's shield). Leaving early takes a 30-second wait.
+// Fortress mode (formerly Shield Wall): one tap locks the Red apps for 1, 2 or 4 hours (Apple's shield). Leaving early takes a 30-second wait.
 function clock(sec){ return new Date(sec * 1000).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}); }
 function wallCard(){
-  if (wallUntil * 1000 > Date.now()) return `<div class="card stack"><p class="lbl gold" style="margin:0">Shield Wall</p>
-    <h2>The wall is up until ${clock(wallUntil)}</h2><p class="dim s15" style="margin-top:0">Your Red apps are locked. Hold the line.</p>
+  if (wallUntil * 1000 > Date.now()) return `<div class="card stack"><p class="lbl gold" style="margin:0">Fortress mode</p>
+    <h2>The fortress is sealed until ${clock(wallUntil)}</h2><p class="dim s15" style="margin-top:0">Your Red apps are locked. Hold the line.</p>
     <button onclick="leaveWall()">Leave early</button></div>`;
-  return `<div class="card stack"><p class="lbl gold" style="margin:0">Shield Wall</p>
+  return `<div class="card stack"><p class="lbl gold" style="margin:0">Fortress mode</p>
     <p class="dim s15" style="margin-top:0">Lock your Red apps for a while. One tap, and they stay shut until the time is up.</p>
     <div class="row">${[1,2,4].map(h => `<button class="small" style="flex:1" onclick="raiseWall(${h})">${h} hr</button>`).join('')}</div></div>`;
 }
 async function raiseWall(hours){
-  try { const r = await ST.wallStart({hours}); wallUntil = r.until || 0; render(); toast('Shield Wall is up until ' + clock(wallUntil) + '.'); }
+  try { const r = await ST.wallStart({hours}); wallUntil = r.until || 0; render(); toast('Fortress mode is on until ' + clock(wallUntil) + '.'); }
   catch(e) { toast('Pick your Red apps first, in Settings › My app colors.'); }
 }
 let wallTimer = null;
 function leaveWall(){
   let left = 30;
-  sheet(`<div class="stack" style="text-align:center"><h2>Leave the wall early?</h2><p class="dim s15">Take a breath first. You can lower it in <b id="wl">30</b> seconds.</p>
-    <button class="main" onclick="clearInterval(wallTimer);closeSheet()">Hold the line</button><button id="wgo" disabled>Lower the wall</button></div>`);
+  sheet(`<div class="stack" style="text-align:center"><h2>Leave the fortress early?</h2><p class="dim s15">Take a breath first. You can lower it in <b id="wl">30</b> seconds.</p>
+    <button class="main" onclick="clearInterval(wallTimer);closeSheet()">Hold the line</button><button id="wgo" disabled>Open the gates</button></div>`);
   clearInterval(wallTimer);
   wallTimer = setInterval(() => { left--; const l = $('#wl'), b = $('#wgo'); if (!l) { clearInterval(wallTimer); return; } l.textContent = left;
     if (left <= 0) { clearInterval(wallTimer); b.disabled = false; b.onclick = async () => { await ST.wallStop().catch(()=>{}); wallUntil = 0; closeSheet(); render(); }; } }, 1000);

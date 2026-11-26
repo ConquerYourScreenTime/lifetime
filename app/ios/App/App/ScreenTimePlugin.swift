@@ -504,7 +504,7 @@ enum Friends {
     static func startWatchers(_ d: UserDefaults?) throws {
         let center = DeviceActivityCenter()
         // Blip Classic / Nomad watchers are not used by this game: stop them (iOS allows only 20 at once).
-        let mine = Set((tiers.map { "tier-" + $0 } + ["fclock", "wall"]).map { DeviceActivityName($0) })  // "wall" = Shield Wall
+        let mine = Set((tiers.map { "tier-" + $0 } + ["fclock", "wall"]).map { DeviceActivityName($0) })  // "wall" = Fortress mode
         center.stopMonitoring(center.activities.filter { !mine.contains($0) })
         let schedule = DeviceActivitySchedule(intervalStart: DateComponents(hour: 0, minute: 0),
                                               intervalEnd: DateComponents(hour: 23, minute: 59, second: 59), repeats: true)
@@ -761,7 +761,7 @@ extension ScreenTimePlugin {
         call.resolve()
     }
 
-    // ---------- Shield Wall (Dynasty): one tap locks the Red apps for 1, 2 or 4 hours ----------
+    // ---------- Fortress mode (Dynasty; was Shield Wall): one tap locks the Red apps for 1, 2 or 4 hours ----------
     // Uses the Red apps and categories the player ticked at setup. Apple's standard shield covers them until the time
     // is up; BlipMonitor lowers it when the "wall" interval ends, even if the app is closed. Scoring is unchanged.
     @objc func wallStart(_ call: CAPPluginCall) {

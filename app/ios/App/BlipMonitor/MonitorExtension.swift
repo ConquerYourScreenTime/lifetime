@@ -33,7 +33,7 @@ class MonitorExtension: DeviceActivityMonitor {
     override func intervalDidEnd(for activity: DeviceActivityName) {
         super.intervalDidEnd(for: activity)
         log(activity.rawValue + " end")
-        // Shield Wall (Dynasty): the time the player chose is up, so the wall comes down.
+        // Fortress mode (Dynasty): the time the player chose is up, so the wall comes down.
         if activity == DeviceActivityName("wall") {
             ManagedSettingsStore(named: ManagedSettingsStore.Name("wall")).clearAllSettings()
             defaults?.removeObject(forKey: "wall-until")
@@ -202,7 +202,7 @@ enum Friends {
     static func startWatchers(_ d: UserDefaults?) throws {
         let center = DeviceActivityCenter()
         // Blip Classic / Nomad watchers are not used by this game: stop them (iOS allows only 20 at once).
-        let mine = Set((tiers.map { "tier-" + $0 } + ["fclock", "wall"]).map { DeviceActivityName($0) })  // "wall" = Shield Wall
+        let mine = Set((tiers.map { "tier-" + $0 } + ["fclock", "wall"]).map { DeviceActivityName($0) })  // "wall" = Fortress mode
         center.stopMonitoring(center.activities.filter { !mine.contains($0) })
         let schedule = DeviceActivitySchedule(intervalStart: DateComponents(hour: 0, minute: 0),
                                               intervalEnd: DateComponents(hour: 23, minute: 59, second: 59), repeats: true)

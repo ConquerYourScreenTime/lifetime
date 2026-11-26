@@ -7,6 +7,8 @@ import ManagedSettings
 import UserNotifications
 import WidgetKit
 import ActivityKit
+import AVFoundation
+import UIKit
 
 // Bridge between the game (index.html) and Apple's Screen Time API.
 // Only "the day's total passed N minutes" comes back; never which apps were used.
@@ -38,7 +40,11 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "friendsResync", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "friendsMinutes", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "friendsSync", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "friendsWipe", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "friendsWipe", returnType: CAPPluginReturnPromise),
+        // Conquer Your Screen Time (build 4)
+        CAPPluginMethod(name: "notifySchedule", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "conquerWidget", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "haptic", returnType: CAPPluginReturnPromise)
     ]
 
     static let group = "group.io.github.gamesbyvidal.lifetime"
@@ -47,6 +53,13 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
     static let maxMinutes = 16 * 60
 
     private var defaults: UserDefaults? { UserDefaults(suiteName: Self.group) }
+
+    // Capacitor's notification router owns the notification delegate once the bridge is up; Conquer's 8 AM
+    // notification actions are handled through it.
+    override public func load() {
+        bridge?.notificationRouter.localNotificationHandler = Conquer.notes
+        Conquer.registerCategory()
+    }
 
     @objc func status(_ call: CAPPluginCall) {
         Self.purgeOld(defaults)
@@ -351,8 +364,7 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve(["testflight": Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"])
     }
     @objc func remindOff(_ call: CAPPluginCall) {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.reminderID])
-        call.resolve()
+        Conquer.clearMornings { UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.reminderID]); call.resolve() }
     }
 }
 
@@ -463,7 +475,7 @@ enum Friends {
     static let bank = 1000
     static let step = 15
     static let maxMinutes = 16 * 60
-    static let keepDays = 31   // the plan keeps daily totals 30 days
+    static let keepDays = 41   // daily totals are kept 40 days (Lawyer ruling 2026-11-25)
 
     static func dayString(_ date: Date = Date()) -> String {
         let f = DateFormatter(); f.calendar = Calendar(identifier: .gregorian); f.locale = Locale(identifier: "en_US_POSIX")
@@ -689,7 +701,138 @@ extension ScreenTimePlugin {
         DeviceActivityCenter().stopMonitoring((Friends.tiers.map { "tier-" + $0 } + ["fclock"]).map { DeviceActivityName($0) })
         for key in (d?.dictionaryRepresentation() ?? [:]).keys where key.hasPrefix("fmin-") || key.hasPrefix("fsent-") || key.hasPrefix("at-tier-")
             || key.hasPrefix("tier-") || key.hasPrefix("friends-") { d?.removeObject(forKey: key) }
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.reminderID])
+        d?.removeObject(forKey: Conquer.widgetKey)
+        WidgetCenter.shared.reloadAllTimelines()
+        Conquer.clearMornings { UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.reminderID]); call.resolve() }
+    }
+
+    // ---------- Conquer Your Screen Time (build 4) ----------
+
+    // The 8 AM notifications for the next 7 mornings, each with its own words (one rival, several, Monday).
+    // items: [{day: "YYYY-MM-DD", body}]. Never a winner or a score. The wax seal is the picture; actions
+    // "Break the seal" (opens the app, which shows the reveal) and "Remind me in an hour" (handled in AppDelegate).
+    @objc func notifySchedule(_ call: CAPPluginCall) {
+        let hour = call.getInt("hour") ?? 8
+        let items = (call.getArray("items", JSObject.self) ?? []).compactMap { o -> (String, String)? in
+            guard let day = o["day"] as? String, let body = o["body"] as? String else { return nil }
+            return (day, body)
+        }
+        let center = UNUserNotificationCenter.current()
+        Conquer.registerCategory()
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { call.resolve(["granted": false]); return }
+            Conquer.clearMornings {
+                center.removePendingNotificationRequests(withIdentifiers: [Self.reminderID])  // the older single daily reminder
+                let f = DateFormatter(); f.calendar = Calendar(identifier: .gregorian); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"
+                let group = DispatchGroup()
+                for (day, body) in items {
+                    guard let date = f.date(from: day) else { continue }
+                    var comps = Calendar.current.dateComponents([.year, .month, .day], from: date)
+                    comps.hour = hour; comps.minute = 0
+                    let req = UNNotificationRequest(identifier: Conquer.morningPrefix + day, content: Conquer.content(body),
+                                                    trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false))
+                    group.enter(); center.add(req) { _ in group.leave() }
+                }
+                group.notify(queue: .main) { call.resolve(["granted": true]) }
+            }
+        }
+    }
+
+    // What the widgets show besides today's points: how many rivals, crowns held, week leads, and whether the
+    // seal is broken (a result is never shown before that). On this phone only.
+    @objc func conquerWidget(_ call: CAPPluginCall) {
+        let d = UserDefaults(suiteName: Self.group)
+        var info: [String: Any] = [:]
+        for k in ["rivals", "held", "of", "weekLead", "weekOf", "revealedAt", "me"] { if let v = call.getInt(k) { info[k] = v } }
+        info["rows"] = (call.getArray("rows", JSObject.self) ?? []).prefix(6).compactMap { o -> [String: Any]? in
+            guard let n = o["n"] as? String, let dv = o["d"] as? Int else { return nil }
+            return ["n": n, "d": dv]
+        }
+        info["revealed"] = call.getBool("revealed") ?? false
+        info["resultDay"] = call.getString("resultDay") ?? ""
+        if call.getInt("rivals") == nil { d?.removeObject(forKey: Conquer.widgetKey) } else { d?.set(info, forKey: Conquer.widgetKey) }
+        Conquer.shareFont()
+        WidgetCenter.shared.reloadAllTimelines()
         call.resolve()
     }
+
+    // Handoff section 13: seal = one firm tap; win = success haptic + one short chime; loss = one soft tap. Nothing else.
+    @objc func haptic(_ call: CAPPluginCall) {
+        let kind = call.getString("kind") ?? ""
+        DispatchQueue.main.async {
+            switch kind {
+            case "seal": UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            case "win": UINotificationFeedbackGenerator().notificationOccurred(.success); Conquer.chime()
+            case "loss": UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            default: break
+            }
+            call.resolve()
+        }
+    }
+}
+
+enum Conquer {
+    static let group = "group.io.github.gamesbyvidal.lifetime"
+    static let widgetKey = "conquer-widget"
+    static let morningPrefix = "conquer-morning-"
+    static let category = "conquer-seal"
+    static let actionBreak = "break-seal"
+    static let actionLater = "remind-hour"
+    private static var player: AVAudioPlayer?
+    static let notes = ConquerNotes()
+
+    // "Remind me in an hour": the same words again, an hour later.
+    static func handle(_ response: UNNotificationResponse, done: @escaping () -> Void) {
+        guard response.actionIdentifier == actionLater else { done(); return }
+        let req = UNNotificationRequest(identifier: "conquer-later-\(UUID().uuidString)", content: content(response.notification.request.content.body),
+                                        trigger: UNTimeIntervalNotificationTrigger(timeInterval: 3600, repeats: false))
+        UNUserNotificationCenter.current().add(req) { _ in done() }
+    }
+
+    static func registerCategory() {
+        let open = UNNotificationAction(identifier: actionBreak, title: "Break the seal", options: [.foreground])
+        let later = UNNotificationAction(identifier: actionLater, title: "Remind me in an hour", options: [])
+        UNUserNotificationCenter.current().setNotificationCategories([UNNotificationCategory(identifier: category, actions: [open, later], intentIdentifiers: [], options: [])])
+    }
+    static func clearMornings(_ done: @escaping () -> Void) {
+        let center = UNUserNotificationCenter.current()
+        center.getPendingNotificationRequests { reqs in
+            center.removePendingNotificationRequests(withIdentifiers: reqs.map { $0.identifier }.filter { $0.hasPrefix(morningPrefix) || $0.hasPrefix("conquer-later") })
+            done()
+        }
+    }
+    // The wax seal picture (www/seal.png in the app bundle). iOS moves an attachment's file, so each one gets its own copy.
+    static func content(_ body: String) -> UNMutableNotificationContent {
+        let c = UNMutableNotificationContent()
+        c.body = body
+        c.sound = .default
+        c.categoryIdentifier = category
+        if let src = Bundle.main.url(forResource: "seal", withExtension: "png", subdirectory: "public") {
+            let dst = FileManager.default.temporaryDirectory.appendingPathComponent("seal-\(UUID().uuidString).png")
+            if (try? FileManager.default.copyItem(at: src, to: dst)) != nil,
+               let a = try? UNNotificationAttachment(identifier: "seal", url: dst, options: nil) { c.attachments = [a] }
+        }
+        return c
+    }
+    // The widgets use Playfair Display too: a copy of the app's bundled font goes into the shared App Group once.
+    static func shareFont() {
+        guard let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group),
+              let src = Bundle.main.url(forResource: "PlayfairDisplay-Bold", withExtension: "ttf", subdirectory: "public/fonts") else { return }
+        let dst = dir.appendingPathComponent("PlayfairDisplay-Bold.ttf")
+        if !FileManager.default.fileExists(atPath: dst.path) { try? FileManager.default.copyItem(at: src, to: dst) }
+    }
+    // One short, warm chime that follows the silent switch (.ambient).
+    static func chime() {
+        guard let url = Bundle.main.url(forResource: "chime", withExtension: "wav", subdirectory: "public") else { return }
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        player = try? AVAudioPlayer(contentsOf: url)
+        player?.volume = 0.8
+        player?.play()
+    }
+}
+
+class ConquerNotes: NSObject, NotificationHandlerProtocol {
+    func willPresent(notification: UNNotification) -> UNNotificationPresentationOptions { [.banner, .list, .sound] }
+    func didReceive(response: UNNotificationResponse) { Conquer.handle(response) {} }
 }

@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>Blip</string>
+        <string>Conquer</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -69,6 +69,6 @@
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Blip saves your Blip pictures to Photos when you tap Save picture.</string>
+	<string>Conquer saves pictures to Photos when you tap Save picture.</string>
 </dict>
 </plist>

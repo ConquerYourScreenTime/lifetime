@@ -147,6 +147,7 @@ class MonitorExtension: DeviceActivityMonitor {
             let key = "fmin-" + tier + "-" + today()
             guard m > (defaults?.integer(forKey: key) ?? 0), possible(m, name: activity.rawValue) else { return }
             defaults?.set(m, forKey: key)
+            WidgetCenter.shared.reloadAllTimelines() // Conquer's widgets show the new points
             return
         }
         guard let m = Int(event.rawValue.dropFirst()) else { return }
@@ -168,7 +169,7 @@ enum Friends {
     static let bank = 1000
     static let step = 15
     static let maxMinutes = 16 * 60
-    static let keepDays = 31   // the plan keeps daily totals 30 days
+    static let keepDays = 41   // daily totals are kept 40 days (Lawyer ruling 2026-11-25)
 
     static func dayString(_ date: Date = Date()) -> String {
         let f = DateFormatter(); f.calendar = Calendar(identifier: .gregorian); f.locale = Locale(identifier: "en_US_POSIX")
@@ -246,9 +247,12 @@ extension MonitorExtension {
               let key = s["apiKey"], let project = s["projectId"], let refresh = s["refreshToken"], let uid = s["uid"], let match = s["match"] else { return }
         let m = Friends.tiers.map { defaults?.integer(forKey: "fmin-" + $0 + "-" + day) ?? 0 }
         let points = Friends.points(red: m[0], orange: m[1])
-        if sendPoints(apiKey: key, project: project, refresh: refresh, uid: uid, match: match, day: day, points: points) {
-            defaults?.set(true, forKey: "fsent-" + day); log("friends: sent \(day)")
-        } else { log("friends: send failed, the app will retry when opened") }
+        // Conquer build 4: up to 6 one-on-one matches, comma-separated codes. One upload per match, one sign-in for all.
+        let codes = match.split(separator: ",").map(String.init).filter { !$0.isEmpty }
+        if sendPoints(apiKey: key, project: project, refresh: refresh, uid: uid, matches: codes, day: day, points: points) {
+            defaults?.set(true, forKey: "fsent-" + day); log("friends: sent \(day) to \(codes.count)")
+        } else { log("friends: send failed for some matches, the app will retry when opened") }
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     // Blocking (the extension may be ended as soon as this callback returns), at most about 25 seconds in all.
@@ -265,13 +269,18 @@ extension MonitorExtension {
         _ = sem.wait(timeout: .now() + 13)
         return out
     }
-    func sendPoints(apiKey: String, project: String, refresh: String, uid: String, match: String, day: String, points: Int) -> Bool {
+    func sendPoints(apiKey: String, project: String, refresh: String, uid: String, matches: [String], day: String, points: Int) -> Bool {
         guard let tokenURL = URL(string: "https://securetoken.googleapis.com/v1/token?key=" + apiKey) else { return false }
         var t = URLRequest(url: tokenURL); t.httpMethod = "POST"
         t.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         let enc = refresh.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? refresh
         t.httpBody = ("grant_type=refresh_token&refresh_token=" + enc).data(using: .utf8)
         guard let tok = request(t), let id = tok["id_token"] as? String else { return false }
+        var ok = true
+        for match in matches.prefix(6) { ok = sendOne(id: id, project: project, uid: uid, match: match, day: day, points: points) && ok }
+        return ok
+    }
+    private func sendOne(id: String, project: String, uid: String, match: String, day: String, points: Int) -> Bool {
         let path = "https://firestore.googleapis.com/v1/projects/\(project)/databases/(default)/documents/matches/\(match)/days/\(day)_\(uid)"
         guard let url = URL(string: path) else { return false }
         var p = URLRequest(url: url); p.httpMethod = "PATCH"

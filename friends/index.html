@@ -3,67 +3,133 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Blip</title>
+<title>Conquer</title>
 <meta name="theme-color" content="#0d0d0f">
 <style>
+/* Conquer Your Screen Time, design handoff 2026-11-25 (approved by Matthew). Two fonts only:
+   Playfair Display Bold (bundled, SIL OFL, see fonts/OFL.txt) for display text 22px and up, SF Pro for everything else. No italics. */
+@font-face{font-family:'Playfair Display';src:url(fonts/PlayfairDisplay-Bold.ttf) format('truetype');font-weight:700;font-style:normal;font-display:block}
 :root{
-  /* Black and Gold (Matthew, 2026-11-25). Gold is only for winning moments; everyday buttons are ivory. */
-  --bg:#0d0d0f; --card:#1c1c21; --card2:#2a2a31; --ink:#f5f1e6; --dim:#b5ad99; --faint:#9a937f; --line:rgba(255,255,255,.1);
-  --red:#e86a74; --orange:#dc9c55; --free:#6fc29b; --accent:#ece4d0; --accent-ink:#141210; --gold:#c9a54a; --win:#c9a54a; --lose:#f08f97;
-  --well:#141418; --serif:ui-serif,"New York",Georgia,serif;
+  --bg:#0d0d0f; --card:#1c1c21; --card2:#2a2a31; --ink:#f5f1e6; --dim:#b5ad99; --faint:#9a937f; --line:rgba(255,255,255,.08);
+  --red:#e86a74; --orange:#dc9c55; --free:#6fc29b; --accent:#ece4d0; --accent-ink:#141210; --gold:#c9a54a; --pewter:#b5ad99;
+  --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  .07 0 0 0 0'/></filter><rect width='180' height='180' filter='url(%23n)'/></svg>"); --grain-card:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  .1 0 0 0 0'/></filter><rect width='180' height='180' filter='url(%23n)'/></svg>");
+  --display:'Playfair Display',Georgia,serif; --text:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro",system-ui,sans-serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.4 var(--text)}
+/* Paper finish (handoff section 14): faint grain on the page and cards, gold hairline only on cards where you're winning. */
+body{background:var(--grain),var(--bg);background-size:180px 180px}
 body{min-height:100vh}
-.app{max-width:480px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
-h1{font-family:var(--serif);font-size:28px;margin:8px 0 4px;letter-spacing:.2px}
-h2{font-family:var(--serif);font-size:21px;margin:0 0 8px}
+.app{max-width:480px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom))}
+.d{font-family:var(--display);font-weight:700;font-style:normal;font-variant-numeric:lining-nums tabular-nums;letter-spacing:-.3px}
+h1{font-family:var(--display);font-weight:700;font-size:34px;line-height:1.1;margin:8px 0 6px;letter-spacing:-.5px;font-variant-numeric:lining-nums tabular-nums}
+h2{font-family:var(--display);font-weight:700;font-size:22px;line-height:1.2;margin:0 0 8px;font-variant-numeric:lining-nums tabular-nums}
 p{margin:6px 0}
-.dim{color:var(--dim)} .faint{color:var(--faint);font-size:14px}
-.card{background:var(--card);border-radius:20px;padding:16px;margin:12px 0}
+.lbl{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--faint)}
+.dim{color:var(--dim)} .faint{color:var(--faint);font-size:13px;line-height:1.45} .s15{font-size:15px} .gold{color:var(--gold)}
+.card,.slot,.tiles>div,.rlist,.vs>div{background:var(--grain-card),var(--card);background-size:180px 180px;border:1px solid rgba(236,228,208,.07)}
+.card{border-radius:20px;padding:16px;margin:12px 0}
+.win{position:relative}
+.win:after{content:'';position:absolute;inset:4px;border:1px solid rgba(201,165,74,.45);border-radius:16px;pointer-events:none}
+.rule{display:flex;align-items:center;gap:8px;margin:14px 0 8px;color:var(--faint)}
+.rule i{display:block;width:44px;height:1px;background:rgba(236,228,208,.25)}
+.rule b{display:block;width:7px;height:7px;border:1px solid rgba(236,228,208,.45);transform:rotate(45deg)}
 .row{display:flex;align-items:center;gap:12px}
 .spread{display:flex;align-items:center;justify-content:space-between;gap:12px}
-button{font:inherit;border:0;border-radius:14px;padding:14px 16px;font-weight:600;cursor:pointer;color:var(--ink);background:var(--card2);width:100%}
+.grow{flex:1;min-width:0}
+button{font:600 17px/1.2 var(--text);border:0;border-radius:14px;padding:16px;cursor:pointer;color:var(--ink);background:var(--card2);width:100%}
 button.main{background:var(--accent);color:var(--accent-ink)}
-button.small{width:auto;padding:8px 12px;font-size:14px;border-radius:10px}
-button.link{background:none;color:var(--dim);padding:8px;width:auto;font-weight:500;text-decoration:underline}
+button.small{width:auto;padding:9px 14px;font-size:15px;border-radius:12px;background:transparent;border:1px solid rgba(255,255,255,.18);flex:none}
+button.small.main{background:var(--accent);border-color:var(--accent)}
+button.link{background:none;color:var(--dim);padding:10px;width:auto;font-weight:600;font-size:15px}
 button.danger{background:#3a1a1f;color:#f6c9cf}
+button.plain{background:none;width:100%;border-radius:0;text-align:left;font-weight:400}
 button:disabled{opacity:.5}
 .stack>*+*{margin-top:10px}
-input[type=text],input[type=time]{font:inherit;width:100%;padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--well);color:var(--ink)}
-input.code{text-transform:uppercase;letter-spacing:6px;text-align:center;font-size:24px;font-weight:700}
-.dot{width:14px;height:14px;border-radius:50%;flex:none}
-.tier{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
-.tier:first-child{border-top:0}
-.tier .what{flex:1;min-width:0}
-.tier .cost{font-weight:700;font-variant-numeric:tabular-nums}
-.big{font-family:var(--serif);font-size:64px;font-weight:700;letter-spacing:1px;line-height:1.05;font-variant-numeric:tabular-nums}
-.bar{height:10px;border-radius:6px;background:var(--card);overflow:hidden;margin:12px 0 4px;display:flex}
+input[type=text]{font:17px var(--text);width:100%;height:56px;padding:0 18px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:var(--card);color:var(--ink)}
+input.code{text-transform:uppercase;letter-spacing:4px;font-variant-numeric:tabular-nums}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.top{display:flex;justify-content:space-between;align-items:center;min-height:44px}
+.icons{display:flex;gap:8px}
+.ib{width:44px;height:44px;border-radius:22px;background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--dim);padding:0;flex:none;font-size:22px;font-weight:400}
+.back{background:none;width:auto;padding:8px 0;color:var(--dim);font-size:15px;font-weight:600}
+.big{font-family:var(--display);font-weight:700;font-size:96px;line-height:1;letter-spacing:-2px;font-variant-numeric:lining-nums tabular-nums;margin:6px 0 2px}
+.bar{height:14px;border-radius:7px;background:var(--card);overflow:hidden;margin:22px 0 6px;display:flex}
 .bar i{display:block;height:100%}
-.pill{display:inline-block;padding:4px 10px;border-radius:99px;background:var(--card2);font-size:13px;font-weight:600}
-.codebox{font-size:34px;font-weight:800;letter-spacing:8px;text-align:center;padding:12px;background:var(--well);border-radius:14px;margin:8px 0}
-.topbar{display:flex;justify-content:space-between;align-items:center}
-.gear{width:auto;background:var(--card);padding:10px 12px;border-radius:12px;font-size:15px}
-.step{display:flex;gap:12px;align-items:flex-start}
-.step .n{width:28px;height:28px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
-.step.done .n{background:var(--free);color:#0d0d0f}
-.ticks{margin:6px 0 10px;padding-left:20px;color:var(--dim)}
-.ticks li{margin:2px 0}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:flex-end;justify-content:center;z-index:20;animation:fade .2s}
-.sheet{background:var(--bg);width:100%;max-width:480px;max-height:92vh;overflow:auto;border-radius:24px 24px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom))}
-.reveal{position:fixed;inset:0;z-index:30;background:radial-gradient(circle at 50% 30%,#2a2416,#0d0d0f 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;animation:fade .3s}
-.vs{display:flex;gap:16px;width:100%;max-width:380px;margin:24px 0}
-.vs>div{flex:1;background:rgba(255,255,255,.07);border-radius:20px;padding:18px 8px}
-.vs .score{font-family:var(--serif);font-size:44px;font-weight:700;font-variant-numeric:tabular-nums}
-.vs .won{outline:3px solid var(--win)}
-.verdict{font-family:var(--serif);font-size:34px;font-weight:700;opacity:0;transform:scale(.8);transition:all .5s cubic-bezier(.2,1.6,.4,1)}
-.verdict.show{opacity:1;transform:scale(1)}
-.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--card2);color:var(--ink);border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:40;font-size:14px}
-table.costs{width:100%;border-collapse:collapse;margin:8px 0}
-table.costs td{padding:8px 4px;border-top:1px solid var(--line)}
-table.costs td:last-child{text-align:right;font-weight:700}
-.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0}
-.switch input{width:22px;height:22px}
+.lines>div{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:15px}
+.lines>div:first-child{border-top:0;padding-top:2px} .lines>div:last-child{padding-bottom:2px}
+.num{font-weight:600;font-variant-numeric:tabular-nums}
+.whatcounts{display:flex;justify-content:flex-end}
+.whatcounts button{background:none;width:auto;padding:6px 0;font-size:15px;color:var(--dim);display:flex;gap:6px;align-items:center}
+.seals{display:flex;flex:none} .seals>*+*{margin-left:-20px}
+.seals svg{filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+.tabs{display:flex;background:var(--card);border-radius:12px;padding:3px;margin:10px 0 14px}
+.tabs button{flex:1;padding:9px 4px;font-size:13px;background:transparent;color:var(--dim);border-radius:10px}
+.tabs button.on{background:var(--accent);color:var(--accent-ink)}
+.av{width:36px;height:36px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px;color:#fff;flex:none}
+.mrow{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.mrow:first-child{border-top:0}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;justify-content:center;z-index:20;animation:fade .2s}
+.sheet{background:var(--bg);width:100%;max-width:480px;max-height:92vh;overflow:auto;border-radius:24px 24px 0 0;padding:20px 20px calc(24px + env(safe-area-inset-bottom))}
+.page{position:fixed;inset:0;z-index:15;background:var(--bg);overflow:auto;animation:fade .15s}
+.page .app{padding-top:calc(8px + env(safe-area-inset-top))}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--card2);color:var(--ink);border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:50;font-size:15px;width:max-content;max-width:90vw}
+.sw{position:relative;width:51px;height:31px;flex:none}
+.sw input{opacity:0;width:0;height:0;position:absolute}
+.sw i{position:absolute;inset:0;border-radius:16px;background:#3a3a40;transition:background .2s}
+.sw i:after{content:'';position:absolute;left:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;transition:transform .2s}
+.sw input:checked+i{background:var(--free)} .sw input:checked+i:after{transform:translateX(20px)}
+.sw input:disabled+i{opacity:.6}
+.setrow{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+.setrow:first-child{border-top:0}
+.chev{color:var(--faint);font-size:20px}
+.cal{display:grid;grid-template-columns:repeat(10,1fr);gap:5px;margin:12px 0 10px}
+.cal i{aspect-ratio:1;border-radius:6px;background:var(--card2);display:flex;align-items:center;justify-content:center}
+.cal i.w{background:linear-gradient(160deg,#e8cd7e,#b8913a)}
+.cal i.e{background:transparent;border:1px dashed rgba(255,255,255,.1)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.tiles>div{border-radius:16px;padding:12px 6px;text-align:center;font-size:13px;color:var(--faint)}
+.tiles b{display:block;font-size:15px;color:var(--ink);margin-top:2px}
+.pill{display:inline-block;padding:7px 12px;border-radius:99px;background:var(--card2);font-size:13px;font-weight:600;color:var(--dim);margin:0 6px 6px 0;width:auto}
+.pill.on{background:var(--accent);color:var(--accent-ink)}
+.perk{display:flex;gap:12px;align-items:flex-start;padding:8px 0;font-size:15px}
+.perk span{color:var(--gold);flex:none}
+.plan{border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin:10px 0;cursor:pointer}
+.plan.on{border-color:var(--gold);background:rgba(201,165,74,.08)}
+.slot{border-radius:18px;padding:14px 16px;margin:10px 0;display:flex;align-items:center;gap:12px}
+.slot.open{background:transparent;border:1px dashed rgba(255,255,255,.18)}
+.slot .ico{width:34px;height:34px;border-radius:17px;display:flex;align-items:center;justify-content:center;flex:none;background:var(--card2);color:var(--dim)}
+.champ{position:relative;border:1px solid rgba(201,165,74,.5);background:var(--grain-card),linear-gradient(160deg,#25211a,#1a1813);border-radius:20px;padding:16px;display:flex;gap:14px;align-items:center;margin:12px 0}
+.upsell{border:1px dashed rgba(201,165,74,.45);border-radius:20px;padding:14px 16px;display:flex;gap:12px;align-items:center;width:100%;background:transparent;text-align:left;font-weight:400}
+/* the morning reveal */
+.reveal{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column;align-items:center;padding:calc(40px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));text-align:center;overflow:hidden;animation:fade .3s}
+.reveal .stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;max-width:400px}
+.sealwrap{position:relative;width:220px;height:220px;cursor:pointer;background:none;padding:0;border-radius:50%;flex:none}
+.sealwrap .bf-l,.sealwrap .bf-r{position:absolute;left:10px;top:10px;transition:transform .65s cubic-bezier(.5,0,.7,.4),opacity .65s}
+.bf-l{clip-path:polygon(0 0,53% 0,45% 30%,56% 55%,46% 78%,51% 100%,0 100%)}
+.bf-r{clip-path:polygon(52% 0,100% 0,100% 100%,50% 100%,45% 78%,55% 55%,44% 30%)}
+.bf-open .bf-l{transform:translate(-70px,40px) rotate(-28deg);opacity:0}
+.bf-open .bf-r{transform:translate(70px,40px) rotate(28deg);opacity:0}
+.bf-bob{animation:bf-bob 3s ease-in-out infinite}
+@keyframes bf-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.bf-cf{position:absolute;top:-24px;width:9px;height:15px;border-radius:2px;animation:bf-fall 2.8s cubic-bezier(.3,.6,.6,1) both;pointer-events:none}
+@keyframes bf-fall{0%{transform:translate3d(0,0,0) rotate(0deg);opacity:1}80%{opacity:1}100%{transform:translate3d(var(--dx,0px),110vh,0) rotate(720deg);opacity:0}}
+.bf-pop{animation:bf-pop .7s cubic-bezier(.2,1.7,.4,1) both}
+@keyframes bf-pop{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}
+.bf-up{animation:bf-up .6s ease-out both}
+@keyframes bf-up{0%{transform:translateY(18px);opacity:0}100%{transform:none;opacity:1}}
+.vs{display:flex;gap:12px;width:100%;margin:22px 0 14px}
+.vs>div{flex:1;border-radius:20px;padding:14px 8px 16px}
+.vs .score{font-family:var(--display);font-weight:700;font-size:34px;font-variant-numeric:lining-nums tabular-nums}
+.vs .won{box-shadow:inset 0 0 0 2px var(--gold)}
+.vs .lost{box-shadow:inset 0 0 0 2px var(--pewter)}
+.vs .cr{height:24px;display:flex;justify-content:center;align-items:flex-end;margin-bottom:6px}
+.rlist{width:100%;border-radius:20px;padding:4px 16px;margin:18px 0 8px;text-align:left}
+.rlist .mrow{padding:11px 0}
+@media (prefers-reduced-motion: reduce){
+  .bf-cf{display:none}.bf-bob{animation:none}.bf-pop,.bf-up{animation:none}
+  .sealwrap .bf-l,.sealwrap .bf-r{transition:none}.bf-open .bf-l,.bf-open .bf-r{transform:none}
+}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 </style>
 </head>
@@ -73,28 +139,55 @@ table.costs td:last-child{text-align:right;font-weight:700}
 <script>
 'use strict';
 // =====================================================================================
-// Blip friends game, build 1 (plan v2, Lawyer OK 2026-11-25).
-// You and a friend each start the day with 1,000 points. Every 15 minutes in a tier spends points:
-// Red 40, Orange 20, Free 0 (Yellow dropped 2026-11-25 to make setup easier). The same for everyone. After midnight, whoever kept more wins, and everyone sees results at 8 AM their time (Matthew 2026-11-25).
+// Conquer Your Screen Time (build 4, design handoff 2026-11-25).
+// Every player starts the day with 1,000 points. Every 15 minutes in a tier spends points: Red 40, Orange 20, Free 0.
+// The same for everyone. Up to 6 separate one-on-one rivalries (5 invitees plus your inviter); one daily score counts
+// in every match. Results open for everyone at 8 AM their time, sealed until the player breaks the seal.
 // Privacy: minutes per tier stay on this phone. Only the day's points total goes online, after the day ends,
-// tied to an anonymous player ID and the match code. No names: you name your friend on your own phone.
+// once per match, tied to an anonymous player ID and the match code. No names: you name your rivals on your own phone.
 // =====================================================================================
 const IS_APP = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
 const CFG = window.FRIENDS_CONFIG || {};
-const BANK = 1000, STEP = 15, REVEAL_HOUR = 8;
-// The newest day whose result is open: yesterday from 8 AM, the day before until then.
-function resultDay(){ return addDays(today(), new Date().getHours() >= REVEAL_HOUR ? -1 : -2); }
-function dayLabel(d){ return d === addDays(today(), -1) ? 'Yesterday' : d === addDays(today(), -2) ? 'Two days ago' : d; }
+const BANK = 1000, STEP = 15, REVEAL_HOUR = 8, MAX_RIVALS = 6, INVITES = 5, KEEP_DAYS = 40, RETURN_DAYS = 7;
 const TIERS = [
   {id:'red', name:'Red', cost:40, color:'var(--red)', ticks:['Social','Entertainment'], note:'Social media, short video and streaming.'},
-  {id:'orange', name:'Orange', cost:20, color:'var(--orange)', ticks:['Games','Shopping & Food','Safari (search for it)'], note:'Games, shopping and web browsing.'},
+  {id:'orange', name:'Orange', cost:20, color:'var(--orange)', ticks:['Games','Shopping & Food','Safari'], note:'Games, shopping and web browsing.'},
 ];
 // How many of each Apple should report back: Safari is an app, the rest are categories.
 TIERS[0].want = {categories:2, apps:0}; TIERS[1].want = {categories:2, apps:1};
-const FREE_TICKS = ['Messages and Phone','Maps','Productivity & Finance','Education','Reading','Health & Fitness','Creativity','Utilities'];
+const PICK_TICKS = {red:['Social','Entertainment'], orange:['Games','Shopping & Food','Safari (search for it)']};
 const KEY = 'blip-friends';
+const AV_COLORS = ['#5b6b8a','#7a5b8a','#5b8a7a','#8a6a5b','#6a7a5b','#8a5b64'];
+const PRACTICE_NAMES = ['Pat','Robin','Casey','Jamie','Drew','Quinn'];
 
-// ---------- native bridge (same approach as Blip: no bundler, talk to the bridge directly) ----------
+// ---------- the crown (the shipped app icon's crown, AppIcon in bf776f6) and the wax seal ----------
+const CROWN_PTS = ['20,66 13,29 34,52','13,29 34,52 26,66 20,66','34,52 50,24 50,58','50,24 66,52 50,58','34,52 50,58 26,66','66,52 50,58 74,66','50,58 26,66 74,66','66,52 87,29 80,66 74,66','87,29 80,66 74,66','19,70 81,70 79,74 21,74','21,74 79,74 81,78 19,78','50,14.9 45.2,20.5 50,20.5','50,14.9 54.8,20.5 50,20.5','45.2,20.5 50,26.1 50,20.5','54.8,20.5 50,26.1 50,20.5','13,20.6 9.2,25.2 13,25.2','13,20.6 16.8,25.2 13,25.2','9.2,25.2 13,29.8 13,25.2','16.8,25.2 13,29.8 13,25.2','87,20.6 83.2,25.2 87,25.2','87,20.6 90.8,25.2 87,25.2','83.2,25.2 87,29.8 87,25.2','90.8,25.2 87,29.8 87,25.2'];
+const CROWN_GOLD = ['#f2dc97','#d6b55f','#f6e4a8','#b8913a','#c9a54a','#9c772b','#ad8634','#a37d2e','#86641f','#e8cd7e','#9c772b','#fff7dc','#ead38e','#f6e4a8','#b8913a','#fff2c8','#e6cb80','#f2dc97','#d6b55f','#e9d08a','#b89140','#a37d2e','#86641f'];
+const CROWN_PEWTER = ['#bcb6a5','#9c9788','#c3bcaa','#7e7a6e','#8f8a7d','#69655b','#757167','#6e6a60','#58554d','#b0aa9a','#69655b','#d4cdb9','#b5af9e','#c3bcaa','#7e7a6e','#d0c8b5','#aea898','#bcb6a5','#9c9788','#b3ac9c','#7f7b6f','#6e6a60','#58554d'];
+function crownPolys(fills){ return CROWN_PTS.map((p, i) => `<polygon points="${p}" fill="${Array.isArray(fills) ? fills[i] : fills}"/>`).join(''); }
+// kind: gold (you won), pewter (the rival won), or any single color (a silhouette, like the cut-out in calendar days).
+function crown(w, kind){ kind = kind || 'gold'; const f = kind === 'gold' ? CROWN_GOLD : kind === 'pewter' ? CROWN_PEWTER : kind;
+  return `<svg width="${w}" height="${Math.round(w*68/84)}" viewBox="8 11 84 68" aria-hidden="true">${crownPolys(f)}</svg>`; }
+let sealN = 0;
+function seal(size){
+  const id = 'sg' + (++sealN);
+  return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id="${id}" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#8a2433"/><stop offset=".6" stop-color="#5e1520"/><stop offset="1" stop-color="#3a0b12"/></radialGradient></defs>
+  <path d="M94.9 46.1 Q96.1 59.3 89.0 70.2 Q81.9 81.0 71.2 88.2 Q60.5 95.3 47.2 95.2 Q33.9 95.2 24.1 86.3 Q14.4 77.5 8.5 65.8 Q2.7 54.1 6.9 41.8 Q11.1 29.5 19.1 19.5 Q27.1 9.5 39.9 5.8 Q52.7 2.1 64.7 7.6 Q76.7 13.2 85.3 23.1 Q93.8 33.0 94.9 46.1 Z" fill="url(#${id})"/>
+  <circle cx="50" cy="50" r="33" fill="none" stroke="#4a0f17" stroke-width="2.5"/><circle cx="50" cy="50" r="30.5" fill="none" stroke="#a8404d" stroke-width="1" opacity=".7"/>
+  <g transform="translate(26 29.5) scale(.48)"><g transform="translate(0 2.5)">${crownPolys('#3a0b12')}</g>${crownPolys('#9a3a47')}</g>
+  <ellipse cx="34" cy="26" rx="10" ry="5" fill="#fff" opacity=".12" transform="rotate(-30 34 26)"/></svg>`;
+}
+const ICON = {
+  gift:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12h18M12 8c-2-4-6-4-6-1s6 1 6 1zM12 8c2-4 6-4 6-1s-6 1-6 1z"/></svg>',
+  sliders:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+  info:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+  check:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d0d0f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>',
+  clock:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>',
+  back:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4"/></svg>',
+  plus:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+};
+
+// ---------- native bridge (no bundler, talk to the bridge directly) ----------
 function nativePlugin(name){
   const C = window.Capacitor;
   if (!IS_APP || !C) return null;
@@ -113,9 +206,10 @@ const fakeST = {
   async tierStatus(){ const d = this._d(); const o = {ready: !!d.ready, pending:false, since: d.since}; TIERS.forEach(t => o[t.id] = {apps:0, categories: d.tiers[t.id] || 0}); return o; },
   async friendsStart(){ const d = this._d(); d.ready = true; d.since = d.since || today(); save(); return {started:true}; },
   async friendsResync(){ return {resynced:false}; },
-  async friendsMinutes({day}){ const m = this._d().min[day] || {}; const o = {red:m.red||0, orange:m.orange||0}; o.points = points(o); o.sent = !!(S.sent||{})[day]; return o; },
+  async friendsMinutes({day}){ const m = this._d().min[day]; if (!m && day !== today()) return {red:0, orange:0, points:BANK, none:true}; const o = {red:(m||{}).red||0, orange:(m||{}).orange||0}; o.points = points(o); return o; },
   async friendsSync(){ return {}; }, async friendsWipe(){ delete S.demo; return {}; },
-  async remindOn(){ return {granted:true}; }, async remindOff(){ return {}; },
+  async notifySchedule(){ return {granted:true}; }, async remindOff(){ return {}; },
+  async conquerWidget(){ return {}; }, async haptic(){ return {}; },
   async env(){ return {testflight:true}; },
 };
 const ST = nativePlugin('ScreenTime') || fakeST;
@@ -123,23 +217,56 @@ const Prefs = nativePlugin('Preferences');
 
 // ---------- save ----------
 let S = null;
-function load(){ try { S = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(e){ S = null; } S = S || {}; }
+function load(){ try { S = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(e){ S = null; } S = S || {}; migrate(); }
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} if (Prefs) Prefs.set({key:KEY, value:JSON.stringify(S)}).catch(()=>{}); }
 async function restore(){
   if (!Prefs || localStorage.getItem(KEY)) return;
   try { const r = await Prefs.get({key:KEY}); if (r && r.value) { localStorage.setItem(KEY, r.value); load(); } } catch(e){}
 }
+// Builds 1 to 3 kept one match (S.match) and results by day. Build 4 keeps a list of matches.
+function migrate(){
+  S.matches = S.matches || [];
+  S.mine = S.mine || {}; S.res = S.res || {}; S.sentTo = S.sentTo || {};
+  if (S.match) {
+    const m = S.match; if (m.practice) m.role = 'p';
+    m.made = m.made || m.startDay || today();
+    S.matches.push(m);
+    for (const d in (S.results || {})) { const r = S.results[d]; if (r.me != null) S.mine[d] = r.me; if (r.them != null) (S.res[m.code] = S.res[m.code] || {})[d] = r.them; }
+    for (const d in (S.sent || {})) (S.sentTo[m.code] = S.sentTo[m.code] || {})[d] = true;
+  }
+  delete S.match; delete S.results; delete S.sent;
+}
 
 // ---------- days and points ----------
 function dayStr(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 function today(){ return dayStr(new Date()); }
-function addDays(day, n){ const [y,m,d] = day.split('-').map(Number); return dayStr(new Date(y, m-1, d+n)); }
-function weekStart(day){ const [y,m,d] = day.split('-').map(Number); const dt = new Date(y, m-1, d); return addDays(day, -((dt.getDay()+6)%7)); }
+function toDate(day){ const [y,m,d] = day.split('-').map(Number); return new Date(y, m-1, d); }
+function addDays(day, n){ const dt = toDate(day); return dayStr(new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()+n)); }
+function diffDays(a, b){ return Math.round((toDate(b) - toDate(a)) / 864e5); }
+function weekStart(day){ return addDays(day, -((toDate(day).getDay()+6)%7)); }
+function weekday(day){ return toDate(day).toLocaleDateString('en-US', {weekday:'long'}); }
+// The newest day whose result is open: yesterday from 8 AM, the day before until then.
+function resultDay(){ return addDays(today(), new Date().getHours() >= REVEAL_HOUR ? -1 : -2); }
 function points(m){ return Math.max(0, BANK - TIERS.reduce((s,t) => s + Math.floor((m[t.id]||0)/STEP)*t.cost, 0)); }
-function hm(min){ if (!min) return '0m'; const h = Math.floor(min/60), m = min%60; return (h ? h + 'h' : '') + (h && m ? ' ' : '') + (m || !h ? m + 'm' : ''); }
+function hm(min){ if (!min) return '0 min'; const h = Math.floor(min/60), m = min%60; return (h ? h + ' hr' : '') + (h && m ? ' ' : '') + (m ? m + ' min' : ''); }
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmt(n){ return Number(n).toLocaleString('en-US'); }
-function friend(){ return (S.match && S.match.name) || 'Your friend'; }
+function initial(n){ return esc((n || '?').trim().charAt(0).toUpperCase()); }
+function avatar(m){ const i = S.matches.indexOf(m); return `<div class="av" style="background:${AV_COLORS[(i < 0 ? 0 : i) % AV_COLORS.length]}">${initial(m.name)}</div>`; }
+function listNames(a){ return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length-1]; }
+
+// ---------- matches and scores ----------
+function rivals(){ return S.matches.filter(m => m.active && !m.ended); }
+function own(){ return S.matches.filter(m => m.role === 'a'); }
+function inviter(){ return S.matches.find(m => m.role === 'b' && !m.ended); }
+function waiting(){ return own().filter(m => !m.active && !m.ended && diffDays(m.made, today()) < RETURN_DAYS); }
+function them(m, d){ return (S.res[m.code] || {})[d]; }
+// One shared day: both totals in, and the day is in this match. A late joiner compares only shared days.
+function pair(m, d){ const a = S.mine[d], b = them(m, d); return m.startDay && d >= m.startDay && a != null && b != null ? [a, b] : null; }
+function totals(m, from, to){ let a = 0, b = 0, n = 0; for (let d = from; d <= to; d = addDays(d, 1)) { const p = pair(m, d); if (p) { a += p[0]; b += p[1]; n++; } } return {a, b, n}; }
+function dayCrowns(d){ let won = 0, of = 0; for (const m of rivals()) { const p = pair(m, d); if (p) { of++; if (p[0] > p[1]) won++; } } return {won, of}; }
+function weekLeads(){ const open = resultDay(), ws = weekStart(open); let lead = 0, of = 0; for (const m of rivals()) { const t = totals(m, ws, open); if (t.n) { of++; if (t.a > t.b) lead++; } } return {lead, of}; }
+function streak(m){ let n = 0; for (let d = resultDay(); n < 400; d = addDays(d, -1)) { const p = pair(m, d); if (!p || p[0] <= p[1]) break; n++; } return n; }
 
 // ---------- online service (Firebase Auth + Firestore REST, no SDK) ----------
 const Net = {
@@ -172,74 +299,80 @@ const Net = {
   dec(doc){ if (!doc || !doc.fields) return null; const o = {}; for (const k in doc.fields) { const v = doc.fields[k]; o[k] = 'integerValue' in v ? Number(v.integerValue) : 'booleanValue' in v ? v.booleanValue : 'stringValue' in v ? v.stringValue : v.timestampValue; } o._name = doc.name; return o; },
   mask(keys){ return keys.map(k => 'updateMask.fieldPaths=' + k).join('&'); },
 };
-// Tell the Screen Time extension how to send the total at midnight (it runs even when the app is closed).
+// Tell the Screen Time extension how to send the total at midnight (it runs even when the app is closed): one upload per match.
 function syncNative(){
-  const m = S.match;
-  if (!Net.on() || !m || m.practice || !m.active || !S.me) return ST.friendsSync({}).catch(()=>{});
-  return ST.friendsSync({apiKey:CFG.apiKey, projectId:CFG.projectId, refreshToken:S.me.refresh, uid:S.me.uid, match:m.code}).catch(()=>{});
+  const codes = rivals().filter(m => m.role !== 'p').map(m => m.code);
+  if (!Net.on() || !codes.length || !S.me) return ST.friendsSync({}).catch(()=>{});
+  return ST.friendsSync({apiKey:CFG.apiKey, projectId:CFG.projectId, refreshToken:S.me.refresh, uid:S.me.uid, match:codes.join(',')}).catch(()=>{});
 }
 
-// ---------- matches ----------
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function newCode(){ let c = ''; const a = new Uint32Array(6); crypto.getRandomValues(a); a.forEach(n => c += CODE_CHARS[n % CODE_CHARS.length]); return c; }
+function cleanCode(s){ return (s || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^BLIP(?=.{6}$)/, ''); }
 async function createMatch(name){
   await Net.signIn();
   for (let i = 0; i < 4; i++) {
     const code = newCode();
     try {
       await Net.call('PATCH', 'matches/' + code, Net.enc({a:S.me.uid, b:'', startDay:'', ended:false, created:new Date()}), 'currentDocument.exists=false');
-      S.match = {code, name, role:'a', active:false, startDay:''}; save(); return;
+      const m = {code, name, role:'a', active:false, startDay:'', made:today()};
+      S.matches.push(m); save(); return m;
     } catch(e) { if (e.status !== 400 && e.status !== 409 && e.status !== 412) throw e; }
   }
   throw new Error('code');
 }
-async function joinMatch(code, name){
+async function checkCode(code){
   await Net.signIn();
   const doc = Net.dec(await Net.call('GET', 'matches/' + code));
-  if (!doc) throw new Error('That code doesn\'t match any invite. Check it and try again.');
-  if (doc.ended) throw new Error('That match has ended. Ask for a new code.');
-  if (doc.a === S.me.uid) throw new Error('That\'s your own code. Send it to your friend.');
-  if (doc.b && doc.b !== S.me.uid) throw new Error('Someone already joined with that code.');
+  if (!doc) throw new Error('That code doesn\'t match any invitation. Check it and try again.');
+  if (doc.ended) throw new Error('That invitation has expired. Ask your friend for a new one.');
+  if (doc.a === S.me.uid) throw new Error('That\'s your own invitation. Send it to a friend.');
+  if (doc.b && doc.b !== S.me.uid) throw new Error('Someone already used that invitation.');
+  if (S.matches.some(m => m.code === code)) throw new Error('You\'re already playing with that code.');
+  return doc;
+}
+async function joinMatch(code, name){
+  const doc = await checkCode(code);
   const start = today();
   if (!doc.b) await Net.call('PATCH', 'matches/' + code, Net.enc({b:S.me.uid, startDay:start}), Net.mask(['b','startDay']) + '&currentDocument.exists=true');
-  S.match = {code, name, role:'b', other:doc.a, active:true, startDay:doc.startDay || start}; save();
+  S.matches.push({code, name, role:'b', other:doc.a, active:true, startDay:doc.startDay || start, made:today()}); save();
   await syncNative();
 }
-// The inviter checks whether the friend has joined yet.
-async function checkJoined(){
-  const m = S.match;
-  if (!m || m.practice || !Net.on()) return;
-  const doc = Net.dec(await Net.call('GET', 'matches/' + m.code));
-  if (!doc) return;
-  if (doc.ended && !m.ended) { m.ended = true; m.active = false; save(); await syncNative(); await ST.remindOff().catch(()=>{}); return; }
-  if (!m.active && doc.b) { Object.assign(m, {active:true, other:doc.b, startDay:doc.startDay}); save(); await syncNative(); toast(friend() + ' joined. Your first match day is ' + (doc.startDay === today() ? 'today' : doc.startDay) + '.'); }
-}
-async function sendDay(day, pts){
-  const m = S.match;
-  if (m.practice) return true;
-  await Net.call('PATCH', 'matches/' + m.code + '/days/' + day + '_' + S.me.uid, Net.enc({uid:S.me.uid, day, points:pts, at:new Date()}));
-  return true;
-}
-async function friendDay(day){
-  const m = S.match;
-  if (m.practice) { // practice friend: a steady player who usually keeps 600 to 900 points
-    let h = 0; for (const c of day + m.code) h = (h*31 + c.charCodeAt(0)) >>> 0;
-    return 600 + (h % 31) * 10;
+// The inviter checks whether invitees have joined, and whether any match was ended by the other player (once a day).
+async function checkMatches(){
+  if (!Net.on()) return;
+  for (const m of S.matches) {
+    if (m.role === 'p' || m.ended) continue;
+    if (m.active && m.checked === today()) continue;
+    if (!m.active && diffDays(m.made, today()) >= RETURN_DAYS) continue;
+    const doc = Net.dec(await Net.call('GET', 'matches/' + m.code));
+    if (!doc) continue;
+    if (doc.ended) { m.ended = true; m.active = false; save(); await syncNative(); continue; }
+    if (!m.active && doc.b) { Object.assign(m, {active:true, other:doc.b, startDay:doc.startDay}); save(); await syncNative(); applyNotify().catch(()=>{}); toast(m.name + ' joined. Your first match day is ' + (doc.startDay === today() ? 'today' : weekday(doc.startDay)) + '.'); }
+    if (m.active) m.checked = today();
   }
-  const doc = Net.dec(await Net.call('GET', 'matches/' + m.code + '/days/' + day + '_' + m.other));
-  return doc ? doc.points : null;
 }
-async function endMatch(){
-  const m = S.match;
-  if (m && !m.practice && Net.on()) await Net.call('PATCH', 'matches/' + m.code, Net.enc({ended:true}), Net.mask(['ended']));
-  S.match = null; save(); await syncNative(); await ST.remindOff().catch(()=>{});
+async function sendDay(m, day, pts){
+  await Net.call('PATCH', 'matches/' + m.code + '/days/' + day + '_' + S.me.uid, Net.enc({uid:S.me.uid, day, points:pts, at:new Date()}));
+}
+function practiceDay(m, day){ let h = 0; for (const c of day + m.code) h = (h*31 + c.charCodeAt(0)) >>> 0; return 600 + (h % 31) * 10; }
+// One read per match fetches every total the rival has sent (the server keeps 40 days).
+async function fetchRival(m){
+  const list = await Net.call('GET', 'matches/' + m.code + '/days', null, 'pageSize=300');
+  const r = S.res[m.code] = S.res[m.code] || {};
+  for (const doc of (list && list.documents) || []) { const d = Net.dec(doc); if (d && d.uid === m.other) r[d.day] = d.points; }
+}
+async function endMatch(m){
+  if (m.role !== 'p' && Net.on()) await Net.call('PATCH', 'matches/' + m.code, Net.enc({ended:true}), Net.mask(['ended']));
+  S.matches = S.matches.filter(x => x !== m); delete S.res[m.code]; delete S.sentTo[m.code];
+  save(); await syncNative(); applyNotify().catch(()=>{});
 }
 // "Delete my data": my daily totals and anonymous account go from the online service, then everything on this phone.
 async function deleteAll(){
   if (Net.on() && S.me && S.me.uid) {
-    const m = S.match;
-    if (m && !m.practice) {
-      const list = await Net.call('GET', 'matches/' + m.code + '/days', null, 'pageSize=300');
+    for (const m of S.matches) {
+      if (m.role === 'p') continue;
+      const list = await Net.call('GET', 'matches/' + m.code + '/days', null, 'pageSize=300').catch(() => null);
       for (const doc of (list && list.documents) || []) { const d = Net.dec(doc); if (d.uid === S.me.uid) await Net.call('DELETE', doc.name.split('/documents/')[1]); }
       const slot = m.role === 'a' ? 'a' : 'b';
       await Net.call('PATCH', 'matches/' + m.code, Net.enc({ended:true, [slot]:'deleted'}), Net.mask(['ended', slot])).catch(()=>{});
@@ -248,107 +381,172 @@ async function deleteAll(){
     await fetch('https://identitytoolkit.googleapis.com/v1/accounts:delete?key=' + CFG.apiKey, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({idToken:t})});
   }
   await ST.friendsWipe().catch(()=>{});
+  await ST.conquerWidget({}).catch(()=>{});
   try { localStorage.removeItem(KEY); } catch(e){}
   if (Prefs) await Prefs.remove({key:KEY}).catch(()=>{});
-  S = {}; save();
+  S = {}; migrate(); save();
 }
-// Totals older than 30 days are removed from the online service (privacy policy).
+// Totals older than 40 days are removed from the online service (privacy policy, Lawyer ruling 2026-11-25).
 async function trimOld(){
-  const m = S.match; if (!m || m.practice || !Net.on() || !m.active) return;
-  const last = S.trimmed || ''; if (last === today()) return;
+  if (S.trimmed === today()) return;
   S.trimmed = today(); save();
-  const cutoff = addDays(today(), -30);
-  const list = await Net.call('GET', 'matches/' + m.code + '/days', null, 'pageSize=300');
-  for (const doc of (list && list.documents) || []) { const d = Net.dec(doc); if (d.uid === S.me.uid && d.day < cutoff) await Net.call('DELETE', doc.name.split('/documents/')[1]).catch(()=>{}); }
-  for (const k in (S.results||{})) if (k < cutoff) delete S.results[k];
+  const cutoff = addDays(today(), -KEEP_DAYS);
+  if (Net.on() && S.me) for (const m of rivals()) {
+    if (m.role === 'p') continue;
+    const list = await Net.call('GET', 'matches/' + m.code + '/days', null, 'pageSize=300').catch(() => null);
+    for (const doc of (list && list.documents) || []) { const d = Net.dec(doc); if (d.uid === S.me.uid && d.day < cutoff) await Net.call('DELETE', doc.name.split('/documents/')[1]).catch(()=>{}); }
+  }
+  for (const d in S.mine) if (d < cutoff) delete S.mine[d];
+  for (const c in S.res) for (const d in S.res[c]) if (d < cutoff) delete S.res[c][d];
+  for (const c in S.sentTo) for (const d in S.sentTo[c]) if (d < cutoff) delete S.sentTo[c][d];
+  save();
 }
 
-// ---------- the daily cycle: send finished days, fetch the friend's, find what to reveal ----------
+// ---------- the daily cycle: send finished days, fetch rivals' totals, find what to reveal ----------
 let tierInfo = null, todayMin = {red:0, orange:0, points:BANK}, busy = false, offline = false;
 async function refresh(){
   if (busy) return; busy = true;
   try {
-    if (S.notify && S.notify.time !== '08:00') { S.notify.time = '08:00'; save(); applyNotify().catch(()=>{}); }  // older builds let players pick a time
     await ST.friendsResync().catch(()=>{});
     tierInfo = await ST.tierStatus().catch(() => null);
     todayMin = await ST.friendsMinutes({day:today()}).catch(() => todayMin);
-    const m = S.match;
-    if (m && !m.active && !m.ended) await checkJoined().catch(() => { offline = true; });
-    if (m && m.active) {
-      S.results = S.results || {}; S.sent = S.sent || {};
-      const since = [m.startDay, tierInfo && tierInfo.since].filter(Boolean).sort().pop() || m.startDay;
-      offline = false;
-      for (let d = [addDays(today(), -3), since].sort().pop(); d < today(); d = addDays(d, 1)) {
-        const r = S.results[d] = S.results[d] || {};
-        if (r.me == null) {
-          const mm = await ST.friendsMinutes({day:d}).catch(() => null);
-          if (mm) { r.me = mm.points; if (mm.sent) S.sent[d] = true; }
-        }
-        if (r.me != null && !S.sent[d]) {
-          try { await sendDay(d, r.me); S.sent[d] = true; ST.friendsSync({sentDay:d}).catch(()=>{}); } catch(e) { offline = true; }
-        }
-        if (r.them == null) { try { const t = await friendDay(d); if (t != null) r.them = t; } catch(e) { offline = true; } }
+    offline = false;
+    await checkMatches().catch(() => { offline = true; });
+    const since = (tierInfo && tierInfo.since) || '';
+    const first = rivals().map(m => m.startDay).filter(Boolean).sort()[0];
+    if (first) {
+      // My own totals for finished days, from this phone (kept 40 days).
+      for (let d = [addDays(today(), -KEEP_DAYS), first, since].filter(Boolean).sort().pop(); d < today(); d = addDays(d, 1)) {
+        if (S.mine[d] != null) continue;
+        const mm = await ST.friendsMinutes({day:d}).catch(() => null);
+        if (mm && !mm.none) S.mine[d] = mm.points;
       }
-      if (!m.practice) { if (!m.ended) await checkJoined().catch(()=>{}); trimOld().catch(()=>{}); }
-      save();
+      for (const m of rivals()) {
+        const sent = S.sentTo[m.code] = S.sentTo[m.code] || {};
+        const from = [addDays(today(), m.role === 'p' ? -KEEP_DAYS : -7), m.startDay, since].filter(Boolean).sort().pop();
+        let missing = false;
+        for (let d = from; d < today(); d = addDays(d, 1)) {
+          if (m.role === 'p') { if (them(m, d) == null) (S.res[m.code] = S.res[m.code] || {})[d] = practiceDay(m, d); continue; }
+          if (S.mine[d] != null && !sent[d]) { try { await sendDay(m, d, S.mine[d]); sent[d] = true; } catch(e) { offline = true; } }
+          if (them(m, d) == null) missing = true;
+        }
+        if (missing && m.role !== 'p') await fetchRival(m).catch(() => { offline = true; });
+      }
+      trimOld().catch(()=>{});
     }
+    save();
   } finally { busy = false; }
   render();
+  pushWidget();
   maybeReveal();
 }
 
 // ---------- screens ----------
 const $ = s => document.querySelector(s);
 function toast(msg){ const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 3200); }
-let screen = 'home', setupTier = 0;
+let setupTier = 0;
 
 function render(){
   const app = $('#app');
   if (!S.setup) { app.innerHTML = setupView(); return; }
-  app.innerHTML = homeView();
+  app.innerHTML = todayView();
+  repaint();
 }
+function testMode(){ return !IS_APP || S.testflight; }
 
+// ---------- welcome, invitation and setup ----------
 function setupView(){
-  const st = S.setupStep || 'hello';
-  if (st === 'hello') return `
-    <h1 style="margin-top:32px">Beat a friend at putting your phone down.</h1>
-    <p class="dim">You both start every day with ${fmt(BANK)} points. Time on your phone spends them, and social media spends them fastest. At 8 AM the next morning you find out who kept more.</p>
-    <div class="card stack">
-      ${TIERS.map(t => `<div class="row"><span class="dot" style="background:${t.color}"></span><div style="flex:1"><b>${t.name}</b> <span class="faint">${esc(t.note)}</span></div><b>${t.cost}</b></div>`).join('')}
-      <div class="row"><span class="dot" style="background:var(--free)"></span><div style="flex:1"><b>Free</b> <span class="faint">Messages, Maps, work and school apps.</span></div><b>0</b></div>
-      <p class="faint">Points per 15 minutes. The same for every player.</p>
+  const st = S.setupStep || 'welcome';
+  if (st === 'welcome') return `
+    <div style="display:flex;align-items:center;gap:10px;margin-top:40px">${crown(30)}<span class="d" style="font-size:22px">Conquer Your Screen Time</span></div>
+    <h1 style="font-size:40px;margin:44px 0 22px;line-height:1.05;letter-spacing:-1px">Beat your friends.<br>Claim the crown.</h1>
+    <div class="dim s15" style="line-height:1.45">
+      <p>You and your friends each start the day with <b style="color:var(--ink)">1,000 points</b>.</p>
+      <p>Every 15 minutes on your phone costs you a few. Social apps cost the most. Texting, calls and Maps are free.</p>
+      <p>At 8 AM, you'll see who kept more.</p></div>
+    <div class="stack" style="margin-top:44px">
+      <label for="wcode" style="font-size:15px;font-weight:600">Conquer is invite only. Have a code?</label>
+      <input type="text" class="code" id="wcode" maxlength="11" placeholder="e.g. 7Q4KXM" autocomplete="off" autocapitalize="characters">
+      <p class="faint" id="err" style="color:var(--red);margin:0"></p>
+      <button class="main" id="go" onclick="welcomeJoin()">Join</button>
     </div>
-    <button class="main" onclick="go('connect')">Get started</button>`;
+    <p class="faint" style="text-align:center;margin-top:14px">Don't have one? Ask a friend who plays. Everyone gets 5 invites to share. Ages 13 and up.</p>
+    ${testMode() ? `<div style="text-align:center"><button class="link" onclick="go('connect')">Test builds: start without a code</button></div>` : ''}`;
+  if (st === 'invited') return invitedView();
   if (st === 'connect') return `
-    <h1 style="margin-top:32px">Connect Screen Time</h1>
-    <p class="dim">Blip uses Apple's Screen Time to count your time in each tier. Your minutes and apps stay on this phone. Only your daily points total is ever shared, and only with the friend you invite.</p>
+    <h1 style="margin-top:40px">Connect Screen Time</h1>
+    <p class="dim s15">Conquer uses Apple's Screen Time to count your time in each color. Your minutes and apps stay on this phone. Only your daily points total is ever shared, and only with the friends you play.</p>
+    <div style="height:24px"></div>
     <button class="main" onclick="connectST()">Connect Screen Time</button>
-    ${S.stDenied ? '<p class="faint">Screen Time wasn\'t allowed. You can turn it on in Settings > Screen Time, then try again.</p>' : ''}`;
+    ${S.stDenied ? '<p class="faint">Screen Time wasn\'t allowed. You can turn it on in Settings › Screen Time, then try again.</p>' : ''}`;
   if (st === 'tiers') {
-    const t = TIERS[setupTier];
+    const t = TIERS[setupTier], next = TIERS[setupTier+1];
     return `
-    <p class="faint" style="margin-top:24px">Step ${setupTier+1} of ${TIERS.length}</p>
-    <h1><span class="dot" style="display:inline-block;background:${t.color};margin-right:8px"></span>${t.name}: ${t.cost} points per 15 min</h1>
-    <div class="card"><ul class="ticks">${t.ticks.map(x => `<li><b>${esc(x)}</b></li>`).join('')}</ul>
-      <p class="faint">This list stays at the top of Apple's screen while you tick, so there's nothing to remember. Everyone ticks the same ones, so the game is fair.</p></div>
-    ${setupTier === TIERS.length - 1 ? `<p class="faint">Everything else is free, like ${FREE_TICKS.map(esc).join(', ')}.</p>` : ''}
-    ${S.tickWrong ? `<p class="faint" style="color:var(--lose)">That doesn't look right. Tick only the ones listed, then tap Done.</p>` : ''}
+    <p class="lbl" style="margin-top:32px">Step ${setupTier+1} of ${TIERS.length}</p>
+    <h1>Pick your ${t.name} apps</h1>
+    ${setupTier === 0 ? '<p class="dim s15">Only two kinds of apps cost points. Everything else is free. Everyone plays with the same costs.</p>' : ''}
+    <div class="card">
+      <div class="spread"><div class="row"><span class="dot" style="background:${t.color}"></span><b>${t.name}</b></div><div><b class="num" style="color:${t.color}">−${t.cost}</b> <span class="faint">per 15 min</span></div></div>
+      <p class="faint" style="margin-top:12px">In Apple's list, tick:</p>
+      <div>${t.ticks.map(x => `<span class="pill" style="color:var(--ink)">${esc(x)}</span>`).join('')}</div>
+    </div>
+    ${next ? `<div class="card" style="opacity:.6"><div class="spread"><div class="row"><span class="dot" style="background:${next.color}"></span><b>${next.name} · next</b></div><div><b class="num">−${next.cost}</b> <span class="faint">per 15 min</span></div></div>
+      <div style="margin-top:10px">${next.ticks.map(x => `<span class="pill">${esc(x)}</span>`).join('')}</div></div>` : ''}
+    <p class="faint"><b style="color:var(--free)">Free:</b> texts, calls, Maps, work, school, reading, fitness and everything else.</p>
+    <p class="faint">What to tick stays at the top of Apple's list, so there's nothing to remember.</p>
+    ${S.tickWrong ? `<p class="faint" style="color:var(--red)">That doesn't look right. Tick only the ones listed, then tap Done.</p>` : ''}
+    <div style="height:12px"></div>
     <button class="main" onclick="pickTier()">${S.tickWrong ? 'Try again' : 'Open Apple\'s list'}</button>`;
   }
   if (st === 'ready') return `
-    <h1 style="margin-top:32px">You're set up</h1>
-    <p class="dim">Today already counts, from midnight. Next, invite a friend.</p>
+    <div style="margin-top:56px">${crown(56)}</div>
+    <h1>You're set up</h1>
+    <p class="dim s15">Today already counts, from midnight. ${rivals().length ? 'Your first result arrives at 8 AM tomorrow.' : 'Next, invite a friend.'}</p>
+    <div style="height:24px"></div>
     <button class="main" onclick="finishSetup()">Continue</button>`;
   return '';
 }
+function invitedView(){
+  return `
+    <div style="text-align:center;margin-top:28px">
+      <div style="position:relative;height:150px;display:flex;justify-content:center">
+        <div style="position:absolute;top:70px;left:50%;margin-left:-104px;clip-path:polygon(0 0,53% 0,45% 30%,56% 55%,46% 78%,51% 100%,0 100%);transform:rotate(-16deg)">${seal(92)}</div>
+        <div style="position:absolute;top:70px;left:50%;margin-left:12px;clip-path:polygon(52% 0,100% 0,100% 100%,50% 100%,45% 78%,55% 55%,44% 30%);transform:rotate(16deg)">${seal(92)}</div>
+        <div style="position:absolute;top:0;filter:drop-shadow(0 0 16px rgba(201,165,74,.5))" class="bf-up">${crown(92)}</div>
+      </div>
+      <p class="lbl gold" style="margin-top:28px">One of only five · Reserved for you</p>
+      <h1 style="font-size:40px">You're in.</h1>
+    </div>
+    <p class="dim s15">Conquer Your Screen Time is invitation only. Every player gets just five, and a friend gave one of theirs to you.</p>
+    <p class="dim s15">They think you can take the crown. Your place is paid for, and it's yours for good.</p>
+    <div class="card"><p class="lbl" style="margin-top:0">Your seat includes</p>
+      <div class="perk"><span>◆</span><div>A match with the friend who chose you</div></div>
+      <div class="perk" style="padding-bottom:0"><span>◆</span><div>Five invitations of your own to give</div></div></div>
+    <button class="main" onclick="claimSeat()">Claim your seat</button>
+    <p class="faint" style="text-align:center">Free to play. Ages 13 and up.</p>`;
+}
 function go(step){ S.setupStep = step; save(); render(); }
+async function welcomeJoin(){
+  const code = cleanCode($('#wcode').value);
+  if (code.length !== 6) { $('#err').textContent = 'Codes have 6 letters and numbers.'; return; }
+  if (!Net.on()) { $('#err').textContent = 'Playing with friends isn\'t switched on in this build.'; return; }
+  const b = $('#go'); b.disabled = true;
+  try { await checkCode(code); S.pendingCode = code; go('invited'); }
+  catch(e) { b.disabled = false; $('#err').textContent = netErr(e); }
+}
+function netErr(e){ return /^net|sign-in|token|Failed|Load failed|NetworkError/.test(e.message) ? 'Couldn\'t reach the server. Check your connection.' : e.message; }
+function claimSeat(){
+  nameSheet('Who invited you?', 'Claim your seat', async name => {
+    await joinMatch(S.pendingCode, name); delete S.pendingCode; go('connect');
+  });
+}
 async function connectST(){
   const r = await ST.authorize().catch(() => ({authorized:false}));
   if (r.authorized) { S.stDenied = false; setupTier = 0; go('tiers'); } else { S.stDenied = true; save(); render(); }
 }
 // Opens Apple's list with what to tick pinned above it. Resolves true when the counts match what we asked for.
 async function openPicker(t){
-  const r = await ST.tierPick({tier:t.id, ticks:t.ticks, categories:t.want.categories, apps:t.want.apps}).catch(() => ({picked:false}));
+  const r = await ST.tierPick({tier:t.id, ticks:PICK_TICKS[t.id], categories:t.want.categories, apps:t.want.apps}).catch(() => ({picked:false}));
   if (!r.picked) return null;
   return r.categories === undefined || (r.categories === t.want.categories && r.apps === t.want.apps);
 }
@@ -360,186 +558,401 @@ async function pickTier(){
   if (setupTier < TIERS.length - 1) { setupTier++; render(); return; }
   try { await ST.friendsStart(); go('ready'); } catch(e) { toast('Screen Time didn\'t start. Try again.'); }
 }
-function finishSetup(){ S.setup = true; delete S.setupStep; save(); refresh(); }
+function finishSetup(){ S.setup = true; delete S.setupStep; save(); askNotify(); refresh(); }
 
-function homeView(){
+// ---------- Today ----------
+function todayView(){
   const m = todayMin, pts = m.points;
   const spent = TIERS.map(t => ({t, min:m[t.id]||0, pts:Math.floor((m[t.id]||0)/STEP)*t.cost}));
   return `
-  <div class="topbar"><h1>Today</h1><button class="gear" onclick="openSettings()">Settings</button></div>
-  <div class="card">
+  <div class="top"><span class="lbl" style="color:var(--dim)">${weekday(today())}</span>
+    <div class="icons"><button class="ib" aria-label="Your crowns" onclick="openPage('crowns')">${crown(22)}</button>
+      <button class="ib" aria-label="Invites" onclick="openPage('invites')">${ICON.gift}</button>
+      <button class="ib" aria-label="Settings" onclick="openPage('settings')">${ICON.sliders}</button></div></div>
+  <div style="margin-top:26px"><span class="lbl">Points left today</span>
     <div class="big">${fmt(pts)}</div>
-    <div class="dim">points left of ${fmt(BANK)}</div>
-    <div class="bar">${spent.map(s => `<i style="width:${s.pts/BANK*100}%;background:${s.t.color}"></i>`).join('')}</div>
-    <div style="margin-top:8px">${spent.map(s => `
-      <div class="tier"><span class="dot" style="background:${s.t.color}"></span>
-        <div class="what"><b>${s.t.name}</b> <span class="faint">${hm(s.min)}</span></div>
-        <div class="cost">${s.pts ? '−' + s.pts : '0'}</div></div>`).join('')}
-      <div class="tier"><span class="dot" style="background:var(--free)"></span><div class="what"><b>Free</b> <span class="faint">Messages, Maps, work, school</span></div><div class="cost">0</div></div>
-    </div>
-    <p class="faint">Blip's count, in 15-minute steps. It can differ a little from iPhone's Screen Time.${tierInfo && tierInfo.pending ? ' Your tier changes start tomorrow.' : ''}</p>
+    <div class="rule"><i></i><b></b><span class="s15">of ${fmt(BANK)} · renews at midnight</span></div></div>
+  <div class="bar"><i style="width:${pts/BANK*100}%;background:var(--accent)"></i>${spent.slice().reverse().map(s => `<i style="width:${s.pts/BANK*100}%;background:${s.t.color}"></i>`).join('')}</div>
+  <div class="whatcounts"><button onclick="openCounts()">${ICON.info} What counts?</button></div>
+  <div class="card lines" style="margin-top:8px">
+    ${spent.map(s => `<div><span class="dot" style="background:${s.t.color}"></span><span class="grow">${s.t.name} apps · ${hm(s.min)}</span><span class="num" style="color:${s.t.color}">${s.pts ? '−' + fmt(s.pts) : '0'}</span></div>`).join('')}
+    <div><span class="dot" style="background:var(--free)"></span><span class="grow">Everything else · free</span><span class="num" style="color:var(--free)">0</span></div>
   </div>
-  ${matchView()}
+  ${tierInfo && tierInfo.pending ? '<p class="faint">Your app color changes start tomorrow.</p>' : ''}
+  ${matchCard()}
+  <p class="dim s15" style="text-align:center;margin-top:36px">You're all caught up.<br>Put your phone down to keep your ${fmt(pts)}.</p>
   ${!IS_APP ? demoTools() : ''}`;
 }
-
-function record(){
-  const r = S.results || {}, m = S.match; let w = 0, l = 0, t = 0, ww = 0, wl = 0;
-  const open = resultDay(), wk = weekStart(open);
-  for (const d in r) {
-    if (!m || d < m.startDay || d > open || r[d].me == null || r[d].them == null) continue;
-    const res = r[d].me > r[d].them ? 1 : r[d].me < r[d].them ? -1 : 0;
-    if (res > 0) w++; else if (res < 0) l++; else t++;
-    if (d >= wk) { if (res > 0) ww++; else if (res < 0) wl++; }
+function matchCard(){
+  const rs = rivals(), w = waiting();
+  if (!rs.length) {
+    if (w.length) return `<div class="card stack"><h2>Waiting for ${esc(listNames(w.map(m => m.name)))}</h2>
+      <p class="dim s15">Your match starts the day they join with your code.</p><button class="main" onclick="openPage('invites')">See your invites</button></div>`;
+    return `<div class="card stack"><h2>Play a friend</h2>
+      <p class="dim s15">Send a friend one of your five invitations. Once they join, every day is a match.</p>
+      ${Net.on() ? `<button class="main" onclick="openPage('invites')">Invite a friend</button>` : ''}
+      ${!inviter() && Net.on() ? `<button onclick="openJoin()">I have a code</button>` : ''}
+      ${testMode() ? `<button onclick="addPractice()">Add a pretend rival</button><p class="faint">Test builds only.</p>` : ''}</div>`;
   }
-  return {w, l, t, ww, wl};
-}
-function lastResult(){
-  const m = S.match; if (!m || !m.active) return null;
-  const y = resultDay(); if (y < m.startDay) return null;
-  return {day:y, ...(S.results && S.results[y] || {})};
-}
-function matchView(){
-  const m = S.match;
-  if (!m) return `
-    <div class="card stack">
-      <h2>Play a friend</h2>
-      <p class="dim">Send a friend a code. Once they join, every day is a match.</p>
-      ${Net.on() ? `<button class="main" onclick="openInvite()">Invite a friend</button><button onclick="openJoin()">I have a code</button>`
-                 : `<p class="faint">Playing with friends isn't switched on in this test build yet.</p>`}
-      ${S.testflight || !IS_APP ? `<button onclick="startPractice()">Practice against a pretend friend</button><p class="faint">Test builds only.</p>` : ''}
-    </div>`;
-  if (m.ended) return `
-    <div class="card stack"><h2>Match ended</h2><p class="dim">${esc(friend())} ended the match.</p>
-      <button class="main" onclick="clearMatch()">Start a new match</button></div>`;
-  if (!m.active) return `
-    <div class="card stack"><h2>Waiting for ${esc(friend())}</h2>
-      <p class="dim">Send this code. The match starts the day they join.</p>
-      <div class="codebox">${esc(m.code)}</div>
-      <button class="main" onclick="shareCode()">Send the code</button>
-      <button onclick="refresh()">Check again</button></div>`;
-  const rec = record(), last = lastResult();
-  let lastLine = '';
-  if (last && last.me != null && last.them != null) {
-    const diff = Math.abs(last.me - last.them);
-    lastLine = `<button onclick="showReveal('${last.day}')">${last.me > last.them ? dayLabel(last.day) + ': you won by ' + fmt(diff) : last.me < last.them ? dayLabel(last.day) + ': ' + esc(friend()) + ' won by ' + fmt(diff) : dayLabel(last.day) + ': a tie'} · Replay</button>`;
-  } else if (last) {
-    lastLine = `<p class="dim">${dayLabel(last.day)}: waiting for ${esc(friend())}'s phone to send its total.${offline ? ' (No connection right now.)' : ''}</p>`;
+  const open = resultDay(), dc = dayCrowns(open);
+  const unseen = (S.seen || '') < open && dc.of > 0;
+  const tap = unseen ? 'showReveal()' : 'openPage(\'matches\')';
+  if (rs.length === 1) {
+    const r = rs[0], wk = totals(r, weekStart(open), open), diff = wk.a - wk.b;
+    return `<button class="card row ${wk.n && diff > 0 && !unseen ? 'win' : ''}" style="text-align:left;font-weight:400;padding:16px" onclick="${tap}">
+      <div class="seals">${seal(52)}</div>
+      <div class="grow"><b style="font-size:17px">You and ${esc(r.name)}</b><div class="faint">${unseen ? 'Your result is in. Tap to break the seal.' : esc(r.name) + '\'s score is sealed until 8 AM'}</div></div>
+      ${wk.n && !unseen ? `<div style="text-align:right"><div class="lbl">Week</div><div class="d" style="font-size:22px;color:${diff >= 0 ? 'var(--gold)' : 'var(--dim)'}">${diff >= 0 ? '+' : '−'}${fmt(Math.abs(diff))}</div></div>` : ''}
+    </button>`;
   }
-  return `
-    <div class="card stack">
-      <div class="spread"><h2 style="margin:0">You vs ${esc(friend())}</h2>${m.practice ? '<span class="pill">Practice</span>' : ''}</div>
-      <p class="dim">${esc(friend())}'s score is hidden until 8 AM tomorrow.</p>
-      <div class="spread"><span>This week</span><b>You ${rec.ww} · ${esc(friend())} ${rec.wl}</b></div>
-      <div class="spread"><span>All time</span><b>${rec.w} won · ${rec.l} lost${rec.t ? ' · ' + rec.t + ' tied' : ''}</b></div>
-      ${m.startDay === today() ? '<p class="faint">Today is your first match day. Results arrive at 8 AM tomorrow.</p>' : ''}
-      ${lastLine}
-    </div>`;
+  return `<button class="card row ${dc.of && !unseen && dc.won * 2 > dc.of ? 'win' : ''}" style="text-align:left;font-weight:400;padding:16px" onclick="${tap}">
+    <div class="seals">${rs.slice(0, 4).map(() => seal(34)).join('')}</div>
+    <div class="grow"><b style="font-size:17px">${rs.length} matches</b><div class="faint">${unseen ? 'Results are in. Tap to break the seal.' : 'All sealed until 8 AM'}</div></div>
+    ${dc.of && !unseen ? `<div style="text-align:right"><div class="lbl">Crowns held</div><div class="d gold" style="font-size:22px">${dc.won} of ${dc.of}</div></div>` : ''}
+  </button>`;
 }
 
-// ---------- invite / join ----------
+// ---------- full-screen pages and sheets ----------
+const PAGES = {matches: matchesView, crowns: crownsView, invites: invitesView, settings: settingsView};
+const pageState = {tab:'week', rival:null};
+function openPage(view){
+  closePage();
+  const o = document.createElement('div'); o.className = 'page'; o.id = 'page'; o.dataset.view = view;
+  o.innerHTML = `<div class="app">${PAGES[view]()}</div>`; document.body.appendChild(o);
+  if (view === 'crowns') maybeDay30();
+}
+function closePage(){ const o = $('#page'); if (o) o.remove(); }
+function repaint(){ const o = $('#page'); if (o && PAGES[o.dataset.view]) o.querySelector('.app').innerHTML = PAGES[o.dataset.view](); }
+function backBar(title){ return `<button class="back" onclick="closePage()">‹ Today</button><h1>${title}</h1>`; }
 function sheet(html){ closeSheet(); const o = document.createElement('div'); o.className = 'overlay'; o.id = 'sheet'; o.innerHTML = `<div class="sheet">${html}</div>`; o.addEventListener('click', e => { if (e.target === o) closeSheet(); }); document.body.appendChild(o); }
 function closeSheet(){ const o = $('#sheet'); if (o) o.remove(); }
-function nameField(){ return `<label class="faint">What do you call your friend? Only you see this.</label><input type="text" id="fname" maxlength="20" placeholder="Sam" autocomplete="off">`; }
-function openInvite(){ sheet(`<div class="stack"><h2>Invite a friend</h2>${nameField()}<button class="main" id="go" onclick="doInvite()">Make a code</button><button class="link" onclick="closeSheet()">Cancel</button></div>`); }
-function openJoin(){ sheet(`<div class="stack"><h2>Join a friend</h2><label class="faint">Their 6-letter code</label><input type="text" class="code" id="fcode" maxlength="6" autocomplete="off" autocapitalize="characters">${nameField()}<p class="faint" id="err"></p><button class="main" id="go" onclick="doJoin()">Join</button><button class="link" onclick="closeSheet()">Cancel</button></div>`); }
-async function doInvite(){
-  const b = $('#go'); b.disabled = true;
-  try { await createMatch(($('#fname').value || '').trim() || 'Your friend'); closeSheet(); render(); }
-  catch(e) { b.disabled = false; toast('Couldn\'t reach Blip\'s server. Check your connection.'); }
+function nameSheet(title, action, fn){
+  sheet(`<div class="stack"><h2>${title}</h2><label class="faint" for="fname">What do you call them? Only you see this.</label>
+    <input type="text" id="fname" maxlength="20" placeholder="Sam" autocomplete="off"><p class="faint" id="err" style="color:var(--red);margin:0"></p>
+    <button class="main" id="go">${action}</button><button class="link" onclick="closeSheet()">Cancel</button></div>`);
+  $('#go').onclick = async () => {
+    const b = $('#go'); b.disabled = true;
+    try { await fn(($('#fname').value || '').trim() || 'Your friend'); closeSheet(); }
+    catch(e) { b.disabled = false; $('#err').textContent = netErr(e); }
+  };
+}
+
+// What counts (board 4b): view only. Changes happen only in Settings › My app colors.
+function openCounts(){
+  sheet(`<div class="spread"><h2 style="margin:0">What counts</h2><button class="ib" onclick="closeSheet()" aria-label="Close">×</button></div>
+    <p class="dim s15">The same for every player, so every match is fair.</p>
+    ${TIERS.map(t => `<div class="card"><div class="spread"><div class="row"><span class="dot" style="background:${t.color}"></span><b>${t.name}</b></div><div><b class="num" style="color:${t.color}">−${t.cost}</b> <span class="faint">per 15 min</span></div></div>
+      <div style="margin-top:10px">${t.ticks.map(x => `<span class="pill" style="color:var(--ink)">${esc(x)}</span>`).join('')}</div><p class="faint" style="margin:2px 0 0">${esc(t.note)}</p></div>`).join('')}
+    <div class="card"><div class="spread"><div class="row"><span class="dot" style="background:var(--free)"></span><b>Free</b></div><b class="num" style="color:var(--free)">0</b></div>
+      <p class="faint" style="margin:8px 0 0">Everything else: texts, calls, Maps, music, work, school, reading and fitness.</p></div>
+    <p class="faint">Something not counting right? Fix it in Settings › My app colors. Changes start the next day.</p>`);
+}
+
+// ---------- Your matches (board 5) ----------
+function matchesView(){
+  const tab = pageState.tab, open = resultDay(), rs = rivals();
+  const tabs = [['day','Yesterday'],['week','Week'],['m30','30 days'],['all','All time']];
+  let body = '';
+  if (tab === 'all') body = goldPitch();
+  else if (!rs.length) body = '<p class="dim s15">No matches yet. Invite a friend to start one.</p>';
+  else {
+    const from = tab === 'day' ? open : tab === 'week' ? weekStart(open) : addDays(open, -29);
+    const rows = rs.map(m => ({m, ...totals(m, from, open)}));
+    const has = rows.filter(r => r.n), ahead = has.filter(r => r.a > r.b), behind = has.filter(r => r.a <= r.b), none = rows.filter(r => !r.n);
+    const left = 6 - ((toDate(open).getDay()+6)%7);
+    const rule = tab === 'day' ? 'Daily crown: most points left at midnight.'
+      : tab === 'week' ? 'Weekly crown: most total points, Monday to Sunday.' + (left > 0 ? ' ' + left + (left === 1 ? ' day' : ' days') + ' left.' : ' Final.')
+      : '30-Day Champion: most total points over the last 30 days. Updates every night.';
+    const head = tab === 'day' ? `You won ${ahead.length} of ${has.length}` : tab === 'week' ? `Leading ${ahead.length} of ${has.length}` : `Champion in ${ahead.length} of ${has.length}`;
+    const won = tab === 'day';
+    const row = r => { const d = Math.abs(r.a - r.b), up = r.a > r.b;
+      const v = up ? (won ? 'You won by ' : 'You lead by ') + fmt(d) : r.a === r.b ? 'All square' : esc(r.m.name) + (won ? ' won by ' : ' leads by ') + fmt(d);
+      return `<div class="mrow">${avatar(r.m)}<div class="grow"><b>${esc(r.m.name)}</b><div class="faint" style="color:${up ? 'var(--gold)' : 'var(--dim)'}">${v}</div></div>
+        <div style="text-align:right;font-size:13px" class="num"><div style="color:${up ? 'var(--gold)' : 'var(--ink)'}">You ${fmt(r.a)}</div><div class="faint">${esc(r.m.name)} ${fmt(r.b)}</div></div></div>`; };
+    const group = (label, list, fn, win) => list.length ? `<p class="lbl" style="margin-top:18px">${label} · ${list.length}</p><div class="card ${win ? 'win' : ''}" style="padding:4px 16px;margin-top:6px">${list.map(fn).join('')}</div>` : '';
+    body = `${has.length ? `<h2>${head}</h2>` : ''}<p class="faint">${rule}</p>
+      ${group(won ? 'You won' : 'You lead', ahead, row, true)}${group(won ? 'They won' : 'You trail', behind, row)}
+      ${group('No result yet', none, r => `<div class="mrow">${avatar(r.m)}<div class="grow"><b>${esc(r.m.name)}</b><div class="faint">${r.m.startDay >= today() ? 'First match day is today. Results at 8 AM tomorrow.' : 'Waiting for ' + esc(r.m.name) + '\'s phone to send its total.'}</div></div></div>`)}`;
+  }
+  return `${backBar('Your matches')}
+    <div class="tabs">${tabs.map(t => `<button class="${t[0] === tab ? 'on' : ''}" onclick="pageState.tab='${t[0]}';repaint()">${t[1]}</button>`).join('')}</div>
+    ${body}
+    <p class="faint" style="text-align:center;margin-top:22px">One score counts in every match. To end a match, go to Settings.</p>`;
+}
+function goldPitch(){
+  return `<div class="card" style="text-align:center;padding:28px 20px">
+    <div style="display:flex;justify-content:center;filter:drop-shadow(0 0 18px rgba(201,165,74,.45))">${crown(96)}</div>
+    <p class="lbl gold" style="margin-top:18px">Dynasty</p>
+    <h2 style="font-size:28px">Who rules all time?</h2>
+    <p class="dim s15">Free play keeps the last 30 days. With Dynasty, every rival gets an all-time crown that keeps counting for as long as you play.</p>
+    <div style="text-align:left;margin:12px 0">
+      <div class="perk"><span>✦</span><div>An all-time crown with each rival</div></div>
+      <div class="perk"><span>✦</span><div>A jewel for every month you win</div></div>
+      <div class="perk"><span>✦</span><div>Your record book and year in review</div></div></div>
+    <p class="faint">Counting starts the day you join. Dynasty never changes who wins.</p>
+    <button class="main" style="margin-top:8px" onclick="openGold()">See Dynasty</button></div>`;
+}
+
+// ---------- Your crowns (free: the last 30 days, per rival) ----------
+function crownsView(){
+  const rs = rivals();
+  if (!rs.length) return `${backBar('Your crowns')}<p class="dim s15">Crowns start once you have a rival. Invite a friend, and your first crown could be yours at 8 AM the next morning.</p>
+    <button class="main" onclick="openPage('invites')">Invite a friend</button>`;
+  const m = rs.find(x => x.code === pageState.rival) || rs[0], open = resultDay();
+  const t30 = totals(m, addDays(open, -29), open), wk = totals(m, weekStart(open), open), lw = totals(m, addDays(weekStart(open), -7), addDays(weekStart(open), -1));
+  const sign = t => t && t.n ? Math.sign(t.a - t.b) : null;
+  const y = pair(m, open);
+  const tile = (label, res, soFar) => `<div>${label}<div style="margin:6px 0 2px;display:flex;justify-content:center;height:20px;align-items:center">${res ? crown(24, res > 0 ? 'gold' : 'pewter') : '–'}</div><b style="color:${res > 0 ? 'var(--gold)' : 'var(--ink)'}">${res === null ? 'No result' : res === 0 ? 'Tied' : (res > 0 ? 'You' : esc(m.name)) + (soFar ? ', so far' : '')}</b></div>`;
+  let wins = 0, losses = 0, cells = '';
+  for (let i = 29; i >= 0; i--) {
+    const d = addDays(open, -i), p = pair(m, d);
+    if (p && p[0] > p[1]) wins++; else if (p && p[0] < p[1]) losses++;
+    cells += p ? (p[0] > p[1] ? `<i class="w">${crown(16, '#5a4318')}</i>` : '<i></i>') : '<i class="e"></i>';
+  }
+  const up = t30.a - t30.b, st = streak(m);
+  return `${backBar('Your crowns')}
+    ${rs.length > 1 ? `<div style="margin:6px 0 2px">${rs.map(r => `<button class="pill ${r === m ? 'on' : ''}" onclick="pageState.rival='${r.code}';repaint()">${esc(r.name)}</button>`).join('')}</div>` : ''}
+    <p class="dim s15" style="margin-top:0">You and ${esc(m.name)} · the last 30 days</p>
+    ${t30.n ? `<div class="champ ${up > 0 ? 'win' : ''}"><div>${crown(40, up > 0 ? 'gold' : 'pewter')}</div><div><p class="lbl gold" style="margin:0">30-Day Champion</p>
+      <h2 style="margin:4px 0">${up > 0 ? 'You hold the title' : up < 0 ? esc(m.name) + ' holds the title' : 'All square'}</h2>
+      <p class="faint" style="margin:0">${up ? (up > 0 ? 'Up ' : 'Down ') + fmt(Math.abs(up)) + ' points over 30 days.' : 'Level on points over 30 days.'} It's decided again every night.</p></div></div>` : ''}
+    <div class="tiles">${tile('Yesterday', y ? Math.sign(y[0] - y[1]) : null)}${tile('This week', sign(wk), true)}${tile('Last week', sign(lw))}</div>
+    <div class="card"><div class="spread"><b class="s15">${st ? 'Crown held ' + st + (st === 1 ? ' day' : ' days') : 'Your crown calendar'}</b><span class="faint">Gold = days you won</span></div>
+      <div class="cal">${cells}</div>
+      <p class="faint" style="margin:0">You won ${wins} of the last 30 days. ${esc(m.name)} won ${losses}.</p></div>
+    <button class="upsell" onclick="openGold()"><div class="ib" style="opacity:.7">${crown(26, 'pewter')}</div>
+      <div class="grow"><b style="font-size:17px">Who holds the all-time crown?</b><div class="faint">Find out with Dynasty</div></div><span class="chev">›</span></button>`;
+}
+// Day 30 note: shown once, the first time Crowns opens after 30 days of play.
+function maybeDay30(){
+  const first = S.matches.map(m => m.startDay).filter(Boolean).sort()[0];
+  if (S.day30 || !first || diffDays(first, resultDay()) < 29) return;
+  S.day30 = true; save();
+  let days = 0, weeks = 0; const open = resultDay();
+  for (const m of rivals()) {
+    for (let i = 0; i < 30; i++) { const p = pair(m, addDays(open, -i)); if (p && p[0] > p[1]) days++; }
+    for (let w = addDays(weekStart(open), -7), k = 0; k < 4; k++, w = addDays(w, -7)) { const t = totals(m, w, addDays(w, 6)); if (t.n && t.a > t.b) weeks++; }
+  }
+  sheet(`<div style="text-align:center">${crown(64)}<p class="lbl gold" style="margin-top:14px">Day 30</p><h2 style="font-size:28px">Your first 30 days are in</h2>
+    <p class="dim s15">You won ${days} ${days === 1 ? 'day' : 'days'} and ${weeks} weekly ${weeks === 1 ? 'crown' : 'crowns'}. Free play keeps the last 30 days. Keep your full reign with Dynasty.</p>
+    <button class="main" style="margin-top:12px" onclick="openGold()">See Dynasty</button><button class="link" onclick="closeSheet()">Not now</button>
+    <p class="faint">We only show this once.</p></div>`);
+}
+// Dynasty offer (working name). Purchases come in a later build; prices are the approved ones.
+let goldPlan = 'year';
+function openGold(){
+  sheet(`<div class="spread"><span></span><button class="ib" onclick="closeSheet()" aria-label="Close">×</button></div>
+    <div style="text-align:center">${crown(64)}<p class="lbl gold" style="margin-top:14px">Dynasty</p><h1 style="margin-top:2px">Your reign starts today</h1>
+    <p class="dim s15">Every crown you win from today on is kept forever.</p></div>
+    <div style="margin:14px 0">
+      <div class="perk"><span>◆</span><div><b>The all-time crown</b><div class="faint">See who has won more since your reign began.</div></div></div>
+      <div class="perk"><span>◆</span><div><b>A jewel for every month you win</b><div class="faint">Your crown fills up as the year goes on.</div></div></div>
+      <div class="perk"><span>◆</span><div><b>Your record book</b><div class="faint">Every crown, best day, longest streak, biggest comeback.</div></div></div>
+      <div class="perk"><span>◆</span><div><b>Your year in review</b><div class="faint">Arrives every January.</div></div></div></div>
+    <div class="plan ${goldPlan === 'year' ? 'on' : ''}" onclick="goldPlan='year';openGold()"><div class="grow"><span class="lbl gold">Save 16%</span><div><b>Yearly</b></div></div><div style="text-align:right"><b>$19.99</b><div class="faint">$1.67 a month</div></div></div>
+    <div class="plan ${goldPlan === 'month' ? 'on' : ''}" onclick="goldPlan='month';openGold()"><div class="grow"><b>Monthly</b><div class="faint">Cancel any time</div></div><b>$1.99</b></div>
+    <button class="main" onclick="toast('Dynasty isn\\'t on sale yet. It arrives in a later build.')">Start my reign</button>
+    <p class="faint" style="text-align:center">Dynasty never changes who wins. Renews automatically until you cancel in Settings.</p>
+    <div style="text-align:center"><button class="link" onclick="toast('Nothing to restore yet.')">Restore purchases</button></div>`);
+}
+
+// ---------- Invites (5 per player) ----------
+function invitesView(){
+  const mine = own(), free = testMode(), slots = [];
+  for (let i = 0; i < INVITES; i++) slots.push(mine[i] || null);
+  const slot = m => {
+    if (!m) return `<div class="slot open"><div class="ico">${ICON.plus}</div><div class="grow"><b>Available</b><div class="faint">Invite a friend you'll actually play</div></div>
+      <button class="small" onclick="newInvite()">${free ? 'Free' : '$0.99'}</button></div>`;
+    if (m.active) return `<div class="slot"><div class="ico" style="background:var(--free)">${ICON.check}</div><div class="grow"><b>Joined</b><div class="faint">You named them ${esc(m.name)}</div></div></div>`;
+    const age = diffDays(m.made, today());
+    if (m.ended || age >= RETURN_DAYS) return `<div class="slot"><div class="ico">${ICON.back}</div><div class="grow"><b>Back to you</b><div class="faint">${m.ended ? 'This match ended.' : 'No one used it in 7 days.'} Send it again for free.</div></div>
+      <button class="small main" onclick="resend('${m.code}')">Send again</button></div>`;
+    const left = RETURN_DAYS - age;
+    return `<div class="slot"><div class="ico">${ICON.clock}</div><div class="grow"><b>Waiting · ${esc(m.code)}</b><div class="faint">For ${esc(m.name)}. Comes back to you in ${left} ${left === 1 ? 'day' : 'days'} if no one uses it</div></div>
+      <button class="small" onclick="shareInvite('${m.code}')">Share</button></div>`;
+  };
+  return `${backBar('Your 5 invites')}
+    <p class="dim s15">Each invite costs $0.99. Your friend plays free, forever, and gets 5 invites to share too.${free ? ' Free while testing.' : ''}</p>
+    ${Net.on() ? slots.map(slot).join('') : '<p class="faint">Playing with friends isn\'t switched on in this build.</p>'}
+    ${!inviter() && rivals().length < MAX_RIVALS && Net.on() ? `<div style="text-align:center"><button class="link" onclick="openJoin()">Have a code from a friend?</button></div>` : ''}
+    ${testMode() && rivals().length < MAX_RIVALS ? `<div style="text-align:center"><button class="link" onclick="addPractice()">Test builds: add a pretend rival</button></div>` : ''}
+    <div style="text-align:center"><button class="link" onclick="toast('Nothing to restore yet.')">Restore purchases</button></div>
+    <p class="faint" style="text-align:center">Each code works once. Paying never changes points or who wins.</p>`;
+}
+function roomForOne(){ if (rivals().length + waiting().length >= MAX_RIVALS) { toast('You can play up to 6 rivals at once.'); return false; } return true; }
+function newInvite(){
+  if (!testMode()) { toast('Buying invitations arrives in a later build.'); return; }
+  if (!roomForOne()) return;
+  nameSheet('Who\'s it for?', 'Make the invitation', async name => { const m = await createMatch(name); repaint(); shareInvite(m.code); });
+}
+async function resend(code){
+  const m = S.matches.find(x => x.code === code); if (!m) return;
+  if (!m.ended && Net.on()) await Net.call('PATCH', 'matches/' + m.code, Net.enc({ended:true}), Net.mask(['ended'])).catch(()=>{});
+  S.matches = S.matches.filter(x => x !== m); delete S.res[m.code]; delete S.sentTo[m.code]; save();
+  repaint(); newInvite();
+}
+// The suggested message (board 3b). The link preview card needs a web page and comes later.
+async function shareInvite(code){
+  const text = 'I only get five of these. This one has your name on it.\n\nInvitation code: ' + code;
+  try { if (navigator.share) { await navigator.share({text}); return; } } catch(e) { if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(text); toast('Copied. Paste it into a message.'); } catch(e) { toast('Your code is ' + code); }
+}
+function openJoin(){
+  if (!roomForOne()) return;
+  sheet(`<div class="stack"><h2>Join a friend</h2><label class="faint" for="fcode">Their 6-letter code</label>
+    <input type="text" class="code" id="fcode" maxlength="11" autocomplete="off" autocapitalize="characters">
+    <label class="faint" for="fname">What do you call them? Only you see this.</label><input type="text" id="fname" maxlength="20" placeholder="Sam" autocomplete="off">
+    <p class="faint" id="err" style="color:var(--red);margin:0"></p><button class="main" id="go" onclick="doJoin()">Join</button><button class="link" onclick="closeSheet()">Cancel</button></div>`);
 }
 async function doJoin(){
-  const code = ($('#fcode').value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const code = cleanCode($('#fcode').value);
   if (code.length !== 6) { $('#err').textContent = 'Codes have 6 letters and numbers.'; return; }
   const b = $('#go'); b.disabled = true;
-  try { await joinMatch(code, ($('#fname').value || '').trim() || 'Your friend'); closeSheet(); await askNotify(); refresh(); }
-  catch(e) { b.disabled = false; $('#err').textContent = /^net|sign-in|token|Failed/.test(e.message) ? 'Couldn\'t reach Blip\'s server. Check your connection.' : e.message; }
+  try { await joinMatch(code, ($('#fname').value || '').trim() || 'Your friend'); closeSheet(); closePage(); askNotify(); refresh(); }
+  catch(e) { b.disabled = false; $('#err').textContent = netErr(e); }
 }
-async function shareCode(){
-  const text = 'Think you can stay off your phone longer than me? Get Blip and join my match with code ' + S.match.code + '.';
-  try { if (navigator.share) { await navigator.share({text}); return; } } catch(e) { if (e && e.name === 'AbortError') return; }
-  try { await navigator.clipboard.writeText(text); toast('Copied. Paste it into a message.'); } catch(e) { toast('Your code is ' + S.match.code); }
+function addPractice(){
+  if (!roomForOne()) return;
+  const used = S.matches.filter(m => m.role === 'p').map(m => m.name);
+  const name = PRACTICE_NAMES.find(n => !used.includes(n)) || 'Pat';
+  S.matches.push({code:'P' + Date.now().toString(36).toUpperCase(), name, role:'p', practice:true, active:true, startDay:today(), made:today()});
+  save(); toast(name + ' is a pretend rival who usually keeps 600 to 900 points.'); askNotify(); repaint(); refresh();
 }
-function startPractice(){ S.match = {code:'P' + Date.now().toString(36).toUpperCase(), name:'Pat', practice:true, active:true, startDay:today()}; save(); askNotify().then(refresh); }
-function clearMatch(){ S.match = null; save(); render(); }
 
 // ---------- morning notification: 8 AM for everyone, the moment results open ----------
-async function askNotify(){
-  if (S.notify) { if (S.notify.time !== '08:00') { S.notify.time = '08:00'; save(); await applyNotify(); } return; }
-  S.notify = {on:true, time:'08:00'}; save();
-  await applyNotify();
+function askNotify(){ if (!S.notify) { S.notify = {on:true}; save(); } return applyNotify(); }
+function notifyBody(day){
+  const rs = rivals().filter(m => m.startDay && m.startDay < day);
+  if (!rs.length) return null;
+  let body = rs.length === 1 ? 'Your result with ' + rs[0].name + ' is sealed. Break the seal to see who won.'
+    : 'Yesterday\'s crowns are sealed. ' + rs.length + ' results are in. Break the seal to see who won.';
+  if (toDate(day).getDay() === 1) body += ' Last week\'s crowns are sealed too.';
+  return body;
 }
+// Schedules the next 7 mornings with the right words. It never names a winner or shows a score.
 async function applyNotify(){
   const n = S.notify;
-  if (!n || !n.on || !S.match) return ST.remindOff().catch(()=>{});
-  const r = await ST.remindOn({hour:REVEAL_HOUR, minute:0, name:'Blip', body:'Yesterday\'s results are in. See who won.'}).catch(() => ({granted:false}));
-  if (!r.granted) { n.on = false; save(); toast('Notifications are off for Blip in iPhone Settings.'); }
+  if (!n || !n.on || !rivals().length) return ST.remindOff().catch(()=>{});
+  const items = [];
+  for (let i = new Date().getHours() >= REVEAL_HOUR ? 1 : 0; i < 9 && items.length < 7; i++) { const d = addDays(today(), i), body = notifyBody(d); if (body) items.push({day:d, body}); }
+  if (!items.length) return ST.remindOff().catch(()=>{});
+  const r = await ST.notifySchedule({hour:REVEAL_HOUR, items}).catch(() => ({granted:false}));
+  if (!r.granted) { n.on = false; save(); toast('Notifications are off for Conquer in iPhone Settings.'); }
 }
 
-// ---------- the reveal ----------
+// ---------- widgets: what the Home and Lock Screen widgets show besides points (on this phone only) ----------
+function pushWidget(){
+  const open = resultDay(), dc = dayCrowns(open), wl = weekLeads();
+  const revealed = (S.seen || '') >= open && dc.of > 0;
+  // Rival names and margins only after the seal is broken; names never leave this phone.
+  const rows = revealed ? rivals().filter(m => pair(m, open)).map(m => ({n:m.name, d:S.mine[open] - them(m, open)})) : [];
+  ST.conquerWidget({rivals:rivals().length, held:dc.won, of:dc.of, weekLead:wl.lead, weekOf:wl.of, me: revealed ? S.mine[open] : 0,
+    revealed, revealedAt: revealed ? Math.round((S.seenAt || 0) / 1000) : 0, resultDay:open, rows}).catch(()=>{});
+}
+
+// ---------- haptics and sound (handoff section 13): seal, win and loss only ----------
+function fx(kind){ if (S.fx !== false) ST.haptic({kind}).catch(()=>{}); }
+
+// ---------- the reveal: break the wax seal ----------
 function maybeReveal(){
-  const last = lastResult();
-  if (!last || last.me == null || last.them == null || (S.seen || '') >= last.day) return;
-  showReveal(last.day);
+  const open = resultDay();
+  if ((S.seen || '') >= open || !dayCrowns(open).of || $('#reveal')) return;
+  showReveal();
 }
+function reduced(){ return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); }
 function showReveal(day){
-  const r = (S.results || {})[day]; if (!r) return;
-  S.seen = [S.seen || '', day].sort().pop(); save();
+  day = day || resultDay();
+  const rs = rivals().filter(m => pair(m, day)); if (!rs.length) return;
+  closePage(); closeSheet();
+  const old = $('#reveal'); if (old) old.remove();
   const o = document.createElement('div'); o.className = 'reveal'; o.id = 'reveal';
-  const name = esc(friend());
-  o.innerHTML = `<p class="dim">${esc(dayLabel(day))}</p>
-    <div class="vs"><div id="vme"><div class="dim">You</div><div class="score" id="sme">0</div></div>
-    <div id="vthem"><div class="dim">${name}</div><div class="score" id="sthem">0</div></div></div>
-    <div class="verdict" id="verdict"></div><p class="dim" id="by" style="min-height:24px"></p>
-    <div style="width:100%;max-width:380px;margin-top:24px"><button class="main" onclick="document.getElementById('reveal').remove()">Done</button></div>`;
+  const head = esc(weekday(day)).toUpperCase() + ' · ' + (rs.length === 1 ? 'YOU AND ' + esc(rs[0].name).toUpperCase() : rs.length + ' MATCHES');
+  o.innerHTML = `<div class="stage"><p class="lbl">${head}</p>
+    <button class="sealwrap bf-bob" id="sealbtn" aria-label="Break the seal"><div class="bf-l">${seal(200)}</div><div class="bf-r">${seal(200)}</div></button>
+    <h2 style="margin-top:28px">Tap to break the seal</h2><p class="dim s15" style="margin:0">${rs.length === 1 ? 'Both scores are in.' : 'All ' + rs.length + ' results are in.'}</p></div>`;
   document.body.appendChild(o);
-  const dur = 1600, t0 = performance.now();
-  (function tick(t){
-    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
-    $('#sme').textContent = fmt(Math.round(r.me * e)); $('#sthem').textContent = fmt(Math.round(r.them * e));
-    if (k < 1) return requestAnimationFrame(tick);
-    const v = $('#verdict'), diff = Math.abs(r.me - r.them);
-    v.textContent = r.me > r.them ? 'You won!' : r.me < r.them ? name + ' won' : 'It\'s a tie';
-    v.style.color = r.me > r.them ? 'var(--win)' : r.me < r.them ? 'var(--lose)' : 'var(--ink)';
-    if (r.me !== r.them) $(r.me > r.them ? '#vme' : '#vthem').classList.add('won');
-    v.classList.add('show');
-    $('#by').textContent = diff ? 'by ' + fmt(diff) + ' points' + (r.me < r.them ? '. Today\'s a new day.' : '') : 'Same points. Rematch today.';
-  })(t0);
+  $('#sealbtn').onclick = () => breakSeal(day, rs, head);
 }
+function breakSeal(day, rs, head){
+  const b = $('#sealbtn'); b.onclick = null; b.classList.remove('bf-bob'); b.classList.add('bf-open');
+  fx('seal');
+  S.seen = [S.seen || '', day].sort().pop(); S.seenAt = Date.now(); save(); pushWidget();
+  setTimeout(() => showResult(day, rs, head), reduced() ? 0 : 650);
+}
+function confetti(o){
+  if (reduced()) return;
+  const cols = ['#c9a54a','#f2dc97','#e8cd7e','#fff7dc','#b8913a'];
+  for (let i = 0; i < 36; i++) { const c = document.createElement('i'); c.className = 'bf-cf';
+    c.style.cssText = `left:${Math.random()*100}%;background:${cols[i % cols.length]};animation-delay:${Math.random()*.6}s;--dx:${Math.round(Math.random()*120-60)}px`; o.appendChild(c); }
+}
+function showResult(day, rs, head){
+  const o = $('#reveal'), me = S.mine[day];
+  if (!o) return;
+  if (rs.length === 1) {
+    const m = rs[0], b = them(m, day), diff = Math.abs(me - b), won = me > b, tie = me === b;
+    const wk = totals(m, weekStart(day), day), wd = wk.a - wk.b;
+    o.innerHTML = `<div class="stage"><p class="lbl">${head}</p>
+      <div class="bf-pop" style="margin:10px 0 4px">${crown(72, won ? 'gold' : 'pewter')}</div>
+      <div class="d bf-pop" style="font-size:64px;line-height:1.05;color:${won ? 'var(--gold)' : 'var(--ink)'}">${won ? 'You won!' : tie ? 'A tie' : esc(m.name) + ' won'}</div>
+      <p class="dim bf-up" style="font-size:22px;margin:4px 0 0">${tie ? 'Same points' : 'by ' + fmt(diff) + ' points'}</p>
+      <div class="vs bf-up"><div class="${won ? 'won' : ''}"><div class="cr">${won ? crown(28) : ''}</div><div class="dim s15">You</div><div class="score">${fmt(me)}</div></div>
+        <div class="${!won && !tie ? 'lost' : ''}"><div class="cr">${!won && !tie ? crown(28, 'pewter') : ''}</div><div class="dim s15">${esc(m.name)}</div><div class="score">${fmt(b)}</div></div></div>
+      ${wk.n > 1 ? `<p class="s15 bf-up" style="color:${wd >= 0 ? 'var(--gold)' : 'var(--dim)'}">${wd > 0 ? 'You\'re ' + fmt(wd) + ' points ahead this week' : wd < 0 ? esc(m.name) + ' is ' + fmt(-wd) + ' points ahead this week' : 'Level on points this week'}</p>` : ''}
+      <p class="faint bf-up">New day, new 1,000 points for both of you.</p></div>
+      <div style="width:100%;max-width:400px" class="stack"><button onclick="showReveal('${day}')">Watch again</button><button class="main" onclick="closeReveal()">Done</button></div>`;
+    if (won) { confetti(o); fx('win'); } else fx('loss');
+    return;
+  }
+  const res = rs.map(m => ({m, b:them(m, day)})), wins = res.filter(r => me > r.b).length, lost = res.filter(r => me < r.b);
+  const delay = i => reduced() ? 0 : .35 + i * .45;
+  o.innerHTML = `<div class="stage" style="justify-content:flex-start;text-align:left;align-items:stretch;overflow:auto"><p class="lbl">${head}</p>
+    <div class="d bf-pop" style="font-size:64px;line-height:1.05;color:var(--gold)">${wins} of ${res.length}</div>
+    <p class="dim s15">You hold ${wins} of ${res.length} crowns today. Your ${fmt(me)} counted in every match.</p>
+    <div class="rlist">${res.map((r, i) => { const w = me > r.b, t = me === r.b;
+      return `<div class="mrow bf-up" style="animation-delay:${delay(i)}s">${crown(26, w ? 'gold' : 'pewter')}<div class="grow"><b>${w ? 'You beat ' + esc(r.m.name) : t ? 'You tied ' + esc(r.m.name) : esc(r.m.name) + ' won'}</b></div><span class="num faint">${fmt(me)} to ${fmt(r.b)}</span></div>`; }).join('')}</div>
+    <p class="faint bf-up" style="animation-delay:${delay(res.length)}s">${lost.length ? esc(listNames(lost.map(r => r.m.name))) + ' got you this time. New day, new 1,000 points.' : 'A clean sweep. New day, new 1,000 points.'}</p></div>
+    <div style="width:100%;max-width:400px"><button class="main" onclick="closeReveal()">Done</button></div>`;
+  if (wins && wins >= lost.length) { confetti(o); fx('win'); } else fx('loss');
+}
+function closeReveal(){ const r = $('#reveal'); if (r) r.remove(); render(); }
 
-// ---------- settings ----------
-function openSettings(){
-  const n = S.notify || {on:false, time:'08:00'}, m = S.match;
-  sheet(`<div class="stack">
-    <div class="spread"><h2 style="margin:0">Settings</h2><button class="small" onclick="closeSheet()">Done</button></div>
-    <div class="card">
-      <div class="switch"><span>Tell me when results are in</span><input type="checkbox" id="non" ${n.on ? 'checked' : ''} onchange="setNotify()"></div>
-      <p class="faint">Results open for everyone at 8 AM, your time.</p>
+// ---------- Settings ----------
+function settingsView(){
+  const n = S.notify || {on:false}, rs = S.matches.filter(m => m.active || (m.ended && m.role !== 'a'));
+  const since = d => d ? toDate(d).toLocaleDateString('en-US', {month:'long', day:'numeric'}) : '';
+  return `${backBar('Settings')}
+    <div class="card" style="padding:4px 16px">
+      <div class="setrow"><div class="grow"><b class="s15">Tell me when results are in</b><div class="faint">Results open for everyone at 8 AM, your time.</div></div>
+        <label class="sw"><input type="checkbox" id="non" ${n.on ? 'checked' : ''} onchange="setNotify()"><i></i></label></div>
+      <div class="setrow"><div class="grow"><b class="s15">Sounds and haptics</b><div class="faint">When you break the seal and see who won. Follows the silent switch.</div></div>
+        <label class="sw"><input type="checkbox" id="fxon" ${S.fx !== false ? 'checked' : ''} onchange="S.fx=this.checked;save()"><i></i></label></div>
+      <button class="setrow plain" onclick="changeTiers()"><div class="grow"><b class="s15">My app colors</b><div class="faint">Changes start tomorrow</div></div><span class="chev">›</span></button>
+      <div class="setrow"><div class="grow"><b class="s15">Share my daily score</b><div class="faint">Needed to play</div></div><label class="sw"><input type="checkbox" checked disabled><i></i></label></div>
     </div>
-    <div class="card"><h2>How points work</h2>
-      <table class="costs">${TIERS.map(t => `<tr><td><span class="dot" style="display:inline-block;background:${t.color};margin-right:8px"></span>${t.name}: ${t.ticks.map(esc).join(', ')}</td><td>${t.cost}</td></tr>`).join('')}
-      <tr><td><span class="dot" style="display:inline-block;background:var(--free);margin-right:8px"></span>Free: everything not ticked</td><td>0</td></tr></table>
-      <p class="faint">Points per 15 minutes, out of ${fmt(BANK)} a day. The same for every player.</p>
-      <button onclick="changeTiers()">Change what I ticked (starts tomorrow)</button>
+    <p class="lbl" style="margin-top:18px">Your matches</p>
+    <div class="card" style="padding:4px 16px">${rs.length ? rs.map(m => `<div class="mrow">${avatar(m)}<div class="grow"><b class="s15">${m.ended ? 'Your match with ' + esc(m.name) + ' has ended' : 'Playing with ' + esc(m.name)}</b><div class="faint">${m.ended ? '' : 'Since ' + since(m.startDay)}${m.role === 'p' ? ' · pretend rival' : ''}</div></div>
+      ${m.ended ? `<button class="small" onclick="removeEnded('${m.code}')">Clear</button>` : `<button class="small" onclick="confirmEnd('${m.code}')">End match</button>`}</div>`).join('')
+      : `<div class="mrow"><div class="grow"><b class="s15">No match right now</b></div><button class="small" onclick="openPage('invites')">Invite a friend</button></div>`}</div>
+    <p class="lbl" style="margin-top:18px">What we share</p>
+    <div class="card"><p class="faint" style="margin:0">Just your point total for the day. Never how long you were on your phone, which apps you used, or anyone's name. Scores are deleted after ${KEEP_DAYS} days.</p></div>
+    <div class="card" style="padding:4px 16px">
+      <button class="setrow plain" onclick="toast('Nothing to restore yet.')"><span class="grow s15">Restore purchases</span><span class="chev">›</span></button>
+      <button class="setrow plain" style="color:var(--red)" onclick="confirmDelete()"><span class="grow s15">Delete my data</span></button>
     </div>
-    ${m ? `<div class="card"><button onclick="confirmEnd()">End match with ${esc(friend())}</button></div>` : ''}
-    <div class="card stack"><h2>Privacy</h2>
-      <p class="faint">Your minutes and apps stay on this phone. Only your daily points total is sent, after the day ends, and only your match can see it. Totals are deleted after 30 days.</p>
-      <button class="danger" onclick="confirmDelete()">Delete my data</button></div>
-  </div>`);
+    <p class="faint" style="text-align:center">Points come from the app's own count, which may not match iPhone Screen Time. It's the same for every player.</p>`;
 }
-async function setNotify(){ S.notify = {on:$('#non').checked, time:'08:00'}; save(); await applyNotify(); }
+async function setNotify(){ S.notify = {on:$('#non').checked}; save(); await applyNotify(); }
 async function changeTiers(){
   for (const t of TIERS) {
     const ok = await new Promise(res => {
-      sheet(`<div class="stack"><h2>${t.name}: ${t.cost} points per 15 min</h2><ul class="ticks">${t.ticks.map(x => `<li><b>${esc(x)}</b></li>`).join('')}</ul><p class="faint">This list stays on screen while you tick.</p><button class="main" id="ok">Open Apple's list</button><button class="link" id="no">Stop</button></div>`);
+      sheet(`<div class="stack"><h2>${t.name}: ${t.cost} points per 15 min</h2><div>${t.ticks.map(x => `<span class="pill" style="color:var(--ink)">${esc(x)}</span>`).join('')}</div><p class="faint">This list stays on screen while you tick. Changes start tomorrow.</p><button class="main" id="ok">Open Apple's list</button><button class="link" id="no">Stop</button></div>`);
       $('#ok').onclick = () => res(true); $('#no').onclick = () => res(false);
     });
     closeSheet(); if (!ok) break;
     let good = await openPicker(t);
     while (good === false) {
       const again = await new Promise(res => {
-        sheet(`<div class="stack"><h2>That doesn't look right</h2><p class="dim">For ${t.name}, tick only: ${t.ticks.map(esc).join(', ')}.</p><button class="main" id="ok">Try again</button><button class="link" id="no">Skip</button></div>`);
+        sheet(`<div class="stack"><h2>That doesn't look right</h2><p class="dim s15">For ${t.name}, tick only: ${t.ticks.map(esc).join(', ')}.</p><button class="main" id="ok">Try again</button><button class="link" id="no">Skip</button></div>`);
         $('#ok').onclick = () => res(true); $('#no').onclick = () => res(false);
       });
       closeSheet(); if (!again) break;
@@ -548,31 +961,54 @@ async function changeTiers(){
   }
   toast('Saved. Your changes start tomorrow.'); refresh();
 }
-function confirmEnd(){ sheet(`<div class="stack"><h2>End the match?</h2><p class="dim">${esc(friend())} will see that the match ended. Your record stays on this phone.</p><button class="danger" onclick="doEnd()">End match</button><button class="link" onclick="openSettings()">Cancel</button></div>`); }
-async function doEnd(){ try { await endMatch(); closeSheet(); render(); } catch(e) { toast('Couldn\'t reach Blip\'s server. Try again.'); } }
-function confirmDelete(){ sheet(`<div class="stack"><h2>Delete my data?</h2><p class="dim">This ends any match, deletes your daily totals and your anonymous account from Blip's server, and clears this phone. It can't be undone.</p><button class="danger" id="del" onclick="doDelete()">Delete everything</button><button class="link" onclick="openSettings()">Cancel</button></div>`); }
-async function doDelete(){ $('#del').disabled = true; try { await deleteAll(); closeSheet(); render(); toast('Your data was deleted.'); } catch(e) { $('#del').disabled = false; toast('Couldn\'t reach Blip\'s server. Try again with a connection.'); } }
+function confirmEnd(code){
+  const m = S.matches.find(x => x.code === code); if (!m) return;
+  sheet(`<div class="stack"><h2>End your match with ${esc(m.name)}?</h2><p class="dim s15">Are you sure? Your scores and history with ${esc(m.name)} will be cleared, and ${esc(m.name)} will see that the match ended. You can't undo this.</p>
+    <button class="danger" id="yes">Yes, end the match</button><button class="link" onclick="closeSheet()">Keep playing</button></div>`);
+  $('#yes').onclick = async () => { try { await endMatch(m); closeSheet(); render(); } catch(e) { toast('Couldn\'t reach the server. Try again.'); } };
+}
+function removeEnded(code){ const m = S.matches.find(x => x.code === code); if (m) { S.matches = S.matches.filter(x => x !== m); delete S.res[m.code]; delete S.sentTo[m.code]; save(); } render(); }
+function confirmDelete(){
+  const names = rivals().map(m => m.name);
+  sheet(`<div class="stack"><h2>Delete my data?</h2><p class="dim s15">This deletes your account and all your daily scores from our server, and clears the app on this phone.</p>
+    <ul class="dim s15" style="padding-left:20px;margin:0">${names.length ? `<li>Your ${names.length === 1 ? 'match' : 'matches'} with ${esc(listNames(names))} will end.</li>` : ''}<li>Your wins and history will be gone.</li><li>Unused invites can't be refunded.</li></ul>
+    <button class="danger" id="del" onclick="doDelete()">Delete everything</button><button class="link" onclick="closeSheet()">Cancel</button></div>`);
+}
+async function doDelete(){
+  $('#del').disabled = true;
+  try { await deleteAll(); closeSheet(); closePage(); render();
+    sheet(`<div class="stack"><h2>All done. Your data is deleted.</h2><p class="dim s15">Nothing of yours is left on our server. To play again, you'll need a new invite code.</p><button class="main" onclick="closeSheet()">OK</button></div>`); }
+  catch(e) { $('#del').disabled = false; toast('Couldn\'t reach the server. Try again with a connection.'); }
+}
 
 // ---------- browser-only test tools (never in the app) ----------
 function demoTools(){
-  return `<div class="card stack"><p class="faint">Browser check only: add pretend time.</p>
+  return `<div class="card stack" style="margin-top:28px"><p class="faint">Browser check only: add pretend time.</p>
     <div class="row">${TIERS.map(t => `<button class="small" onclick="demoAdd('${t.id}')">+15m ${t.name}</button>`).join('')}</div>
-    <button class="small" onclick="demoNextDay()">Pretend a day passed</button></div>`;
+    <div class="row"><button class="small" onclick="demoDays(1)">Pretend a day passed</button><button class="small" onclick="demoDays(30)">Pretend 30 days</button></div></div>`;
 }
 function demoAdd(t){ const d = fakeST._d(); const m = d.min[today()] = d.min[today()] || {}; m[t] = (m[t]||0) + 15; save(); refresh(); }
-function demoNextDay(){ const d = fakeST._d(); const y = addDays(today(), -1); d.min[y] = d.min[today()] || {red:60, orange:30}; d.since = y; if (S.match) S.match.startDay = y; S.seen = ''; delete (S.results||{})[y]; delete (S.sent||{})[y]; save(); refresh(); }
+function demoDays(n){
+  const d = fakeST._d(), start = addDays(today(), -(n + 1));
+  for (let i = 1; i <= n + 1; i++) { const day = addDays(today(), -i); d.min[day] = {red:15*Math.floor(Math.random()*8), orange:15*Math.floor(Math.random()*6)}; delete S.mine[day]; for (const c in S.res) delete S.res[c][day]; for (const c in S.sentTo) delete S.sentTo[c][day]; }
+  d.since = [d.since || start, start].sort()[0];
+  S.matches.forEach(m => { if (m.active && (!m.startDay || m.startDay > start)) m.startDay = start; });
+  S.seen = ''; save(); refresh();
+}
 
 // ---------- start ----------
 (async function start(){
   load(); await restore();
   render();
-  ST.env().then(e => { S.testflight = !!(e && e.testflight); render(); }).catch(()=>{});
+  ST.env().then(e => { S.testflight = !!(e && e.testflight); if (!S.setup) render(); }).catch(()=>{});
   if (S.setup) {
     const s = await ST.status().catch(() => ({authorized:true}));
     if (IS_APP && s && s.authorized === false) { S.setup = false; S.setupStep = 'connect'; save(); render(); return; }
     await syncNative();
+    applyNotify().catch(()=>{});
     refresh();
   }
+  // Coming back to the app (also after "Break the seal" on the morning notification) refreshes, and the reveal shows by itself.
   document.addEventListener('visibilitychange', () => { if (!document.hidden && S.setup) refresh(); });
 })();
 </script>

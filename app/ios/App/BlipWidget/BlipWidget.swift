@@ -1,759 +1,376 @@
 import WidgetKit
 import SwiftUI
-import ActivityKit
+import CoreText
 
-// Blip's home screen and lock screen widgets (Matthew's picks, 2026-11-13; Lawyer conditions applied):
-//  - shows only Blip's own count for today (the 5-minute steps the monitor saved on this phone), the goal and the player's Blip
-//  - reads the shared App Group on this phone; no network, no analytics, nothing shared
-//  - count, left/over, bar, mood and streak are privacy-sensitive (hidden when the phone hides widget data while locked)
-//  - "Blip's count", "about ... left" and "as of" wording; never claims to match iPhone's Settings
-//  - tapping opens the app (Today); never the shop
-//  - kept off the Mac desktop (iPhone widgets on Mac)
+// Conquer Your Screen Time widgets (design handoff 2026-11-25, Widgets board; build 4).
+//  - Lock Screen: a line above the clock ("Leading 4 of 6 this week"), a ring with points left, and a wide widget
+//    showing where points went (Red, Orange, and what the next 15 minutes of Red would cost).
+//  - Home small: points left with the Red/Orange bar. Home medium: adds the breakdown and the seals.
+//  - After the seal is broken in the app, the widgets turn gold with the crown and "4 of 6" for a few hours.
+//    They never show a result before the seal is broken.
+//  - Reads only what the app and the Screen Time monitor already save on this phone (App Group). Nothing leaves the phone.
 
 private let group = "group.io.github.gamesbyvidal.lifetime"
-private let ink = Color(red: 0.231, green: 0.165, blue: 0.290)      // #3b2a4a outline
-private let purple = Color(red: 0.486, green: 0.361, blue: 1.0)     // #7c5cff
-private let sunset = Color(red: 1.0, green: 0.478, blue: 0.349)     // #ff7a59
-private let cream = Color(red: 1.0, green: 0.980, blue: 0.941)      // #fffaf0
-private let soft = Color(red: 0.42, green: 0.36, blue: 0.48)
+private let bg = Color(red: 0.051, green: 0.051, blue: 0.059)      // #0d0d0f
+private let ink = Color(red: 0.961, green: 0.945, blue: 0.902)     // #f5f1e6
+private let ivory = Color(red: 0.925, green: 0.894, blue: 0.816)   // #ece4d0
+private let dim = Color(red: 0.710, green: 0.678, blue: 0.600)     // #b5ad99
+private let faint = Color(red: 0.604, green: 0.576, blue: 0.498)   // #9a937f
+private let gold = Color(red: 0.788, green: 0.647, blue: 0.290)    // #c9a54a
+private let red = Color(red: 0.910, green: 0.416, blue: 0.455)     // #e86a74
+private let orange = Color(red: 0.863, green: 0.612, blue: 0.333)  // #dc9c55
+private let card = Color(red: 0.110, green: 0.110, blue: 0.129)    // #1c1c21
 
-struct BlipEntry: TimelineEntry {
+// Playfair Display Bold: the app copies its bundled font (SIL OFL) into the App Group; registered here once.
+private enum Display {
+    static let registered: Bool = {
+        guard let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else { return false }
+        let url = dir.appendingPathComponent("PlayfairDisplay-Bold.ttf")
+        guard FileManager.default.fileExists(atPath: url.path) else { return false }
+        CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        return true
+    }()
+    static func font(_ size: CGFloat) -> Font {
+        registered ? .custom("PlayfairDisplay-Bold", size: size) : .system(size: size, weight: .bold, design: .serif)
+    }
+}
+
+private func fmt(_ n: Int) -> String {
+    let f = NumberFormatter(); f.numberStyle = .decimal; f.locale = Locale(identifier: "en_US")
+    return f.string(from: NSNumber(value: n)) ?? "\(n)"
+}
+private func hm(_ m: Int) -> String {
+    let h = m / 60, mm = m % 60
+    if h == 0 { return "\(mm) min" }
+    return mm == 0 ? "\(h) hr" : "\(h) hr \(mm)"
+}
+private func dayString(_ d: Date) -> String {
+    let f = DateFormatter(); f.calendar = Calendar(identifier: .gregorian); f.locale = Locale(identifier: "en_US_POSIX")
+    f.dateFormat = "yyyy-MM-dd"; return f.string(from: d)
+}
+
+struct Row: Hashable { let name: String; let diff: Int }
+
+struct ConquerEntry: TimelineEntry {
     let date: Date
     let ready: Bool
-    let minutes: Int
-    let goal: Int
-    let name: String
-    let age: Int
-    let streak: Int
-    let skin: Color
-    let hair: Color
-    let girl: Bool
-    var glum = false // the Blip's mood comes from the last year it lived, same as everywhere in the app
-    var nomad: NomadSnap? = nil // Blip Nomad (build 33): when set, the widget shows Sam's travels instead of the Classic count
+    let red: Int        // minutes today, 15-minute steps
+    let orange: Int
+    let rivals: Int
+    let weekLead: Int
+    let weekOf: Int
+    let gold: Bool      // seal broken in the app: show the result for a few hours
+    let held: Int
+    let of: Int
+    let me: Int
+    let rows: [Row]
 
-    var over: Bool { minutes > goal }
-    var progress: Double { goal > 0 ? min(1, Double(minutes) / Double(goal)) : 0 }
-    var tint: Color { over ? sunset : purple }
-    var leftText: String { over ? fmt(minutes - goal) + " over" : "about " + fmt(goal - minutes) + " left" }
-    var shortLeft: String { over ? fmt(minutes - goal) + " over" : fmt(goal - minutes) + " left" }
-    var asOf: String {
-        let f = DateFormatter()
-        f.locale = Locale.current
-        f.timeStyle = .short
-        f.dateStyle = .none
-        return "updated " + f.string(from: date)
-    }
+    var redCost: Int { (red / 15) * 40 }
+    var orangeCost: Int { (orange / 15) * 20 }
+    var left: Int { max(0, 1000 - redCost - orangeCost) }
+    var won: Bool { held * 2 > of }
 
-    static let sample = BlipEntry(date: Date(), ready: true, minutes: 95, goal: 120, name: "Pip", age: 24, streak: 3,
-                                  skin: Color(hex: "#f1c27d"), hair: Color(hex: "#3b2a4a"), girl: false)
-}
-
-func fmt(_ m: Int) -> String {
-    let h = m / 60, mm = m % 60
-    if h == 0 { return "\(mm)m" }
-    return mm == 0 ? "\(h)h" : "\(h)h \(mm)m"
-}
-
-extension Color {
-    init(hex: String) {
-        var s = hex.trimmingCharacters(in: .whitespaces)
-        if s.hasPrefix("#") { s.removeFirst() }
-        var v: UInt64 = 0
-        Scanner(string: s).scanHexInt64(&v)
-        self.init(red: Double((v >> 16) & 0xff) / 255, green: Double((v >> 8) & 0xff) / 255, blue: Double(v & 0xff) / 255)
-    }
+    static let sample = ConquerEntry(date: Date(), ready: true, red: 75, orange: 30, rivals: 6, weekLead: 4, weekOf: 6,
+                                     gold: false, held: 4, of: 6, me: 812, rows: [])
 }
 
 struct Provider: TimelineProvider {
-    private func day(_ d: Date) -> String {
-        let f = DateFormatter()
-        f.calendar = Calendar(identifier: .gregorian)
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: d)
-    }
-
-    func entry(at date: Date) -> BlipEntry {
+    func entry(at date: Date) -> ConquerEntry {
         let d = UserDefaults(suiteName: group)
-        guard let info = d?.dictionary(forKey: "widget"), let goal = info["goal"] as? Int else {
-            return BlipEntry(date: date, ready: false, minutes: 0, goal: 0, name: "", age: 0, streak: 0,
-                             skin: Color(hex: "#f1c27d"), hair: ink, girl: false)
+        let day = dayString(date)
+        let info = d?.dictionary(forKey: "conquer-widget") ?? [:]
+        let ready = d?.bool(forKey: "friends-ready") == true
+        // The result day the app last showed must still be the open one (yesterday from 8 AM).
+        let hour = Calendar.current.component(.hour, from: date)
+        let openDay = dayString(Calendar.current.date(byAdding: .day, value: hour >= 8 ? -1 : -2, to: date) ?? date)
+        let at = Double(info["revealedAt"] as? Int ?? 0)
+        let gold = (info["revealed"] as? Bool ?? false) && (info["resultDay"] as? String ?? "") == openDay
+            && at > 0 && date.timeIntervalSince1970 < at + 3 * 3600
+        let rows = (info["rows"] as? [[String: Any]] ?? []).compactMap { r -> Row? in
+            guard let n = r["n"] as? String, let v = r["d"] as? Int else { return nil }
+            return Row(name: n, diff: v)
         }
-        let minutes = d?.integer(forKey: "minutes-" + day(date)) ?? 0
-        return BlipEntry(date: date, ready: true, minutes: minutes, goal: goal,
-                         name: info["name"] as? String ?? "", age: info["age"] as? Int ?? 0, streak: info["streak"] as? Int ?? 0,
-                         skin: Color(hex: info["skin"] as? String ?? "#f1c27d"), hair: Color(hex: info["hair"] as? String ?? "#3b2a4a"),
-                         girl: info["girl"] as? Bool ?? false, glum: info["glum"] as? Bool ?? false)
+        return ConquerEntry(date: date, ready: ready,
+                            red: d?.integer(forKey: "fmin-red-" + day) ?? 0, orange: d?.integer(forKey: "fmin-orange-" + day) ?? 0,
+                            rivals: info["rivals"] as? Int ?? 0, weekLead: info["weekLead"] as? Int ?? 0, weekOf: info["weekOf"] as? Int ?? 0,
+                            gold: gold, held: info["held"] as? Int ?? 0, of: info["of"] as? Int ?? 0, me: info["me"] as? Int ?? 0, rows: rows)
     }
 
-    func placeholder(in context: Context) -> BlipEntry { .sample }
+    func placeholder(in context: Context) -> ConquerEntry { .sample }
 
-    func getSnapshot(in context: Context, completion: @escaping (BlipEntry) -> Void) {
-        if let t = nomadTimeline(now: Date()), let first = t.entries.first { completion(first); return }
+    func getSnapshot(in context: Context, completion: @escaping (ConquerEntry) -> Void) {
         let e = entry(at: Date())
         completion(context.isPreview && !e.ready ? .sample : e)
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<BlipEntry>) -> Void) {
+    func getTimeline(in context: Context, completion: @escaping (Timeline<ConquerEntry>) -> Void) {
         let now = Date()
-        if let n = nomadTimeline(now: now) { completion(n); return }
-        var entries = [entry(at: now)]
-        // A fresh day starts at 0 at midnight even if nothing wakes the widget.
-        if let midnight = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)),
-           midnight.timeIntervalSince(now) < 15 * 60 {
-            entries.append(entry(at: midnight))
+        var dates = [now]
+        let cal = Calendar.current
+        // Midnight: points start again at 1,000. 8 AM: results open (still sealed). End of the gold window.
+        if let midnight = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: now)) { dates.append(midnight) }
+        if let eight = cal.date(bySettingHour: 8, minute: 0, second: 0, of: now), eight > now { dates.append(eight) }
+        let info = UserDefaults(suiteName: group)?.dictionary(forKey: "conquer-widget") ?? [:]
+        if let at = info["revealedAt"] as? Int, at > 0 {
+            let end = Date(timeIntervalSince1970: Double(at) + 3 * 3600)
+            if end > now { dates.append(end) }
         }
-        // The monitor asks for a reload on every new 5-minute step; this is the fallback.
-        completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(15 * 60))))
+        let entries = dates.sorted().filter { $0.timeIntervalSince(now) < 24 * 3600 }.map { entry(at: $0) }
+        // The monitor asks for a reload on every new 15-minute step; this is the fallback.
+        completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(30 * 60))))
     }
 }
 
-// MARK: - The player's own Blip (pictures the app draws with its own art; simple drawing only as a fallback)
+// MARK: - The crown (the shipped app icon's crown) and the wax seal
 
-func blipArt(_ name: String) -> UIImage? {
-    guard let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else { return nil }
-    return UIImage(contentsOfFile: dir.appendingPathComponent("widget-" + name + ".png").path)
-}
+private let crownPoints: [[CGPoint]] = [
+    "20,66 13,29 34,52", "13,29 34,52 26,66 20,66", "34,52 50,24 50,58", "50,24 66,52 50,58", "34,52 50,58 26,66",
+    "66,52 50,58 74,66", "50,58 26,66 74,66", "66,52 87,29 80,66 74,66", "87,29 80,66 74,66", "19,70 81,70 79,74 21,74",
+    "21,74 79,74 81,78 19,78", "50,14.9 45.2,20.5 50,20.5", "50,14.9 54.8,20.5 50,20.5", "45.2,20.5 50,26.1 50,20.5",
+    "54.8,20.5 50,26.1 50,20.5", "13,20.6 9.2,25.2 13,25.2", "13,20.6 16.8,25.2 13,25.2", "9.2,25.2 13,29.8 13,25.2",
+    "16.8,25.2 13,29.8 13,25.2", "87,20.6 83.2,25.2 87,25.2", "87,20.6 90.8,25.2 87,25.2", "83.2,25.2 87,29.8 87,25.2",
+    "90.8,25.2 87,29.8 87,25.2",
+].map { s in s.split(separator: " ").map { p -> CGPoint in let v = p.split(separator: ",").compactMap { Double($0) }; return CGPoint(x: v[0], y: v[1]) } }
+private let crownGold = ["#f2dc97","#d6b55f","#f6e4a8","#b8913a","#c9a54a","#9c772b","#ad8634","#a37d2e","#86641f","#e8cd7e","#9c772b","#fff7dc","#ead38e","#f6e4a8","#b8913a","#fff2c8","#e6cb80","#f2dc97","#d6b55f","#e9d08a","#b89140","#a37d2e","#86641f"]
+private let crownPewter = ["#bcb6a5","#9c9788","#c3bcaa","#7e7a6e","#8f8a7d","#69655b","#757167","#6e6a60","#58554d","#b0aa9a","#69655b","#d4cdb9","#b5af9e","#c3bcaa","#7e7a6e","#d0c8b5","#aea898","#bcb6a5","#9c9788","#b3ac9c","#7f7b6f","#6e6a60","#58554d"]
 
-struct Mouth: Shape {
-    let mood: Int // 1 smile, 0 neutral, -1 glum
-    func path(in r: CGRect) -> Path {
-        var p = Path()
-        let y = r.minY + r.height * 0.70
-        switch mood {
-        case 1:
-            p.move(to: CGPoint(x: r.minX + r.width * 0.37, y: y))
-            p.addQuadCurve(to: CGPoint(x: r.minX + r.width * 0.63, y: y), control: CGPoint(x: r.midX, y: y + r.height * 0.13))
-        case -1:
-            p.move(to: CGPoint(x: r.minX + r.width * 0.40, y: y + r.height * 0.06))
-            p.addQuadCurve(to: CGPoint(x: r.minX + r.width * 0.60, y: y + r.height * 0.06), control: CGPoint(x: r.midX, y: y - r.height * 0.03))
-        default:
-            p.move(to: CGPoint(x: r.minX + r.width * 0.41, y: y + r.height * 0.03))
-            p.addLine(to: CGPoint(x: r.minX + r.width * 0.59, y: y + r.height * 0.03))
-        }
-        return p
+extension Color {
+    init(hex: String) {
+        var s = hex; if s.hasPrefix("#") { s.removeFirst() }
+        var v: UInt64 = 0; Scanner(string: s).scanHexInt64(&v)
+        self.init(red: Double((v >> 16) & 0xff) / 255, green: Double((v >> 8) & 0xff) / 255, blue: Double(v & 0xff) / 255)
     }
 }
 
-struct BlipFace: View {
-    let e: BlipEntry
-    var mono = false
-    @Environment(\.redactionReasons) private var reasons
-
+struct Crown: View {
+    var fills: [String] = crownGold
+    var mono: Color? = nil
     var body: some View {
-        // The mood gives the result away, so it goes neutral when the phone hides private widget data.
-        let mood = reasons.contains(.privacy) ? "Neutral" : (e.glum ? "Glum" : "Happy")
-        // Lock screen (one tint): a white version of the player's own Blip, made by the app from the same art (lineArt in
-        // index.html), so it keeps their hair and hat. Elsewhere: the app's own full-colour art.
-        if mono, let line = blipArt("line" + mood) {
-            Image(uiImage: line).resizable().scaledToFit()
-        } else if !mono, let art = blipArt("face" + mood) {
-            Image(uiImage: art).resizable().scaledToFit().clipShape(Circle())
-        } else {
-            drawn
-        }
-    }
-
-    private var drawn: some View {
-        GeometryReader { g in
-            let s = min(g.size.width, g.size.height)
-            let line = max(1.5, s * 0.05)
-            // The mood gives the result away, so it goes neutral when the phone hides private widget data.
-            let mood = reasons.contains(.privacy) ? 0 : (e.glum ? -1 : 1)
-            let hairC = mono ? Color.primary : e.hair
-            let skinC = mono ? Color.primary.opacity(0.25) : e.skin
-            ZStack {
-                if e.girl {
-                    RoundedRectangle(cornerRadius: s * 0.3)
-                        .fill(hairC)
-                        .frame(width: s * 0.96, height: s * 0.95)
-                        .offset(y: s * 0.12)
-                }
-                Circle().fill(skinC)
-                Circle()
-                    .fill(hairC)
-                    .frame(width: s * 1.05, height: s * 0.9)
-                    .offset(y: -s * (e.girl ? 0.42 : 0.47))
-                    .mask(Circle())
-                Circle().stroke(mono ? Color.primary : ink, lineWidth: line)
-                HStack(spacing: s * 0.2) {
-                    Capsule().fill(mono ? Color.primary : ink).frame(width: s * 0.09, height: s * 0.13)
-                    Capsule().fill(mono ? Color.primary : ink).frame(width: s * 0.09, height: s * 0.13)
-                }
-                .offset(y: s * 0.04)
-                if !mono {
-                    HStack(spacing: s * 0.42) {
-                        Circle().fill(Color.pink.opacity(0.35)).frame(width: s * 0.12)
-                        Circle().fill(Color.pink.opacity(0.35)).frame(width: s * 0.12)
-                    }
-                    .offset(y: s * 0.17)
-                }
-                Mouth(mood: mood)
-                    .stroke(mono ? Color.primary : ink, style: StrokeStyle(lineWidth: line, lineCap: .round))
-                    .privacySensitive()
+        Canvas { ctx, size in
+            let k = min(size.width / 84, size.height / 68)
+            let ox = (size.width - 84 * k) / 2, oy = (size.height - 68 * k) / 2
+            for (i, pts) in crownPoints.enumerated() {
+                var p = Path()
+                p.addLines(pts.map { CGPoint(x: ox + ($0.x - 8) * k, y: oy + ($0.y - 11) * k) })
+                p.closeSubpath()
+                let c = mono ?? Color(hex: fills[i])
+                ctx.fill(p, with: .color(c))
+                if mono != nil { ctx.stroke(p, with: .color(c), lineWidth: 0.5) }
             }
-            .frame(width: s, height: s)
-            .position(x: g.size.width / 2, y: g.size.height / 2)
         }
+        .aspectRatio(84 / 68, contentMode: .fit)
     }
 }
 
-// MARK: - Home screen: small ring
+struct Seal: View {
+    var body: some View {
+        ZStack {
+            Circle().fill(RadialGradient(colors: [Color(hex: "#8a2433"), Color(hex: "#5e1520"), Color(hex: "#3a0b12")],
+                                         center: UnitPoint(x: 0.38, y: 0.32), startRadius: 0, endRadius: 30))
+            Circle().inset(by: 4).stroke(Color(hex: "#4a0f17"), lineWidth: 1.2)
+            Crown(mono: Color(hex: "#9a3a47")).padding(7)
+        }
+        .aspectRatio(1, contentMode: .fit)
+    }
+}
+
+// MARK: - Pieces
+
+struct PointsBar: View {
+    let e: ConquerEntry
+    var body: some View {
+        GeometryReader { g in
+            HStack(spacing: 0) {
+                Rectangle().fill(ivory).frame(width: g.size.width * CGFloat(e.left) / 1000)
+                Rectangle().fill(orange).frame(width: g.size.width * CGFloat(min(e.orangeCost, 1000)) / 1000)
+                Rectangle().fill(red)
+            }
+        }
+        .frame(height: 5).clipShape(Capsule())
+    }
+}
+
+struct Label11: View {
+    let text: String
+    var color: Color = faint
+    var body: some View { Text(text.uppercased()).font(.system(size: 10, weight: .semibold)).kerning(1.5).foregroundColor(color) }
+}
 
 struct SmallView: View {
-    let e: BlipEntry
+    let e: ConquerEntry
     var body: some View {
-        VStack(spacing: 2) {
-            ZStack {
-                Circle().stroke(e.tint.opacity(0.18), lineWidth: 9)
-                Circle().trim(from: 0, to: e.progress)
-                    .stroke(e.tint, style: StrokeStyle(lineWidth: 9, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .privacySensitive()
-                BlipFace(e: e).padding(12)
-            }
-            .frame(width: 84, height: 84)
-            Text(fmt(e.minutes)).font(.system(size: 20, weight: .heavy, design: .rounded)).foregroundColor(ink).privacySensitive()
-            Text(e.shortLeft).font(.system(size: 12, weight: .bold, design: .rounded)).foregroundColor(e.over ? sunset : Color(red: 0.2, green: 0.6, blue: 0.3)).privacySensitive()
-            Text(e.asOf).font(.system(size: 9, design: .rounded)).foregroundColor(soft)
-        }
-    }
-}
-
-// MARK: - Home screen: medium room
-
-struct RoomView: View {
-    let e: BlipEntry
-    var body: some View {
-        GeometryReader { g in
-            let w = g.size.width, h = g.size.height
-            ZStack(alignment: .topLeading) {
-                Rectangle().fill(Color(red: 1.0, green: 0.86, blue: 0.68))
-                Rectangle().fill(Color(red: 0.86, green: 0.62, blue: 0.42)).frame(height: h * 0.2).offset(y: h * 0.8)
-                // window
-                RoundedRectangle(cornerRadius: 4).fill(Color(red: 0.75, green: 0.88, blue: 1.0))
-                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(ink, lineWidth: 2))
-                    .frame(width: w * 0.28, height: h * 0.26).offset(x: w * 0.08, y: h * 0.08)
-                // picture
-                RoundedRectangle(cornerRadius: 3).fill(Color.white)
-                    .overlay(RoundedRectangle(cornerRadius: 3).stroke(ink, lineWidth: 2))
-                    .frame(width: w * 0.2, height: h * 0.16).offset(x: w * 0.62, y: h * 0.1)
-                // rug
-                Ellipse().fill(Color(red: 1.0, green: 0.56, blue: 0.69))
-                    .overlay(Ellipse().stroke(ink, lineWidth: 2))
-                    .frame(width: w * 0.7, height: h * 0.12).offset(x: w * 0.15, y: h * 0.82)
-                // the Blip
-                if let whole = blipArt(e.glum ? "bodyGlum" : "bodyHappy") {
-                    Image(uiImage: whole).resizable().scaledToFit()
-                        .frame(width: w * 0.7, height: h * 0.84)
-                        .frame(width: w).offset(y: h * 0.1)
-                        .privacySensitive()
-                } else {
-                VStack(spacing: -h * 0.03) {
-                    BlipFace(e: e).frame(width: w * 0.42, height: w * 0.42)
-                    RoundedRectangle(cornerRadius: 8).fill(e.girl ? Color(red: 0.36, green: 0.76, blue: 0.69) : Color(red: 0.22, green: 0.62, blue: 0.56))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(ink, lineWidth: 2))
-                        .frame(width: w * 0.3, height: h * 0.26)
-                }
-                .frame(width: w).offset(y: h * 0.3)
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(ink, lineWidth: 2.5))
+        VStack(alignment: .leading, spacing: 4) {
+            HStack { Label11(text: "Left today"); Spacer(); Crown().frame(width: 18) }
+            Text(fmt(e.left)).font(Display.font(44)).foregroundColor(ink).minimumScaleFactor(0.6).lineLimit(1).privacySensitive()
+            Spacer(minLength: 0)
+            PointsBar(e: e).privacySensitive()
+            Text(e.rivals > 0 ? "Sealed till 8 AM" : "Conquer").font(.system(size: 11)).foregroundColor(faint)
         }
     }
 }
 
 struct MediumView: View {
-    let e: BlipEntry
+    let e: ConquerEntry
     var body: some View {
-        HStack(spacing: 12) {
-            RoomView(e: e).frame(maxWidth: .infinity)
+        HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Blip's count").font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundColor(soft)
-                HStack(alignment: .firstTextBaseline) {
-                    Text(fmt(e.minutes)).font(.system(size: 24, weight: .heavy, design: .rounded)).foregroundColor(ink).privacySensitive()
-                    Spacer(minLength: 2)
-                    Text(e.leftText).font(.system(size: 11, weight: .bold, design: .rounded)).foregroundColor(e.over ? sunset : Color(red: 0.2, green: 0.6, blue: 0.3)).privacySensitive()
+                Label11(text: "Left today")
+                Text(fmt(e.left)).font(Display.font(48)).foregroundColor(ink).minimumScaleFactor(0.6).lineLimit(1).privacySensitive()
+                Spacer(minLength: 0)
+                PointsBar(e: e).privacySensitive()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 8) {
+                line(red, "Red · " + hm(e.red), e.redCost)
+                line(orange, "Orange · " + hm(e.orange), e.orangeCost)
+                Divider().background(Color.white.opacity(0.1))
+                if e.rivals > 0 {
+                    HStack(spacing: 8) {
+                        HStack(spacing: -8) { ForEach(0..<min(e.rivals, 4), id: \.self) { _ in Seal().frame(width: 20) } }
+                        Text("\(e.rivals == 1 ? "Your match" : "\(e.rivals) matches") sealed till 8 AM").font(.system(size: 11)).foregroundColor(dim).lineLimit(2)
+                    }
+                } else {
+                    Text("Invite a friend to start a match.").font(.system(size: 11)).foregroundColor(dim)
                 }
-                ProgressView(value: e.progress).tint(e.tint).privacySensitive()
-                HStack {
-                    Text(e.asOf)
-                    Spacer()
-                    Text("goal " + fmt(e.goal))
-                }
-                .font(.system(size: 9, design: .rounded)).foregroundColor(soft)
-                if e.streak > 0 {
-                    Text("🔥 \(e.streak) day streak")
-                        .font(.system(size: 11, weight: .bold, design: .rounded)).foregroundColor(ink)
-                        .padding(.horizontal, 8).padding(.vertical, 2)
-                        .overlay(Capsule().stroke(ink, lineWidth: 1.5))
-                        .privacySensitive()
-                }
-                Text("🎂 \(e.name) turns \(e.age + 1) tomorrow morning")
-                    .font(.system(size: 10, design: .rounded)).foregroundColor(ink).lineLimit(2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
+    func line(_ c: Color, _ t: String, _ cost: Int) -> some View {
+        HStack(spacing: 6) {
+            Circle().fill(c).frame(width: 7, height: 7)
+            Text(t).font(.system(size: 12)).foregroundColor(ink).lineLimit(1)
+            Spacer(minLength: 2)
+            Text(cost > 0 ? "−\(fmt(cost))" : "0").font(.system(size: 12, weight: .semibold)).monospacedDigit().foregroundColor(c).privacySensitive()
+        }
+    }
 }
 
-// MARK: - Lock screen: rectangle (one tint, drawn by iOS)
-
-struct LockView: View {
-    let e: BlipEntry
+// After the seal is broken: gold when you won most, pewter otherwise.
+struct GoldSmall: View {
+    let e: ConquerEntry
     var body: some View {
-        HStack(spacing: 8) {
-            BlipFace(e: e, mono: true).frame(width: 42, height: 42)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(fmt(e.minutes)).font(.system(size: 20, weight: .heavy, design: .rounded)).privacySensitive()
-                ProgressView(value: e.progress).privacySensitive()
-                Text(e.leftText).font(.system(size: 11, weight: .semibold, design: .rounded)).privacySensitive()
-                Text(e.asOf).font(.system(size: 9, design: .rounded)).opacity(0.7)
+        VStack(spacing: 4) {
+            if e.won { Crown().frame(width: 56) } else { Crown(fills: crownPewter).frame(width: 56) }
+            Text("\(e.held) of \(e.of)").font(Display.font(26)).foregroundColor(e.won ? gold : ink)
+            Text(e.of == 1 ? (e.held == 1 ? "crown won yesterday" : "crown lost yesterday") : "crowns won yesterday").font(.system(size: 11)).foregroundColor(dim)
+        }
+    }
+}
+
+struct GoldMedium: View {
+    let e: ConquerEntry
+    var body: some View {
+        HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Label11(text: "Yesterday", color: e.won ? gold : faint)
+                Text("\(e.held) of \(e.of)").font(Display.font(34)).foregroundColor(e.won ? gold : ink)
+                Text("\(fmt(e.me)) points").font(.system(size: 11)).foregroundColor(dim)
+            }
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 6) {
+                ForEach(e.rows, id: \.self) { r in
+                    HStack(spacing: 4) {
+                        if r.diff > 0 { Crown().frame(width: 13) } else { Crown(fills: crownPewter).frame(width: 13) }
+                        Text(r.name).font(.system(size: 11)).foregroundColor(r.diff > 0 ? ink : faint).lineLimit(1)
+                        Spacer(minLength: 2)
+                        Text((r.diff > 0 ? "+" : r.diff < 0 ? "−" : "") + fmt(abs(r.diff))).font(.system(size: 11)).monospacedDigit().foregroundColor(r.diff > 0 ? gold : faint)
+                    }
+                }
             }
         }
+    }
+}
+
+// Lock Screen pieces (one tint, drawn by iOS).
+struct LockRing: View {
+    let e: ConquerEntry
+    var body: some View {
+        Gauge(value: Double(e.left), in: 0...1000) {
+            Text("LEFT")
+        } currentValueLabel: {
+            VStack(spacing: -2) {
+                Text(fmt(e.left)).font(Display.font(15)).minimumScaleFactor(0.6)
+                Text("LEFT").font(.system(size: 7, weight: .semibold))
+            }
+        }
+        .gaugeStyle(.accessoryCircularCapacity)
+        .privacySensitive()
+    }
+}
+
+struct LockRect: View {
+    let e: ConquerEntry
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            HStack { Text("Red · " + hm(e.red)); Spacer(); Text(e.redCost > 0 ? "−\(fmt(e.redCost))" : "0").fontWeight(.semibold) }
+            HStack { Text("Orange · " + hm(e.orange)); Spacer(); Text(e.orangeCost > 0 ? "−\(fmt(e.orangeCost))" : "0").fontWeight(.semibold) }
+            Text(e.left > 0 ? "Next 15 min of Red: −40" : "No points left today").font(.system(size: 11)).opacity(0.75)
+        }
+        .font(.system(size: 13))
+        .privacySensitive()
+    }
+}
+
+struct LockLine: View {
+    let e: ConquerEntry
+    var body: some View {
+        if e.gold { Text(Image(systemName: "crown.fill")) + Text(" \(e.held) of \(e.of) crowns yesterday") }
+        else if e.weekOf > 0 { Text(Image(systemName: "crown.fill")) + Text(e.weekLead > 0 ? " Leading \(e.weekLead) of \(e.weekOf) this week" : " Chasing \(e.weekOf) this week") }
+        else { Text("\(fmt(e.left)) points left") }
     }
 }
 
 struct SetupView: View {
     var body: some View {
-        VStack(spacing: 4) {
-            Text("Blip").font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundColor(purple)
-            Text("Open Blip once to show your count here.").font(.system(size: 11, design: .rounded)).foregroundColor(soft).multilineTextAlignment(.center)
+        VStack(spacing: 6) {
+            Crown().frame(width: 34)
+            Text("Open Conquer to set up.").font(.system(size: 11)).foregroundColor(dim).multilineTextAlignment(.center)
         }
     }
 }
 
-struct BlipWidgetView: View {
+struct ConquerWidgetView: View {
     @Environment(\.widgetFamily) private var family
-    let e: BlipEntry
+    let e: ConquerEntry
     var body: some View {
         Group {
-            if let n = e.nomad {
-                NomadView(n: n, date: e.date)
-            } else if family == .accessoryCircular || family == .accessoryInline {
-                Text(e.ready ? fmt(e.minutes) : "Blip").privacySensitive()
-            } else if !e.ready {
-                SetupView()
-            } else {
-                switch family {
-                case .systemMedium: MediumView(e: e)
-                case .accessoryRectangular: LockView(e: e)
-                default: SmallView(e: e)
-                }
+            switch family {
+            case .accessoryInline: LockLine(e: e)
+            case .accessoryCircular: LockRing(e: e)
+            case .accessoryRectangular: LockRect(e: e)
+            default:
+                if !e.ready { SetupView() }
+                else if e.gold && e.of > 0 { if family == .systemMedium { GoldMedium(e: e) } else { GoldSmall(e: e) } }
+                else if family == .systemMedium { MediumView(e: e) }
+                else { SmallView(e: e) }
             }
         }
         .containerBackground(for: .widget) {
             if family == .accessoryRectangular || family == .accessoryCircular || family == .accessoryInline { Color.clear }
-            else if e.nomad != nil { NomadBackground() }
-            else { cream }
+            else if e.gold && e.won {
+                ZStack { bg; LinearGradient(colors: [Color(hex: "#2a2418"), bg], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    ContainerRelativeShape().inset(by: 4).stroke(gold.opacity(0.45), lineWidth: 1) }
+            } else { bg }
         }
     }
 }
 
 struct BlipWidget: Widget {
     var body: some WidgetConfiguration {
+        // Kind kept from earlier builds so widgets already on a Home Screen keep working.
         StaticConfiguration(kind: "BlipCount", provider: Provider()) { e in
-            BlipWidgetView(e: e)
+            ConquerWidgetView(e: e)
         }
-        .configurationDisplayName("Blip")
-        .description("What your Blip is up to, your Coins and the time to your next Coin.")
+        .configurationDisplayName("Conquer")
+        .description("Points left today, where they went, and your crowns once you break the seal.")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular, .accessoryInline])
         .disfavoredLocations([.iPhoneWidgetsOnMac], for: [.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular, .accessoryInline])
     }
 }
 
-
-// ---------- Blip Nomad: the lock-screen countdown (Live Activity) ----------
-// Started only by the player's own tap ("Blip's off!"), from the app. Shows game text only: what Blip is doing and a countdown
-// that assumes the phone stays down. No Screen Time minutes, no goal, no network, no push server.
-// Keep BlipTripAttributes identical to the copy in ScreenTimePlugin.swift (iOS matches them by name and shape).
-struct BlipTripAttributes: ActivityAttributes {
-    public struct ContentState: Codable, Hashable {
-        var title: String
-        var emoji: String
-        var next: String
-        var start: Date
-        var end: Date
-    }
-    var name: String
-}
-
-private func tripIcon() -> UIImage? {
-    guard let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else { return nil }
-    return UIImage(contentsOfFile: dir.appendingPathComponent("live-icon.png").path)
-}
-
-struct TripLockView: View {
-    let ctx: ActivityViewContext<BlipTripAttributes>
-    var body: some View {
-        let s = ctx.state
-        let done = ctx.isStale || Date() >= s.end
-        HStack(spacing: 12) {
-            if let img = tripIcon() { Image(uiImage: img).resizable().scaledToFit().frame(width: 54, height: 64) }
-            else { Text(s.emoji).font(.system(size: 40)) }
-            VStack(alignment: .leading, spacing: 3) {
-                if done {
-                    Text("Time's up!").font(.system(size: 28, weight: .heavy, design: .rounded)).foregroundColor(ink)
-                    Text("Open Blip to see if " + ctx.attributes.name + " made it").font(.system(size: 14, weight: .semibold, design: .rounded)).foregroundColor(ink)
-                } else {
-                    Text(timerInterval: s.start...s.end, countsDown: true)
-                        .font(.system(size: 30, weight: .heavy, design: .rounded)).monospacedDigit().foregroundColor(ink)
-                    Text(s.emoji + " " + ctx.attributes.name + ": " + s.title).font(.system(size: 14, weight: .semibold, design: .rounded)).foregroundColor(ink).lineLimit(1)
-                    ProgressView(timerInterval: s.start...s.end, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
-                        .tint(sunset)
-                    Text("Back at \(clock(s.end)), with a story")
-                        .font(.system(size: 12, weight: .medium, design: .rounded)).foregroundColor(soft).lineLimit(1)
-                }
-            }
-        }
-        .padding(14)
-    }
-}
-
-struct BlipTripLive: Widget {
-    var body: some WidgetConfiguration {
-        ActivityConfiguration(for: BlipTripAttributes.self) { ctx in
-            TripLockView(ctx: ctx)
-                .activityBackgroundTint(cream)
-                .activitySystemActionForegroundColor(ink)
-        } dynamicIsland: { ctx in
-            DynamicIsland {
-                DynamicIslandExpandedRegion(.leading) {
-                    if let img = tripIcon() { Image(uiImage: img).resizable().scaledToFit().frame(width: 40, height: 48) } else { Text(ctx.state.emoji).font(.title) }
-                }
-                DynamicIslandExpandedRegion(.trailing) {
-                    Text(timerInterval: ctx.state.start...ctx.state.end, countsDown: true).font(.system(size: 22, weight: .heavy, design: .rounded)).monospacedDigit().frame(maxWidth: 80)
-                }
-                DynamicIslandExpandedRegion(.bottom) {
-                    Text(ctx.attributes.name + ": " + ctx.state.title).font(.system(size: 14, weight: .semibold, design: .rounded)).lineLimit(1)
-                }
-            } compactLeading: {
-                Text(ctx.state.emoji)
-            } compactTrailing: {
-                Text(timerInterval: ctx.state.start...ctx.state.end, countsDown: true).monospacedDigit().frame(maxWidth: 44)
-            } minimal: {
-                Text(ctx.state.emoji)
-            }
-        }
-    }
-}
-
-// ---------- Blip Nomad widgets (build 33; Designer mockups v1 + lock screen v2; Lawyer OK 2026-11-20) ----------
-// Status only: what Sam is doing, the Coins, the next Coin and the saving goal. Never shop items, prices or promotions.
-// Blip writes "nomad" to the App Group when it closes; the widget works out the rest from Blip's count on this phone.
-// Coins are only estimated here (assuming the phone stays down); Blip settles them from Blip's count when it opens.
-
-struct NomadInfo {
-    let name, act, emoji, readyTitle, save, saveShort, job: String
-    let coins, today, count, goal, prog, need, ready, cost: Int
-    let down: Double
-    let t: Date
-    let over, room, sunrise: Bool
-    init?(_ d: [String: Any]?) {
-        guard let d = d, let name = d["name"] as? String else { return nil }
-        func s(_ k: String) -> String { d[k] as? String ?? "" }
-        func i(_ k: String) -> Int { (d[k] as? NSNumber)?.intValue ?? 0 }
-        func b(_ k: String) -> Bool { (d[k] as? NSNumber)?.boolValue ?? false }
-        self.name = name; act = s("act"); emoji = s("emoji"); readyTitle = s("readyTitle"); save = s("save"); saveShort = s("saveShort"); job = s("job")
-        coins = i("coins"); today = i("today"); count = i("count"); goal = i("goal"); prog = i("prog"); need = i("need"); ready = i("ready"); cost = i("cost")
-        down = (d["down"] as? NSNumber)?.doubleValue ?? 0
-        t = Date(timeIntervalSince1970: ((d["t"] as? NSNumber)?.doubleValue ?? 0) / 1000)
-        over = b("over"); room = b("room"); sunrise = b("sunrise")
-    }
-}
-
-enum NomadHome { case act, ready, check, booked, night, early, over, idle }
-enum NomadLock { case countdown, landed, booked, night, early, over }
-
-struct NomadSnap {
-    let info: NomadInfo
-    let coins: Int
-    let next: Date?
-    let landed: Bool
-    let prog: Int
-    let home: NomadHome
-    let lock: NomadLock
-}
-
-private let shiftFrom = 8, shiftTo = 22, nightBy = 22 * 60 + 30
-
-func clock(_ d: Date) -> String {
-    let f = DateFormatter()
-    f.locale = Locale.current
-    f.timeStyle = .short
-    f.dateStyle = .none
-    return f.string(from: d)
-}
-
-private func at(_ d: Date, _ h: Int, _ m: Int = 0) -> Date {
-    Calendar.current.date(bySettingHour: h, minute: m, second: 0, of: d) ?? d
-}
-
-// Minutes of [a, b] that fall inside b's day's shift (8 AM to 10 PM).
-private func shiftMinutes(_ a: Date, _ b: Date) -> Double {
-    let from = max(a, at(b, shiftFrom), Calendar.current.startOfDay(for: b)), to = min(b, at(b, shiftTo))
-    return max(0, to.timeIntervalSince(from) / 60)
-}
-
-func nomadSnap(_ n: NomadInfo, at d: Date, gain: Int, countNow: Int, landed: Bool = false) -> NomadSnap {
-    let cal = Calendar.current
-    let sameDay = cal.isDate(d, inSameDayAs: n.t)
-    let over = (sameDay && n.over) || countNow >= n.goal
-    let down0 = sameDay ? n.down : 0, credited = sameDay ? n.today : 0
-    let from = sameDay ? n.t : cal.startOfDay(for: d)
-    let down = over ? down0 : max(down0, down0 + shiftMinutes(from, d) - Double(gain))
-    let coins = n.coins + max(0, Int(floor(down / 5)) - credited)
-    let h = cal.component(.hour, from: d)
-    var next: Date? = nil
-    if !over, h >= shiftFrom, h < shiftTo {
-        let r = down.truncatingRemainder(dividingBy: 5)
-        let c = d.addingTimeInterval((r < 0.01 ? 5 : 5 - r) * 60)
-        if c <= at(d, shiftTo) { next = c }
-    }
-    // The activity: real time minus Blip's count. A 5-minute step while it runs means the phone came out (Blip offers a retry).
-    var prog = n.prog, home = NomadHome.idle
-    let booked = !n.save.isEmpty && n.cost > 0 && n.room && coins >= n.cost
-    if !n.act.isEmpty {
-        prog = n.prog + Int(max(0, d.timeIntervalSince(n.t) / 60 - Double(gain)))
-        home = gain >= 5 ? .check : prog >= n.need ? .ready : .act
-    } else if n.ready > 0 { home = .ready }
-    else if booked { home = .booked }
-    else if h >= shiftTo || h < 5 { home = .night }
-    else if h < shiftFrom { home = .early }
-    else if over { home = .over }
-    let lock: NomadLock = booked ? .booked : (h >= shiftTo || h < 5) ? .night : h < shiftFrom ? .early : over ? .over : (landed ? .landed : .countdown)
-    return NomadSnap(info: n, coins: coins, next: next, landed: landed, prog: min(prog, max(n.need, 0)), home: home, lock: lock)
-}
-
-extension Provider {
-    func nomadTimeline(now: Date) -> Timeline<BlipEntry>? {
-        let d = UserDefaults(suiteName: group)
-        guard let n = NomadInfo(d?.dictionary(forKey: "nomad")) else { return nil }
-        let f = DateFormatter()
-        f.calendar = Calendar(identifier: .gregorian)
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "yyyy-MM-dd"
-        let countNow = d?.integer(forKey: "minutes-" + f.string(from: now)) ?? 0
-        let gain = Calendar.current.isDate(now, inSameDayAs: n.t) ? max(0, countNow - n.count) : countNow
-        func entry(_ t: Date, landed: Bool = false) -> BlipEntry {
-            var e = BlipEntry(date: t, ready: true, minutes: 0, goal: n.goal, name: n.name, age: 0, streak: 0, skin: Color(hex: "#f1c27d"), hair: ink, girl: false)
-            e.nomad = nomadSnap(n, at: t, gain: gain, countNow: countNow, landed: landed)
-            return e
-        }
-        var entries = [entry(now)]
-        // Each Coin boundary (assuming the phone stays down): "+1 Coin!" for a minute, then the next countdown.
-        if var b = entries[0].nomad?.next {
-            for _ in 0..<30 {
-                entries.append(entry(b, landed: true))
-                entries.append(entry(b.addingTimeInterval(60)))
-                guard let nx = entries.last?.nomad?.next, nx > b else { break }
-                b = nx
-            }
-        }
-        // The activity ending, and the evening, night and morning changes.
-        if !n.act.isEmpty, n.need > n.prog { entries.append(entry(now.addingTimeInterval(Double(n.need - entries[0].nomad!.prog) * 60 + 1))) }
-        for (h, m) in [(shiftTo, 0), (22, 30), (5, 0), (shiftFrom, 0), (0, 0)] {
-            var t = at(now, h, m)
-            if t <= now { t = Calendar.current.date(byAdding: .day, value: 1, to: t) ?? t }
-            entries.append(entry(t))
-        }
-        entries.sort { $0.date < $1.date }
-        var seen = Set<Int>()
-        entries = entries.filter { seen.insert(Int($0.date.timeIntervalSince1970)).inserted }
-        // The monitor asks for a reload on every new 5-minute step on Blip's count; this is the fallback.
-        return Timeline(entries: entries, policy: .after(now.addingTimeInterval(60 * 60)))
-    }
-}
-
-// The evening line: an invitation to put the phone down by 10:30 for a sunrise gem. No sleep or health claims (Lawyer).
-func nightLine(_ i: NomadInfo, _ date: Date, small: Bool) -> String {
-    if !i.sunrise { return "Back on the boat at 8 AM" }
-    let beforeBy = Calendar.current.component(.hour, from: date) >= 22 && date < at(date, 22, 30)
-    if beforeBy { return small ? "Down by 10:30 for sunrise" : "Phone down by 10:30 and \(i.name) catches sunrise" }
-    return "\(i.name)'s up early for the sunrise"
-}
-
-func nomadScene() -> UIImage? {
-    guard let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else { return nil }
-    return UIImage(contentsOfFile: dir.appendingPathComponent("nomad-scene.png").path)
-}
-
-struct NomadBackground: View {
-    var body: some View {
-        if let img = nomadScene() { Image(uiImage: img).resizable().scaledToFill() }
-        else { LinearGradient(colors: [Color(hex: "#9fd8f2"), Color(hex: "#ffe0b0")], startPoint: .top, endPoint: .bottom) }
-    }
-}
-
-struct NomadView: View {
-    @Environment(\.widgetFamily) private var family
-    let n: NomadSnap
-    let date: Date
-    var body: some View {
-        switch family {
-        case .accessoryRectangular: NomadRect(n: n, date: date)
-        case .accessoryCircular: NomadRing(n: n, date: date)
-        case .accessoryInline: Text(inline)
-        case .systemMedium: NomadPostcard(n: n, date: date, small: false)
-        default: NomadPostcard(n: n, date: date, small: true)
-        }
-    }
-    var inline: String {
-        let i = n.info
-        switch n.home {
-        case .act: return "\(i.emoji) \(i.name): \(i.act)"
-        case .ready: return "📸 \(i.name)'s Polaroid is ready"
-        case .check: return "\(i.emoji) How did \(i.name) do?"
-        case .booked: return "🎟️ \(i.name) booked a trip!"
-        case .night: return i.sunrise ? "🌙 Phone down by 10:30 for sunrise" : "🌙 Lights out"
-        case .early: return "🌅 \(i.name) is back on the boat at 8"
-        case .over: return "⛵ Shift's done · \(n.coins) Coins"
-        case .idle: return "⛵ \(i.name) is \(i.job)"
-        }
-    }
-}
-
-// Home screen: a postcard of where Sam is, one status line and the Coins.
-struct NomadPostcard: View {
-    @Environment(\.colorScheme) private var scheme
-    let n: NomadSnap
-    let date: Date
-    let small: Bool
-    var lines: (String, String) {
-        let i = n.info, name = i.name
-        switch n.home {
-        case .act:
-            let back: String = clock(date.addingTimeInterval(Double(max(0, i.need - n.prog)) * 60))
-            if small { return ("\(i.emoji) \(i.act)", "back \(back)") }
-            return ("\(i.emoji) \(name): \(i.act)", "\(n.prog) of \(i.need) min · back at \(back), with a story")
-        case .ready:
-            if small { return ("📸 Your Polaroid is ready", "Open Blip") }
-            return ("📸 Your Polaroid is ready", "Open Blip to see how it went")
-        case .check: return ("\(i.emoji) How did \(name) do?", "Open Blip to find out")
-        case .booked:
-            if small { return ("🎟️ Ticket booked!", i.save) }
-            return ("🎟️ Ticket booked!", "\(name) booked \(i.save). Put your phone down and off they go")
-        case .night: return ("🌙 Lights out", nightLine(i, date, small: small))
-        case .early: return ("🌅 Bon dia!", "\(name) is back on the boat at 8 AM")
-        case .over:
-            if small { return ("⛵ Shift's done", "\(name) keeps every Coin") }
-            return ("⛵ Shift's done", "\(name) keeps every Coin earned today. Back on the boat tomorrow")
-        case .idle:
-            if small { return ("\(name)'s ready", "Pick a plan") }
-            return ("⛵ \(name) is \(i.job)", "Phone down, \(name) earns a Coin every 5 minutes · pick a plan any time")
-        }
-    }
-    var body: some View {
-        let dark = scheme == .dark, l = lines
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Spacer()
-                HStack(spacing: 3) {
-                    Text("🪙").font(.system(size: small ? 11 : 12))
-                    Text("\(n.coins)").font(.system(size: small ? 12 : 13, weight: .heavy, design: .rounded)).foregroundColor(ink)
-                }
-                .padding(.horizontal, 7).padding(.vertical, 3)
-                .background(Capsule().fill(cream)).overlay(Capsule().stroke(ink, lineWidth: 1.5))
-            }
-            Spacer()
-            VStack(alignment: .leading, spacing: 1) {
-                Text(l.0).font(.system(size: small ? 13 : 14, weight: .heavy, design: .rounded)).lineLimit(small ? 2 : 1).minimumScaleFactor(0.8)
-                Text(l.1).font(.system(size: 11, weight: .medium, design: .rounded)).lineLimit(small ? 1 : 2).minimumScaleFactor(0.85)
-                    .opacity(0.8)
-            }
-            .foregroundColor(dark ? cream : ink)
-            .padding(.horizontal, 10).padding(.vertical, 6)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 12).fill(dark ? Color(hex: "#2a2140").opacity(0.88) : cream.opacity(0.9)))
-        }
-    }
-}
-
-// Lock screen rectangle: the next Coin and the saving goal (one tint, as iOS draws lock screen widgets).
-struct NomadRect: View {
-    let n: NomadSnap
-    let date: Date
-    var showBar: Bool { (n.lock == .countdown || n.lock == .landed || n.lock == .over) && !n.info.save.isEmpty && n.info.cost > 0 }
-    var goalLine: String {
-        let i = n.info
-        if i.save.isEmpty || i.cost == 0 { return "\(n.coins) Coins" }
-        return "\(min(n.coins, i.cost)) of \(i.cost) \(i.saveShort)"
-    }
-    var body: some View {
-        let i = n.info
-        VStack(alignment: .leading, spacing: 2) {
-            switch n.lock {
-            case .countdown:
-                if let nx = n.next { (Text("Next Coin in ") + Text(nx, style: .timer)).font(.system(size: 15, weight: .heavy, design: .rounded)).lineLimit(1) }
-                else { Text("\(n.coins) Coins").font(.system(size: 15, weight: .heavy, design: .rounded)) }
-                Text(goalLine).font(.system(size: 13, design: .rounded)).lineLimit(1)
-            case .landed:
-                Text("+1 Coin!").font(.system(size: 16, weight: .heavy, design: .rounded))
-                Text(goalLine).font(.system(size: 13, design: .rounded)).lineLimit(1)
-            case .booked:
-                Text("Ticket booked! 🎟️").font(.system(size: 15, weight: .heavy, design: .rounded))
-                Text(i.name + " booked " + i.save).font(.system(size: 13, design: .rounded)).lineLimit(2)
-            case .night:
-                Text("Lights out 🌙").font(.system(size: 15, weight: .heavy, design: .rounded))
-                Text(nightLine(i, date, small: false))
-                    .font(.system(size: 13, design: .rounded)).lineLimit(2)
-            case .early:
-                Text("Sunrise soon 🌅").font(.system(size: 15, weight: .heavy, design: .rounded))
-                Text("Back on the boat at 8 AM").font(.system(size: 13, design: .rounded)).lineLimit(1)
-            case .over:
-                Text("Shift's done for today").font(.system(size: 15, weight: .heavy, design: .rounded)).lineLimit(1)
-                Text(goalLine).font(.system(size: 13, design: .rounded)).lineLimit(1)
-            }
-            if showBar {
-                ProgressView(value: Double(min(n.coins, i.cost)), total: Double(i.cost)).progressViewStyle(.linear)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-// Lock screen circle: fills over each 5 phone-down minutes, with a live countdown (no refreshes spent).
-struct NomadRing: View {
-    let n: NomadSnap
-    let date: Date
-    var body: some View {
-        ZStack {
-            AccessoryWidgetBackground()
-            switch n.lock {
-            case .countdown:
-                if let nx = n.next {
-                    ProgressView(timerInterval: nx.addingTimeInterval(-300)...nx, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
-                        .progressViewStyle(.circular)
-                    VStack(spacing: 0) {
-                        Text(timerInterval: date...nx, countsDown: true, showsHours: false)
-                            .font(.system(size: 12, weight: .heavy, design: .rounded)).monospacedDigit().multilineTextAlignment(.center).minimumScaleFactor(0.6)
-                        Text("NEXT").font(.system(size: 8, weight: .bold, design: .rounded))
-                    }.padding(6)
-                } else { Text("🪙").font(.title3) }
-            case .landed:
-                Circle().stroke(lineWidth: 4).padding(2)
-                VStack(spacing: 0) {
-                    Text("+1").font(.system(size: 16, weight: .heavy, design: .rounded))
-                    Text("COIN").font(.system(size: 8, weight: .bold, design: .rounded))
-                }
-            case .booked: Text("🎟️").font(.title2)
-            case .night: Text("🌙").font(.title2)
-            case .early: Text("🌅").font(.title2)
-            case .over:
-                VStack(spacing: 0) {
-                    Image(systemName: "checkmark").font(.system(size: 16, weight: .heavy))
-                    Text("DONE").font(.system(size: 8, weight: .bold, design: .rounded))
-                }
-            }
-        }
-    }
-}
-
 @main
-struct BlipWidgets: WidgetBundle {
+struct ConquerWidgets: WidgetBundle {
     var body: some Widget {
         BlipWidget()
-        BlipTripLive()
     }
 }

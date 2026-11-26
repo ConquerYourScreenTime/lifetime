@@ -113,7 +113,7 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
     static func startMonitor(_ d: UserDefaults?, reason: String) throws {
         guard let data = d?.data(forKey: selectionKey),
               let selection = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) else {
-            throw NSError(domain: "Blip", code: 1, userInfo: [NSLocalizedDescriptionKey: "Pick apps first"])
+            throw NSError(domain: "Conquer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Pick apps first"])
         }
         let schedule = DeviceActivitySchedule(
             intervalStart: DateComponents(hour: 0, minute: 0),
@@ -316,7 +316,7 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
     // One a day, and it only says the next year is ready: never results, minutes, streaks or the shop.
     static let reminderID = "blip-morning"
     @objc func remindOn(_ call: CAPPluginCall) {
-        let name = call.getString("name") ?? "Your Blip"
+        let name = call.getString("name") ?? "Conquer"
         let hour = call.getInt("hour") ?? 8, minute = call.getInt("minute") ?? 0
         let center = UNUserNotificationCenter.current()
         center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
@@ -411,7 +411,7 @@ extension ScreenTimePlugin {
         let state = BlipTripAttributes.ContentState(title: call.getString("title") ?? "", emoji: call.getString("emoji") ?? "🎒",
                                                     next: call.getString("next") ?? "", start: Date(), end: max(end, Date().addingTimeInterval(60)))
         let content = ActivityContent(state: state, staleDate: state.end)
-        let name = call.getString("name") ?? "Blip"
+        let name = call.getString("name") ?? "Conquer"
         Task {
             if let a = Activity<BlipTripAttributes>.activities.first, a.attributes.name == name {
                 await a.update(content)
@@ -539,7 +539,7 @@ enum Friends {
 // Apple's list with a card pinned above it that keeps showing what to tick, so the player never has to remember it
 // or go back. The card counts ticks as they happen (Apple gives counts, never names) and turns green when they match.
 // Styled in Blip Friends' Black and Gold look; the sheet is forced dark so Apple's list matches the card.
-private enum BlipStyle {
+private enum ConquerStyle {
     static let bg = Color(red: 0x0d/255, green: 0x0d/255, blue: 0x0f/255)
     static let card = Color(red: 0x1c/255, green: 0x1c/255, blue: 0x21/255)
     static let ink = Color(red: 0xf5/255, green: 0xf1/255, blue: 0xe6/255)
@@ -560,16 +560,16 @@ private struct TierPickerView: View {
     private var cats: Int { selection.categoryTokens.count }
     private var apps: Int { selection.applicationTokens.count }
     private var matches: Bool { cats == wantCategories && apps == wantApps }
-    private var tierColor: Color { tier == "red" ? BlipStyle.red : BlipStyle.orange }
+    private var tierColor: Color { tier == "red" ? ConquerStyle.red : ConquerStyle.orange }
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Tick these, then tap Done").font(.subheadline).foregroundColor(BlipStyle.dim)
+                    Text("Tick these, then tap Done").font(.subheadline).foregroundColor(ConquerStyle.dim)
                     ForEach(ticks, id: \.self) { t in
                         HStack(spacing: 10) {
                             Image(systemName: "checkmark.circle").foregroundColor(tierColor)
-                            Text(t).fontWeight(.semibold).foregroundColor(BlipStyle.ink)
+                            Text(t).fontWeight(.semibold).foregroundColor(ConquerStyle.ink)
                         }
                     }
                     HStack(spacing: 6) {
@@ -577,36 +577,36 @@ private struct TierPickerView: View {
                         Text(matches ? "All set. Tap Done." : "Ticked: \(cats) of \(wantCategories) categories" + (wantApps > 0 ? ", \(apps) of \(wantApps) app" : ""))
                     }
                     .font(matches ? Font.footnote.weight(.semibold) : Font.footnote)
-                    .foregroundColor(matches ? BlipStyle.free : BlipStyle.dim)
+                    .foregroundColor(matches ? ConquerStyle.free : ConquerStyle.dim)
                     .padding(.top, 4)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
-                .background(RoundedRectangle(cornerRadius: 18).fill(BlipStyle.card))
-                .overlay(RoundedRectangle(cornerRadius: 18).stroke(matches ? BlipStyle.free.opacity(0.6) : Color.white.opacity(0.08), lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: 18).fill(ConquerStyle.card))
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(matches ? ConquerStyle.free.opacity(0.6) : Color.white.opacity(0.08), lineWidth: 1))
                 .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 4)
-                .background(BlipStyle.bg)
+                .background(ConquerStyle.bg)
                 FamilyActivityPicker(selection: $selection)
             }
-            .background(BlipStyle.bg.ignoresSafeArea())
+            .background(ConquerStyle.bg.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 8) {
                         Circle().fill(tierColor).frame(width: 10, height: 10)
-                        Text(title).font(.system(.headline, design: .serif)).foregroundColor(BlipStyle.ink)
+                        Text(title).font(.system(.headline, design: .serif)).foregroundColor(ConquerStyle.ink)
                     }
                 }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { done(nil) }.foregroundColor(BlipStyle.dim)
+                    Button("Cancel") { done(nil) }.foregroundColor(ConquerStyle.dim)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(action: { done(selection) }) { Text("Done").fontWeight(.semibold) }.foregroundColor(BlipStyle.ivory)
+                    Button(action: { done(selection) }) { Text("Done").fontWeight(.semibold) }.foregroundColor(ConquerStyle.ivory)
                 }
             }
         }
         .navigationViewStyle(.stack)
-        .accentColor(BlipStyle.ivory)
+        .accentColor(ConquerStyle.ivory)
         .preferredColorScheme(.dark)
     }
 }

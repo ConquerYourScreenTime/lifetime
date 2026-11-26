@@ -75,13 +75,16 @@ table.costs td:last-child{text-align:right;font-weight:700}
 // =====================================================================================
 // Blip friends game, build 1 (plan v2, Lawyer OK 2026-11-25).
 // You and a friend each start the day with 1,000 points. Every 15 minutes in a tier spends points:
-// Red 40, Orange 20, Free 0 (Yellow dropped 2026-11-25 to make setup easier). The same for everyone. After midnight, whoever kept more wins.
+// Red 40, Orange 20, Free 0 (Yellow dropped 2026-11-25 to make setup easier). The same for everyone. After midnight, whoever kept more wins, and everyone sees results at 8 AM their time (Matthew 2026-11-25).
 // Privacy: minutes per tier stay on this phone. Only the day's points total goes online, after the day ends,
 // tied to an anonymous player ID and the match code. No names: you name your friend on your own phone.
 // =====================================================================================
 const IS_APP = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
 const CFG = window.FRIENDS_CONFIG || {};
-const BANK = 1000, STEP = 15;
+const BANK = 1000, STEP = 15, REVEAL_HOUR = 8;
+// The newest day whose result is open: yesterday from 8 AM, the day before until then.
+function resultDay(){ return addDays(today(), new Date().getHours() >= REVEAL_HOUR ? -1 : -2); }
+function dayLabel(d){ return d === addDays(today(), -1) ? 'Yesterday' : d === addDays(today(), -2) ? 'Two days ago' : d; }
 const TIERS = [
   {id:'red', name:'Red', cost:40, color:'var(--red)', ticks:['Social','Entertainment'], note:'Social media, short video and streaming.'},
   {id:'orange', name:'Orange', cost:20, color:'var(--orange)', ticks:['Games','Shopping & Food','Safari (search for it)'], note:'Games, shopping and web browsing.'},
@@ -265,6 +268,7 @@ let tierInfo = null, todayMin = {red:0, orange:0, points:BANK}, busy = false, of
 async function refresh(){
   if (busy) return; busy = true;
   try {
+    if (S.notify && S.notify.time !== '08:00') { S.notify.time = '08:00'; save(); applyNotify().catch(()=>{}); }  // older builds let players pick a time
     await ST.friendsResync().catch(()=>{});
     tierInfo = await ST.tierStatus().catch(() => null);
     todayMin = await ST.friendsMinutes({day:today()}).catch(() => todayMin);
@@ -308,7 +312,7 @@ function setupView(){
   const st = S.setupStep || 'hello';
   if (st === 'hello') return `
     <h1 style="margin-top:32px">Beat a friend at putting your phone down.</h1>
-    <p class="dim">You both start every day with ${fmt(BANK)} points. Time on your phone spends them, and social media spends them fastest. Just after midnight you find out who kept more.</p>
+    <p class="dim">You both start every day with ${fmt(BANK)} points. Time on your phone spends them, and social media spends them fastest. At 8 AM the next morning you find out who kept more.</p>
     <div class="card stack">
       ${TIERS.map(t => `<div class="row"><span class="dot" style="background:${t.color}"></span><div style="flex:1"><b>${t.name}</b> <span class="faint">${esc(t.note)}</span></div><b>${t.cost}</b></div>`).join('')}
       <div class="row"><span class="dot" style="background:var(--free)"></span><div style="flex:1"><b>Free</b> <span class="faint">Messages, Maps, work and school apps.</span></div><b>0</b></div>
@@ -381,9 +385,9 @@ function homeView(){
 
 function record(){
   const r = S.results || {}, m = S.match; let w = 0, l = 0, t = 0, ww = 0, wl = 0;
-  const wk = weekStart(addDays(today(), -1));
+  const open = resultDay(), wk = weekStart(open);
   for (const d in r) {
-    if (!m || d < m.startDay || d >= today() || r[d].me == null || r[d].them == null) continue;
+    if (!m || d < m.startDay || d > open || r[d].me == null || r[d].them == null) continue;
     const res = r[d].me > r[d].them ? 1 : r[d].me < r[d].them ? -1 : 0;
     if (res > 0) w++; else if (res < 0) l++; else t++;
     if (d >= wk) { if (res > 0) ww++; else if (res < 0) wl++; }
@@ -392,7 +396,7 @@ function record(){
 }
 function lastResult(){
   const m = S.match; if (!m || !m.active) return null;
-  const y = addDays(today(), -1); if (y < m.startDay) return null;
+  const y = resultDay(); if (y < m.startDay) return null;
   return {day:y, ...(S.results && S.results[y] || {})};
 }
 function matchView(){
@@ -418,17 +422,17 @@ function matchView(){
   let lastLine = '';
   if (last && last.me != null && last.them != null) {
     const diff = Math.abs(last.me - last.them);
-    lastLine = `<button onclick="showReveal('${last.day}')">${last.me > last.them ? 'Yesterday: you won by ' + fmt(diff) : last.me < last.them ? 'Yesterday: ' + esc(friend()) + ' won by ' + fmt(diff) : 'Yesterday: a tie'} · Replay</button>`;
+    lastLine = `<button onclick="showReveal('${last.day}')">${last.me > last.them ? dayLabel(last.day) + ': you won by ' + fmt(diff) : last.me < last.them ? dayLabel(last.day) + ': ' + esc(friend()) + ' won by ' + fmt(diff) : dayLabel(last.day) + ': a tie'} · Replay</button>`;
   } else if (last) {
-    lastLine = `<p class="dim">Yesterday: waiting for ${esc(friend())}'s phone to send its total.${offline ? ' (No connection right now.)' : ''}</p>`;
+    lastLine = `<p class="dim">${dayLabel(last.day)}: waiting for ${esc(friend())}'s phone to send its total.${offline ? ' (No connection right now.)' : ''}</p>`;
   }
   return `
     <div class="card stack">
       <div class="spread"><h2 style="margin:0">You vs ${esc(friend())}</h2>${m.practice ? '<span class="pill">Practice</span>' : ''}</div>
-      <p class="dim">${esc(friend())}'s score is hidden until midnight.</p>
+      <p class="dim">${esc(friend())}'s score is hidden until 8 AM tomorrow.</p>
       <div class="spread"><span>This week</span><b>You ${rec.ww} · ${esc(friend())} ${rec.wl}</b></div>
       <div class="spread"><span>All time</span><b>${rec.w} won · ${rec.l} lost${rec.t ? ' · ' + rec.t + ' tied' : ''}</b></div>
-      ${m.startDay === today() ? '<p class="faint">Today is your first match day. Results arrive just after midnight.</p>' : ''}
+      ${m.startDay === today() ? '<p class="faint">Today is your first match day. Results arrive at 8 AM tomorrow.</p>' : ''}
       ${lastLine}
     </div>`;
 }
@@ -459,17 +463,16 @@ async function shareCode(){
 function startPractice(){ S.match = {code:'P' + Date.now().toString(36).toUpperCase(), name:'Pat', practice:true, active:true, startDay:today()}; save(); askNotify().then(refresh); }
 function clearMatch(){ S.match = null; save(); render(); }
 
-// ---------- morning notification (never at midnight) ----------
+// ---------- morning notification: 8 AM for everyone, the moment results open ----------
 async function askNotify(){
-  if (S.notify) return;
+  if (S.notify) { if (S.notify.time !== '08:00') { S.notify.time = '08:00'; save(); await applyNotify(); } return; }
   S.notify = {on:true, time:'08:00'}; save();
   await applyNotify();
 }
 async function applyNotify(){
   const n = S.notify;
   if (!n || !n.on || !S.match) return ST.remindOff().catch(()=>{});
-  const [h, m] = n.time.split(':').map(Number);
-  const r = await ST.remindOn({hour:h, minute:m, name:'Blip', body:'Yesterday\'s results are in. See who won.'}).catch(() => ({granted:false}));
+  const r = await ST.remindOn({hour:REVEAL_HOUR, minute:0, name:'Blip', body:'Yesterday\'s results are in. See who won.'}).catch(() => ({granted:false}));
   if (!r.granted) { n.on = false; save(); toast('Notifications are off for Blip in iPhone Settings.'); }
 }
 
@@ -484,7 +487,7 @@ function showReveal(day){
   S.seen = [S.seen || '', day].sort().pop(); save();
   const o = document.createElement('div'); o.className = 'reveal'; o.id = 'reveal';
   const name = esc(friend());
-  o.innerHTML = `<p class="dim">${day === addDays(today(), -1) ? 'Yesterday' : esc(day)}</p>
+  o.innerHTML = `<p class="dim">${esc(dayLabel(day))}</p>
     <div class="vs"><div id="vme"><div class="dim">You</div><div class="score" id="sme">0</div></div>
     <div id="vthem"><div class="dim">${name}</div><div class="score" id="sthem">0</div></div></div>
     <div class="verdict" id="verdict"></div><p class="dim" id="by" style="min-height:24px"></p>
@@ -510,9 +513,8 @@ function openSettings(){
   sheet(`<div class="stack">
     <div class="spread"><h2 style="margin:0">Settings</h2><button class="small" onclick="closeSheet()">Done</button></div>
     <div class="card">
-      <div class="switch"><span>Morning results notification</span><input type="checkbox" id="non" ${n.on ? 'checked' : ''} onchange="setNotify()"></div>
-      <div class="switch"><span class="dim">Time</span><input type="time" id="ntime" value="${n.time}" style="width:140px" onchange="setNotify()"></div>
-      <p class="faint">Results are ready just after midnight. The notification waits until this time.</p>
+      <div class="switch"><span>Tell me when results are in</span><input type="checkbox" id="non" ${n.on ? 'checked' : ''} onchange="setNotify()"></div>
+      <p class="faint">Results open for everyone at 8 AM, your time.</p>
     </div>
     <div class="card"><h2>How points work</h2>
       <table class="costs">${TIERS.map(t => `<tr><td><span class="dot" style="display:inline-block;background:${t.color};margin-right:8px"></span>${t.name}: ${t.ticks.map(esc).join(', ')}</td><td>${t.cost}</td></tr>`).join('')}
@@ -526,7 +528,7 @@ function openSettings(){
       <button class="danger" onclick="confirmDelete()">Delete my data</button></div>
   </div>`);
 }
-async function setNotify(){ S.notify = {on:$('#non').checked, time:$('#ntime').value || '08:00'}; save(); await applyNotify(); }
+async function setNotify(){ S.notify = {on:$('#non').checked, time:'08:00'}; save(); await applyNotify(); }
 async function changeTiers(){
   for (const t of TIERS) {
     const ok = await new Promise(res => {

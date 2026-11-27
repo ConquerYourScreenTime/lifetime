@@ -146,13 +146,22 @@ struct Facet: Shape {
     }
 }
 
+// Lock Screen widgets draw in one tint, so there the crown keeps its facets as shades of white (design handoff
+// section 17): each facet's brightness in the gold art becomes its opacity.
+private let crownShade: [Double] = crownGold.map { h in
+    var s = h; s.removeFirst(); var v: UInt64 = 0; Scanner(string: s).scanHexInt64(&v)
+    let l = (0.299 * Double((v >> 16) & 0xff) + 0.587 * Double((v >> 8) & 0xff) + 0.114 * Double(v & 0xff)) / 255
+    return 0.35 + 0.65 * l
+}
+
 struct Crown: View {
     var fills: [String] = crownGold
     var mono: Color? = nil
+    var tint = false
     var body: some View {
         ZStack {
             ForEach(0..<crownPoints.count, id: \.self) { i in
-                let c = mono ?? Color(hex: fills[i])
+                let c = tint ? Color.white.opacity(crownShade[i]) : mono ?? Color(hex: fills[i])
                 if mono != nil {
                     Facet(pts: crownPoints[i]).fill(c).overlay(Facet(pts: crownPoints[i]).stroke(c, lineWidth: 0.5))
                 } else {
@@ -283,16 +292,17 @@ struct GoldMedium: View {
     }
 }
 
-// Lock Screen pieces (one tint, drawn by iOS).
+// Lock Screen pieces v3 (design handoff section 17; one tint, drawn by iOS). The ring is points left, the wide
+// widget is where they went, the crown is on both. Results only after the seal is broken in the app.
 struct LockRing: View {
     let e: ConquerEntry
     var body: some View {
         Gauge(value: Double(e.left), in: 0...1000) {
             Text("LEFT")
         } currentValueLabel: {
-            VStack(spacing: -2) {
-                Text(fmt(e.left)).font(Display.font(15)).minimumScaleFactor(0.6)
-                Text("LEFT").font(.system(size: 7, weight: .semibold))
+            VStack(spacing: 0) {
+                Crown(tint: true).frame(width: 15).opacity(e.left == 0 ? 0.45 : 1)
+                Text(fmt(e.left)).font(Display.font(15)).minimumScaleFactor(0.5).lineLimit(1)
             }
         }
         .gaugeStyle(.accessoryCircularCapacity)
@@ -300,15 +310,42 @@ struct LockRing: View {
     }
 }
 
+struct LockBar: View {
+    let e: ConquerEntry
+    var body: some View {
+        GeometryReader { g in
+            HStack(spacing: 0) {
+                if e.gold { Rectangle().fill(Color.white) } else {
+                    Rectangle().fill(Color.white).frame(width: g.size.width * CGFloat(e.left) / 1000)
+                    Rectangle().fill(Color.white.opacity(0.55)).frame(width: g.size.width * CGFloat(min(e.orangeCost, 1000)) / 1000)
+                    Rectangle().fill(Color.white.opacity(0.32))
+                }
+            }
+        }
+        .frame(height: 4).clipShape(Capsule())
+    }
+}
+
 struct LockRect: View {
     let e: ConquerEntry
     var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            HStack { Text("Red · " + hm(e.red)); Spacer(); Text(e.redCost > 0 ? "−\(fmt(e.redCost))" : "0").fontWeight(.semibold) }
-            HStack { Text("Orange · " + hm(e.orange)); Spacer(); Text(e.orangeCost > 0 ? "−\(fmt(e.orangeCost))" : "0").fontWeight(.semibold) }
-            Text(e.left > 0 ? "Next 15 min of Red: −40" : "No points left today").font(.system(size: 11)).opacity(0.75)
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Crown(tint: true).frame(width: 14).opacity(!e.gold && e.left == 0 ? 0.45 : 1)
+                if e.gold && e.of > 0 {
+                    Text("\(e.held) of \(e.of)").font(Display.font(15)).lineLimit(1)
+                    Text("CROWNS WON YESTERDAY").font(.system(size: 9, weight: .semibold)).kerning(1.1).lineLimit(1).minimumScaleFactor(0.7)
+                } else {
+                    Text(e.left == 0 ? "ALL SPENT · BACK AT MIDNIGHT" : "WHERE POINTS WENT").font(.system(size: 10, weight: .semibold)).kerning(1.2).lineLimit(1).minimumScaleFactor(0.7)
+                }
+            }
+            LockBar(e: e)
+            Group {
+                if e.gold && e.of > 0 { Text("Fresh 1,000 points today") }
+                else { Text("Red −\(fmt(e.redCost)) · Orange −\(fmt(e.orangeCost))") }
+            }
+            .font(.system(size: 12)).opacity(0.8).lineLimit(1).minimumScaleFactor(0.8)
         }
-        .font(.system(size: 13))
         .privacySensitive()
     }
 }

@@ -2248,7 +2248,7 @@ try {
 // ===== VISITOR STATS =====
 // GoatCounter (free) counts visits and a few game moments, with no cookies and
 // nothing personal. Only on the real site, so testing doesn't count.
-// See the numbers at https://gamesbyvidal.goatcounter.com
+// See the numbers at https://conqueryourscreentime.goatcounter.com
 // Events: play, play-daily, first-game, splat-level-N, share, challenge-sent,
 // challenge-opened, daily-streak-N.
 const onRealSite = location.hostname === "conqueryourscreentime.github.io";
@@ -2256,7 +2256,7 @@ if (onRealSite) {
   const counter = document.createElement("script");
   counter.async = true;
   counter.src = "https://gc.zgo.at/count.js";
-  counter.dataset.goatcounter = "https://gamesbyvidal.goatcounter.com/count";
+  counter.dataset.goatcounter = "https://conqueryourscreentime.goatcounter.com/count";
   document.head.appendChild(counter);
 }
 function track(name, title) {

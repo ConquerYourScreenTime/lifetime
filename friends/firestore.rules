@@ -1,6 +1,8 @@
 rules_version = '2';
 // Blip friends game. Paste into Firebase console > Firestore Database > Rules, then Publish.
 // matches/{code}: a = inviter's anonymous ID, b = joiner's ('' until someone joins), startDay, ended, created.
+// App Review demo battles (demo: true, a: 'conquer-demo') are made only in the Firebase console; players can't
+// create one, because create allows only the keys above.
 // matches/{code}/days/{day}_{uid}: one player's points total for one finished day. Nothing else is stored.
 service cloud.firestore {
   match /databases/{db}/documents {

@@ -969,7 +969,7 @@ function settingsView(){
         <label class="sw"><input type="checkbox" id="non" ${n.on ? 'checked' : ''} onchange="setNotify()"><i></i></label></div>
       <div class="setrow"><div class="grow"><b class="s15">Sounds and haptics</b><div class="faint">When you break the seal and see who won. Follows the silent switch.</div></div>
         <label class="sw"><input type="checkbox" id="fxon" ${S.fx !== false ? 'checked' : ''} onchange="S.fx=this.checked;save()"><i></i></label></div>
-      ${testMode() ? `<div class="setrow"><div class="grow"><b class="s15">Dynasty (test builds)</b><div class="faint">Turns on Dynasty tools for testing. Nothing is charged.</div></div>
+      ${testMode() ? `<div class="setrow"><div class="grow"><b class="s15">Dynasty (test builds)</b><div class="faint">Turns on Dynasty weapons for testing. Nothing is charged.</div></div>
         <label class="sw"><input type="checkbox" ${S.dynastyTest ? 'checked' : ''} onchange="S.dynastyTest=this.checked;save();render()"><i></i></label></div>` : ''}
       <button class="setrow plain" onclick="changeTiers()"><div class="grow"><b class="s15">My app colors</b><div class="faint">Changes start tomorrow</div></div><span class="chev">›</span></button>
       <div class="setrow"><div class="grow"><b class="s15">Share my daily score</b><div class="faint">Needed to play</div></div><label class="sw"><input type="checkbox" checked disabled><i></i></label></div>

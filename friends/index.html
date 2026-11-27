@@ -148,7 +148,7 @@ input.code{text-transform:uppercase;letter-spacing:4px;font-variant-numeric:tabu
 // =====================================================================================
 const IS_APP = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
 const CFG = window.FRIENDS_CONFIG || {};
-const BANK = 1000, STEP = 15, REVEAL_HOUR = 8, MAX_RIVALS = 6, KEEP_DAYS = 40, RETURN_DAYS = 7;
+const BANK = 1000, STEP = 15, REVEAL_HOUR = 8, MAX_RIVALS = 6, KEEP_DAYS = 40;
 const TIERS = [
   {id:'red', name:'Red', cost:40, color:'var(--red)', ticks:['Social','Entertainment'], note:'Social media, short video and streaming.'},
   {id:'orange', name:'Orange', cost:20, color:'var(--orange)', ticks:['Games','Shopping & Food','Safari'], note:'Games, shopping and web browsing.'},
@@ -262,7 +262,7 @@ function listNames(a){ return a.length < 2 ? a.join('') : a.slice(0, -1).join(',
 function rivals(){ return S.matches.filter(m => m.active && !m.ended); }
 function own(){ return S.matches.filter(m => m.role === 'a'); }
 function inviter(){ return S.matches.find(m => m.role === 'b' && !m.ended); }
-function waiting(){ return own().filter(m => !m.active && !m.ended && diffDays(m.made, today()) < RETURN_DAYS); }
+function waiting(){ return own().filter(m => !m.active && !m.ended); }
 function them(m, d){ return (S.res[m.code] || {})[d]; }
 // One shared day: both totals in, and the day is in this match. A late joiner compares only shared days.
 function pair(m, d){ const a = S.mine[d], b = them(m, d); return m.startDay && d >= m.startDay && a != null && b != null ? [a, b] : null; }
@@ -347,7 +347,6 @@ async function checkMatches(){
   for (const m of S.matches) {
     if (m.role === 'p' || m.ended) continue;
     if (m.active && m.checked === today()) continue;
-    if (!m.active && diffDays(m.made, today()) >= RETURN_DAYS) continue;
     const doc = Net.dec(await Net.call('GET', 'matches/' + m.code));
     if (!doc) continue;
     if (doc.ended) { m.ended = true; m.active = false; save(); await syncNative(); continue; }
@@ -469,11 +468,11 @@ function setupView(){
       <p>Every 15 minutes on your phone costs you a few. Social apps cost the most. Texting, calls and Maps are free.</p>
       <p>At 8 AM, you'll see who kept more.</p></div>
     <div class="stack" style="margin-top:44px">
-      <button class="main" onclick="go('connect')">Get started</button>
-      <label for="wcode" class="faint" style="margin-top:18px">Did a friend send you a code?</label>
+      <button class="main" onclick="go('connect')">Start playing</button>
+      ${S.showCode ? `<label for="wcode" class="faint" style="margin-top:12px">Your friend's 6-letter code</label>
       <input type="text" class="code" id="wcode" maxlength="11" placeholder="e.g. 7Q4KXM" autocomplete="off" autocapitalize="characters">
       <p class="faint" id="err" style="color:var(--red);margin:0"></p>
-      <button id="go" onclick="welcomeJoin()">Accept the challenge</button>
+      <button id="go" onclick="welcomeJoin()">Continue</button>` : `<button class="link" onclick="S.showCode=true;render()">I have a code from a friend</button>`}
     </div>
     <p class="faint" style="text-align:center;margin-top:14px">Free to play. Ages 13 and up.</p>`;
   if (st === 'invited') return invitedView();
@@ -519,12 +518,13 @@ function invitedView(){
         <div style="position:absolute;top:0;filter:drop-shadow(0 0 16px rgba(201,165,74,.5))" class="bf-up">${crown(92)}</div>
       </div>
       <p class="lbl gold" style="margin-top:28px">A friend challenged you</p>
-      <h1 style="font-size:40px">You're in.</h1>
+      <h1 style="font-size:40px">Challenge accepted?</h1>
     </div>
-    <p class="dim s15">They think they can spend less time on their phone than you. Every morning at 8 AM, you'll see who kept more points.</p>
+    <p class="dim s15">Each day you both start with 1,000 points. Time on social and video apps costs the most.</p>
+    <p class="dim s15">At 8 AM the seal breaks, and you see who kept more. Win the day, take the crown.</p>
     <div class="card"><p class="lbl" style="margin-top:0">What you get</p>
-      <div class="perk"><span>◆</span><div>A daily battle with the friend who challenged you</div></div>
-      <div class="perk" style="padding-bottom:0"><span>◆</span><div>Challenge up to 6 friends of your own</div></div></div>
+      <div class="perk"><span>◆</span><div>A battle with the friend who challenged you</div></div>
+      <div class="perk" style="padding-bottom:0"><span>◆</span><div>Invites of your own, free, for up to 6 battles</div></div></div>
     <button class="main" onclick="claimSeat()">Accept the challenge</button>
     <p class="faint" style="text-align:center">Free to play. Ages 13 and up.</p>`;
 }
@@ -591,10 +591,10 @@ function matchCard(){
   const rs = rivals(), w = waiting();
   if (!rs.length) {
     if (w.length) return `<div class="card stack"><h2>Waiting for ${esc(listNames(w.map(m => m.name)))}</h2>
-      <p class="dim s15">Your battle starts the day they join with your code.</p><button class="main" onclick="openPage('invites')">See your invites</button></div>`;
-    return `<div class="card stack"><h2>Play a friend</h2>
-      <p class="dim s15">Challenge a friend. Once they join, every day is a battle.</p>
-      ${Net.on() ? `<button class="main" onclick="openPage('invites')">Invite a friend</button>` : ''}
+      <p class="dim s15">Your battle starts the day they join with your code.</p><button class="main" onclick="openPage('invites')">See your challenges</button></div>`;
+    return `<div class="card stack"><p class="lbl" style="margin:0">No battle yet</p><h2>Who do you want to beat?</h2>
+      <p class="dim s15">Invites are free. Your first result arrives at 8 AM after a full day together.</p>
+      ${Net.on() ? `<button class="main" onclick="openPage('invites')">Challenge a friend</button>` : ''}
       ${Net.on() ? `<button onclick="openJoin()">I have a code</button>` : ''}
       ${testMode() ? `<button onclick="addPractice()">Add a pretend rival</button><p class="faint">Test builds only.</p>` : ''}</div>`;
   }
@@ -760,43 +760,31 @@ function openGold(){
     <div style="text-align:center"><button class="link" onclick="toast('Nothing to restore yet.')">Restore purchases</button></div>`);
 }
 
-// ---------- Invites (free, up to 6 rivals at once) ----------
+// ---------- Challenge friends (free invites, up to 6 battles at once; design handoff section 16) ----------
 function invitesView(){
-  const row = m => {
-    if (m.active) return `<div class="slot"><div class="ico" style="background:var(--free)">${ICON.check}</div><div class="grow"><b>Joined</b><div class="faint">You named them ${esc(m.name)}</div></div></div>`;
-    const age = diffDays(m.made, today());
-    if (m.ended || age >= RETURN_DAYS) return `<div class="slot"><div class="ico">${ICON.back}</div><div class="grow"><b>${esc(m.name)}</b><div class="faint">${m.ended ? 'This battle ended.' : 'No one used this code in 7 days.'}</div></div>
-      <button class="small main" onclick="resend('${m.code}')">Send a new one</button></div>`;
-    const left = RETURN_DAYS - age;
-    return `<div class="slot"><div class="ico">${ICON.clock}</div><div class="grow"><b>Waiting · ${esc(m.code)}</b><div class="faint">For ${esc(m.name)}. Works for ${left} more ${left === 1 ? 'day' : 'days'}</div></div>
-      <button class="small" onclick="shareInvite('${m.code}')">Share</button></div>`;
-  };
-  const room = rivals().length + waiting().length < MAX_RIVALS;
-  return `${backBar('Invite friends')}
-    <p class="dim s15">Invites are free. You can battle up to 6 friends at once, each one on one.</p>
-    ${Net.on() ? own().map(row).join('') + (room ? `<div class="slot open"><div class="ico">${ICON.plus}</div><div class="grow"><b>Challenge a friend</b><div class="faint">Send them a code to join your battle</div></div>
-      <button class="small" onclick="newInvite()">Invite</button></div>` : '') : '<p class="faint">Playing with friends isn\'t switched on in this build.</p>'}
-    ${room && Net.on() ? `<div style="text-align:center"><button class="link" onclick="openJoin()">Have a code from a friend?</button></div>` : ''}
+  const row = m => m.active
+    ? `<div class="slot"><div class="ico" style="background:var(--free)">${ICON.check}</div><div class="grow"><b>${esc(m.name)}</b><div class="faint">Joined</div></div></div>`
+    : `<div class="slot"><div class="ico">${ICON.clock}</div><div class="grow"><b>${esc(m.name)} · waiting</b><div class="faint">Sent ${m.made === today() ? 'today' : weekday(m.made)}. Nudge them?</div></div>
+      <button class="small" onclick="shareInvite('${m.code}')">Nudge</button></div>`;
+  const n = rivals().length + waiting().length, room = n < MAX_RIVALS;
+  return `${backBar('Challenge friends')}
+    <p class="dim s15">Invite as many friends as you like. Each one who joins becomes a battle of its own, up to 6 at a time.</p>
+    ${Net.on() ? own().filter(m => !m.ended).map(row).join('') + `<p class="faint" style="text-align:center">${n} of ${MAX_RIVALS} battles · ${room ? 'room for ' + (MAX_RIVALS - n) + ' more' : 'all full'}</p>`
+      + (room ? `<button class="main" onclick="newInvite()">Invite a friend</button>` : '') : '<p class="faint">Playing with friends isn\'t switched on in this build.</p>'}
+    ${room && Net.on() ? `<div style="text-align:center"><button class="link" onclick="openJoin()">I have a code from a friend</button></div>` : ''}
     ${testMode() && room ? `<div style="text-align:center"><button class="link" onclick="addPractice()">Test builds: add a pretend rival</button></div>` : ''}
-    <p class="faint" style="text-align:center">Each code works once.</p>`;
+    <p class="faint" style="text-align:center">Each code works once. Invites are always free.</p>`;
 }
 function roomForOne(){ if (rivals().length + waiting().length >= MAX_RIVALS) { toast('You can play up to 6 rivals at once.'); return false; } return true; }
 function newInvite(){
   if (!roomForOne()) return;
   nameSheet('Who\'s it for?', 'Make the invite', async name => { const m = await createMatch(name); repaint(); shareInvite(m.code); });
 }
-async function resend(code){
-  const m = S.matches.find(x => x.code === code); if (!m) return;
-  if (!m.ended && Net.on()) await Net.call('PATCH', 'matches/' + m.code, Net.enc({ended:true}), Net.mask(['ended'])).catch(()=>{});
-  S.matches = S.matches.filter(x => x !== m); delete S.res[m.code]; delete S.sentTo[m.code]; save();
-  repaint(); newInvite();
-}
 // The suggested message and a link to the invite page, which Messages shows as the cream card with the wax seal.
-// The page has no names and no price; the code rides in the link. Wording: the Designer's call (placeholder since
-// Conquer went open to everyone, 2026-11-27).
+// The page has no names and no price; the code rides in the link. Wording: design handoff section 16.
 const INVITE_URL = 'https://gamesbyvidal.github.io/conquer/invite.html?c=';
 async function shareInvite(code){
-  const text = 'I challenge you. Whoever spends less time on their phone takes the crown.', url = INVITE_URL + code;
+  const text = 'Think you can put your phone down longer than me? Prove it.', url = INVITE_URL + code;
   try { if (navigator.share) { await navigator.share({text, url}); return; } } catch(e) { if (e && e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(text + '\n' + url); toast('Copied. Paste it into a message.'); } catch(e) { toast('Your code is ' + code); }
 }
@@ -1003,7 +991,7 @@ function removeEnded(code){ const m = S.matches.find(x => x.code === code); if (
 function confirmDelete(){
   const names = rivals().map(m => m.name);
   sheet(`<div class="stack"><h2>Delete my data?</h2><p class="dim s15">This deletes your account and all your daily scores from our server, and clears the app on this phone.</p>
-    <ul class="dim s15" style="padding-left:20px;margin:0">${names.length ? `<li>Your ${names.length === 1 ? 'battle' : 'battles'} with ${esc(listNames(names))} will end.</li>` : ''}<li>Your wins and history will be gone.</li><li>Unused invites can't be refunded.</li></ul>
+    <ul class="dim s15" style="padding-left:20px;margin:0">${names.length ? `<li>Your ${names.length === 1 ? 'battle' : 'battles'} with ${esc(listNames(names))} will end.</li>` : ''}<li>Your wins and history will be gone.</li></ul>
     <button class="danger" id="del" onclick="doDelete()">Delete everything</button><button class="link" onclick="closeSheet()">Cancel</button></div>`);
 }
 async function doDelete(){

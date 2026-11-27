@@ -784,7 +784,7 @@ function newInvite(){
 // The page has no names and no price; the code rides in the link. Wording: design handoff section 16.
 const INVITE_URL = 'https://gamesbyvidal.github.io/conquer/invite.html?c=';
 async function shareInvite(code){
-  const text = 'Bet I spend less time on my phone than you. Come take my crown.', url = INVITE_URL + code;
+  const text = 'Bet I can conquer my screen time better than you. Come take my crown.', url = INVITE_URL + code;
   try { if (navigator.share) { await navigator.share({text, url}); return; } } catch(e) { if (e && e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(text + '\n' + url); toast('Copied. Paste it into a message.'); } catch(e) { toast('Your code is ' + code); }
 }

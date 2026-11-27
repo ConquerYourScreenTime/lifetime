@@ -960,8 +960,8 @@ function tapDog(){
 }
 
 // ============ USAGE STATS ============
-// GoatCounter (free, no cookies, nothing personal) on the same gamesbyvidal account as Freefall.
-// Only on the real site, so testing doesn't count. Numbers at https://gamesbyvidal.goatcounter.com
+// GoatCounter (free, no cookies, nothing personal) on the same account as Freefall.
+// Only on the real site, so testing doesn't count. Numbers at https://conqueryourscreentime.goatcounter.com
 // Events (all start with "lifetime-"): new-blip, checkin, day-N (2,3,7,14,30,60,100 check-ins),
 // share-open, share-sent, invite, friend-link-opened, raise-from-link, next-generation, opened-installed.
 const onRealSite = location.hostname === 'conqueryourscreentime.github.io';
@@ -969,7 +969,7 @@ if (onRealSite) {
   const counter = document.createElement('script');
   counter.async = true;
   counter.src = 'https://gc.zgo.at/count.js';
-  counter.dataset.goatcounter = 'https://gamesbyvidal.goatcounter.com/count';
+  counter.dataset.goatcounter = 'https://conqueryourscreentime.goatcounter.com/count';
   document.head.appendChild(counter);
 }
 const trackQueue = [];

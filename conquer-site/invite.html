@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>You've been chosen · Conquer Your Screen Time</title>
+<meta property="og:title" content="A seat has been reserved for you">
+<meta property="og:description" content="A friend gifted you one of only five invitations to Conquer Your Screen Time.">
+<meta property="og:image" content="https://gamesbyvidal.github.io/conquer/invite-card.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="1200">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Conquer Your Screen Time">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="apple-itunes-app" content="app-id=6828258627">
+<style>
+:root{color-scheme:dark}
+body{margin:0;background:#0d0d0f;color:#f5f1e6;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;padding:32px 16px 48px;text-align:center}
+img{width:100%;max-width:420px;border-radius:6px}
+h1{font-family:ui-serif,Georgia,serif;font-size:28px;margin:28px 0 6px}
+p{color:#b5ad99;font-size:15px;line-height:1.5;max-width:380px;margin:0 0 14px}
+.code{font-size:30px;font-weight:700;letter-spacing:6px;background:#1c1c21;border-radius:14px;padding:14px 22px;margin:6px 0 22px}
+a.btn{display:block;width:100%;max-width:380px;box-sizing:border-box;background:#ece4d0;color:#141210;text-decoration:none;font-weight:600;font-size:17px;padding:16px;border-radius:14px}
+small{color:#9a937f;font-size:13px;margin-top:16px}
+</style>
+</head>
+<body>
+<img src="invite-card.jpg" alt="A private invitation: You've been chosen. A friend gifted you one of only five invitations.">
+<h1>Your seat is waiting</h1>
+<p>Conquer Your Screen Time is invitation only. Every player gets just five, and a friend gave one of theirs to you.</p>
+<div class="code" id="code">······</div>
+<a class="btn" href="https://apps.apple.com/app/id6828258627">Get the app</a>
+<small>Open the app and enter your code. Free to play. Ages 13 and up.</small>
+<script>
+var c=(new URLSearchParams(location.search).get('c')||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,12);
+if(c)document.getElementById('code').textContent=c;else document.getElementById('code').style.display='none';
+</script>
+</body>
+</html>

@@ -6,10 +6,10 @@
 <title>Blip: Screen Time Game</title>
 <meta name="description" content="One day for you is one year for them. Beat your screen time goal and your Blip lives their best life.">
 <meta property="og:title" content="Blip: Screen Time Game">
-<meta property="og:image" content="https://gamesbyvidal.github.io/lifetime/og.png">
+<meta property="og:image" content="https://conqueryourscreentime.github.io/lifetime/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:url" content="https://gamesbyvidal.github.io/lifetime/">
+<meta property="og:url" content="https://conqueryourscreentime.github.io/lifetime/">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <meta property="og:description" content="One day for you is one year for them. Beat your screen time goal and your Blip lives their best life.">
@@ -964,7 +964,7 @@ function tapDog(){
 // Only on the real site, so testing doesn't count. Numbers at https://gamesbyvidal.goatcounter.com
 // Events (all start with "lifetime-"): new-blip, checkin, day-N (2,3,7,14,30,60,100 check-ins),
 // share-open, share-sent, invite, friend-link-opened, raise-from-link, next-generation, opened-installed.
-const onRealSite = location.hostname === 'gamesbyvidal.github.io';
+const onRealSite = location.hostname === 'conqueryourscreentime.github.io';
 if (onRealSite) {
   const counter = document.createElement('script');
   counter.async = true;
@@ -1941,7 +1941,7 @@ function lifeCardHTML(age){
   return '<div class="lifecard"><div class="k">Blip · '+(end ? 'Life story' : 'Milestone')+'</div><div class="age">'+age+'</div><div class="nm">'+head+'</div>'+
     '<div class="pc">'+charSVG(who)+'</div>'+
     (best.length ? '<div class="best"><div class="bh">Best moments</div>'+best.map(b => '<div class="be"><span>'+b.emoji+'</span><div>'+esc(b.text)+'</div></div>').join('')+'</div>' : '')+
-    '<div class="foot"><b>Goal met '+metN+' of '+log.length+' days</b><br>gamesbyvidal.github.io/lifetime</div></div>';
+    '<div class="foot"><b>Goal met '+metN+' of '+log.length+' days</b><br>conqueryourscreentime.github.io/lifetime</div></div>';
 }
 function showLifeCard(age){
   modal(lifeCardHTML(age)+'<p class="muted small">📸 Screenshot this card to share it</p>'+
@@ -2221,7 +2221,7 @@ function addReminder(kind){
     return;
   }
   const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Blip//EN','BEGIN:VEVENT',
-    'UID:lifetime-'+Date.now()+'@gamesbyvidal.github.io','DTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z',
+    'UID:lifetime-'+Date.now()+'@conqueryourscreentime.github.io','DTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z',
     'DTSTART:'+local(start),'DTEND:'+local(end),'RRULE:FREQ=DAILY','SUMMARY:'+title,'DESCRIPTION:'+details,'URL:'+url,
     'BEGIN:VALARM','TRIGGER:PT0M','ACTION:DISPLAY','DESCRIPTION:'+title,'END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
   const a = document.createElement('a');

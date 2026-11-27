@@ -338,8 +338,21 @@ async function joinMatch(code, name){
   const doc = await checkCode(code);
   const start = today();
   if (!doc.b) await Net.call('PATCH', 'matches/' + code, Net.enc({b:S.me.uid, startDay:start}), Net.mask(['b','startDay']) + '&currentDocument.exists=true');
-  S.matches.push({code, name, role:'b', other:doc.a, active:true, startDay:doc.startDay || start, made:today()}); save();
+  const m = {code, name, role:'b', other:doc.a, active:true, startDay:doc.startDay || start, made:today()};
+  if (doc.demo === true) demoHistory(m);
+  S.matches.push(m); save();
   await syncNative();
+}
+// App Review demo battle (tracker row 12). Only a match document marked demo:true on the server does this, and
+// players can't create one (the Firestore rules only allow a, b, startDay, ended and created). The reviewer joins
+// alone on one phone, so the 5 days before joining are filled in for both sides: 3 crowns won, yesterday included,
+// so the morning reveal, the crowns and the battle screen have something to show. Normal late joiners still compare
+// only the days both players were in.
+const DEMO_ME = [742, 610, 815, 688, 790], DEMO_THEM = [700, 655, 760, 720, 735];
+function demoHistory(m){
+  m.demo = true; m.startDay = addDays(today(), -DEMO_ME.length);
+  const r = S.res[m.code] = S.res[m.code] || {};
+  DEMO_ME.forEach((v, i) => { const d = addDays(m.startDay, i); if (S.mine[d] == null) S.mine[d] = v; r[d] = DEMO_THEM[i]; });
 }
 // The inviter checks whether invitees have joined, and whether any match was ended by the other player (once a day).
 async function checkMatches(){

@@ -94,8 +94,20 @@ input.code{text-transform:uppercase;letter-spacing:4px;font-variant-numeric:tabu
 .pill.on{background:var(--accent);color:var(--accent-ink)}
 .perk{display:flex;gap:12px;align-items:flex-start;padding:8px 0;font-size:15px}
 .perk span{color:var(--gold);flex:none}
-.plan{border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin:10px 0;cursor:pointer}
-.plan.on{border-color:var(--gold);background:rgba(201,165,74,.08)}
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0 12px}
+.plan{position:relative;border:1px solid rgba(255,255,255,.14);background:var(--card);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:2px;cursor:pointer}
+.plan.on{border:2px solid var(--gold);padding:13px}
+.plan .save{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--accent-ink);font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border-radius:99px;padding:2px 9px;white-space:nowrap}
+.gbox{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px 8px 4px;margin:12px 0}
+.gbox .lbl{margin:0 8px 4px}
+.grow-row{display:flex;align-items:center;gap:10px;padding:10px 8px;border-top:1px solid rgba(255,255,255,.06)}
+.gbox .lbl+.grow-row{border-top:0}
+.grow-row.hot{border:1px solid var(--gold);border-radius:12px;background:rgba(201,165,74,.10)}
+.grow-row.hot+.grow-row{border-top:0}
+.newpill{flex:none;background:var(--accent);color:var(--accent-ink);font-size:10px;font-weight:700;letter-spacing:1px;border-radius:99px;padding:3px 9px}
+.gold-btn{background:var(--gold)!important;color:var(--accent-ink)!important}
+a.ul{color:inherit;text-decoration:underline}
+.grow-row b{font-size:15px;font-weight:600} .grow-row .faint{font-size:13px}
 .slot{border-radius:18px;padding:14px 16px;margin:10px 0;display:flex;align-items:center;gap:12px}
 .slot.open{background:transparent;border:1px dashed rgba(255,255,255,.18)}
 .slot .ico{width:34px;height:34px;border-radius:17px;display:flex;align-items:center;justify-content:center;flex:none;background:var(--card2);color:var(--dim)}
@@ -716,10 +728,10 @@ function goldPitch(){
     <p class="dim s15">Free play keeps the last 30 days. With Dynasty, every rival gets an all-time crown that keeps counting for as long as you play.</p>
     <div style="text-align:left;margin:12px 0">
       <div class="perk"><span>✦</span><div>An all-time crown with each rival</div></div>
-      <div class="perk"><span>✦</span><div>A jewel for every month you win</div></div>
+      <div class="perk"><span>✦</span><div>Every weapon against screen time</div></div>
       <div class="perk"><span>✦</span><div>Your record book and year in review</div></div></div>
     <p class="faint">Counting starts the day you join. Dynasty never changes who wins.</p>
-    <button class="main" style="margin-top:8px" onclick="openGold()">See Dynasty</button></div>`;
+    <button class="main" style="margin-top:8px" onclick="openGold('record')">See Dynasty</button></div>`;
 }
 
 // ---------- Your crowns (free: the last 30 days, per rival) ----------
@@ -749,7 +761,7 @@ function crownsView(){
     <div class="card"><div class="spread"><b class="s15">${st ? 'Crown held ' + st + (st === 1 ? ' day' : ' days') : 'Your crown calendar'}</b><span class="faint">Gold = days you won</span></div>
       <div class="cal">${cells}</div>
       <p class="faint" style="margin:0">You won ${wins} of the last 30 days. ${esc(m.name)} won ${losses}.</p></div>
-    <button class="upsell" onclick="openGold()"><div class="ib" style="opacity:.7">${crown(26, 'pewter')}</div>
+    <button class="upsell" onclick="openGold('record')"><div class="ib" style="opacity:.7">${crown(26, 'pewter')}</div>
       <div class="grow"><b style="font-size:17px">Who holds the all-time crown?</b><div class="faint">Find out with Dynasty</div></div><span class="chev">›</span></button>`;
 }
 // Day 30 note: shown once, the first time Crowns opens after 30 days of play.
@@ -764,25 +776,43 @@ function maybeDay30(){
   }
   sheet(`<div style="text-align:center">${crown(64)}<p class="lbl gold" style="margin-top:14px">Day 30</p><h2 style="font-size:28px">Your first 30 days are in</h2>
     <p class="dim s15">You won ${days} ${days === 1 ? 'day' : 'days'} and ${weeks} weekly ${weeks === 1 ? 'crown' : 'crowns'}. Free play keeps the last 30 days. Keep your full reign with Dynasty.</p>
-    <button class="main" style="margin-top:12px" onclick="openGold()">See Dynasty</button><button class="link" onclick="closeSheet()">Not now</button>
+    <button class="main" style="margin-top:12px" onclick="openGold('record')">See Dynasty</button><button class="link" onclick="closeSheet()">Not now</button>
     <p class="faint">We only show this once.</p></div>`);
 }
-// Dynasty offer (working name). Purchases come in a later build; prices are the approved ones.
-let goldPlan = 'year';
-function openGold(){
+// Dynasty offer (design handoff section 19). The order depends on where the player came from:
+// 'record' (All time tab, the covered all-time crown, the Day 30 note) puts YOUR RECORD first;
+// anything else (My Armory, a locked weapon, elsewhere) puts WEAPONS first, with a tapped weapon on top and edged in gold.
+// Purchases come in a later build; prices are the approved ones.
+let goldPlan = 'year', goldFrom = '', goldWeapon = '';
+const GOLD_WEAPONS = [
+  ['fortress', 'Fortress mode', 'Lock Red apps for a few hours', true],
+  ['sentry', 'The Sentry on every Red app', 'You have it on 1 app now', false],
+  ['ceasefire', 'Ceasefire', 'Red apps lock at set times each day', true]];
+const GOLD_RECORD = [
+  ['alltime', 'An all-time crown with every rival', 'Counts from the day you join', true],
+  ['history', 'Your full battle history', 'You see the last 30 days now', false],
+  ['book', 'Your record book', 'Best day, longest streak, biggest comeback', true]];
+const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+const PRIVACY_URL = 'https://conqueryourscreentime.github.io/lifetime/privacy.html';
+function openGold(from, weapon){
+  if (from !== undefined) { goldFrom = from || ''; goldWeapon = weapon || ''; }
+  const rec = goldFrom === 'record';
+  const row = r => `<div class="grow-row${r[0] === goldWeapon ? ' hot' : ''}"><div class="grow"><b>${r[1]}</b><div class="faint">${r[2]}</div></div>${r[3] ? '<span class="newpill">NEW</span>' : ''}</div>`;
+  const weapons = [...GOLD_WEAPONS].sort((a, b) => (b[0] === goldWeapon) - (a[0] === goldWeapon));
+  const wBox = `<div class="gbox"><p class="lbl gold">Weapons against screen time</p>${weapons.map(row).join('')}
+    <div class="grow-row"><span class="dim" style="font-size:14px">Plus Treasury, Banish, Royal Advisor and Herald</span></div></div>`;
+  const rBox = `<div class="gbox"><p class="lbl gold">Your record</p>${GOLD_RECORD.map(row).join('')}</div>`;
   sheet(`<div class="spread"><span></span><button class="ib" onclick="closeSheet()" aria-label="Close">×</button></div>
-    <div style="text-align:center">${crown(64)}<p class="lbl gold" style="margin-top:14px">Dynasty</p><h1 style="margin-top:2px">Your reign starts today</h1>
-    <p class="dim s15">Every crown you win from today on is kept forever.</p></div>
-    <div style="margin:14px 0">
-      <div class="perk"><span>◆</span><div><b>The all-time crown</b><div class="faint">See who has won more since your reign began.</div></div></div>
-      <div class="perk"><span>◆</span><div><b>A jewel for every month you win</b><div class="faint">Your crown fills up as the year goes on.</div></div></div>
-      <div class="perk"><span>◆</span><div><b>Your record book</b><div class="faint">Every crown, best day, longest streak, biggest comeback.</div></div></div>
-      <div class="perk"><span>◆</span><div><b>Your year in review</b><div class="faint">Arrives every January.</div></div></div></div>
-    <div class="plan ${goldPlan === 'year' ? 'on' : ''}" onclick="goldPlan='year';openGold()"><div class="grow"><span class="lbl gold">Save 16%</span><div><b>Yearly</b></div></div><div style="text-align:right"><b>$19.99</b><div class="faint">$1.67 a month</div></div></div>
-    <div class="plan ${goldPlan === 'month' ? 'on' : ''}" onclick="goldPlan='month';openGold()"><div class="grow"><b>Monthly</b><div class="faint">Cancel any time</div></div><b>$1.99</b></div>
-    <button class="main" onclick="toast('Dynasty isn\\'t on sale yet. It arrives in a later build.')">Start my reign</button>
-    <p class="faint" style="text-align:center">Dynasty never changes who wins. Renews automatically until you cancel in Settings.</p>
-    <div style="text-align:center"><button class="link" onclick="toast('Nothing to restore yet.')">Restore purchases</button></div>`);
+    <div style="text-align:center">${crown(48)}<p class="lbl gold" style="margin-top:12px">Dynasty</p>
+    <h1 style="margin-top:2px;font-size:28px;letter-spacing:-.6px">${rec ? 'Keep your whole record.' : 'Arm yourself.'}</h1>
+    <p class="dim s15">${rec ? 'You see the last 30 days now. Dynasty keeps everything from today on.' : 'Every weapon against screen time, ready when you need it. Your full record comes too.'}</p></div>
+    ${rec ? rBox + wBox : wBox + rBox}
+    <div class="plans">
+      <div class="plan ${goldPlan === 'year' ? 'on' : ''}" onclick="goldPlan='year';openGold()"><span class="save">Save 16%</span><span class="faint" style="color:var(--dim)">Yearly</span><b class="d" style="font-size:22px">$19.99</b><span class="faint">$1.67 a month</span></div>
+      <div class="plan ${goldPlan === 'month' ? 'on' : ''}" onclick="goldPlan='month';openGold()"><span class="faint" style="color:var(--dim)">Monthly</span><b class="d" style="font-size:22px">$1.99</b><span class="faint">Cancel any time</span></div></div>
+    <button class="main gold-btn" onclick="toast('Dynasty isn\\'t on sale yet. It arrives in a later build.')">Start my dynasty</button>
+    <p class="faint" style="text-align:center;margin-bottom:4px">$1.99 a month or $19.99 a year. Renews until cancelled in Settings. Dynasty never changes who wins.</p>
+    <p class="faint" style="text-align:center;margin-top:0"><a class="ul" href="${TERMS_URL}" target="_blank">Terms</a> · <a class="ul" href="${PRIVACY_URL}" target="_blank">Privacy</a> · <a class="ul" href="#" onclick="toast('Nothing to restore yet.');return false">Restore purchases</a></p>`);
 }
 
 // ---------- Challenge friends (free invites, up to 6 battles at once; design handoff section 16) ----------

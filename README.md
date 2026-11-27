@@ -8,6 +8,6 @@ The whole app is one file, `index.html`. The life events and big life moments ar
 
 ## Copyright
 
-© 2026 Conquer Your Screen Time. All rights reserved.
+© 2026 The developer of Conquer Your Screen Time. All rights reserved.
 
 The code, art, and writing in this repository are not open source. You're welcome to play Blip and look around, but please don't copy, reuse, or republish any part of it without permission.

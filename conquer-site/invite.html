@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Come take my crown · Conquer Your Screen Time</title>
-<meta property="og:title" content="Come take my crown">
-<meta property="og:description" content="A friend bets they can conquer screen time better than you. Do you accept?">
+<title>A challenge for the crown · Conquer Your Screen Time</title>
+<meta property="og:title" content="Hear ye, hear ye: a challenge for the crown">
+<meta property="og:description" content="“I can conquer my screen time better than you. Prove me wrong.”">
 <meta property="og:image" content="https://gamesbyvidal.github.io/conquer/invite-card.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="1200">
@@ -13,27 +13,46 @@
 <meta property="og:site_name" content="Conquer Your Screen Time">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="apple-itunes-app" content="app-id=6828258627">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 <style>
 :root{color-scheme:dark}
-body{margin:0;background:#0d0d0f;color:#f5f1e6;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;padding:32px 16px 48px;text-align:center}
-img{width:100%;max-width:420px;border-radius:6px}
-h1{font-family:ui-serif,Georgia,serif;font-size:28px;margin:28px 0 6px}
-p{color:#b5ad99;font-size:15px;line-height:1.5;max-width:380px;margin:0 0 14px}
-.code{font-size:30px;font-weight:700;letter-spacing:6px;background:#1c1c21;border-radius:14px;padding:14px 22px;margin:6px 0 22px}
-a.btn{display:block;width:100%;max-width:380px;box-sizing:border-box;background:#ece4d0;color:#141210;text-decoration:none;font-weight:600;font-size:17px;padding:16px;border-radius:14px}
-small{color:#9a937f;font-size:13px;margin-top:16px}
+body{margin:0;background:#0d0d0f;color:#f5f1e6;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+main{display:flex;flex-direction:column;align-items:center;max-width:420px;margin:0 auto;padding:24px 16px 40px;text-align:center}
+img{width:100%;border-radius:6px}
+h1{font-family:'Playfair Display',Georgia,serif;font-size:28px;margin:24px 0 8px}
+p{color:#b5ad99;font-size:15px;line-height:1.5;margin:0 0 18px}
+.lbl{font-size:11px;font-weight:600;letter-spacing:1.5px;color:#9a937f;margin-bottom:8px}
+.codebox{display:flex;align-items:center;gap:10px;background:#1c1c21;border:1px solid rgba(236,228,208,.07);border-radius:14px;padding:10px 10px 10px 20px;width:100%;box-sizing:border-box}
+.code{font-size:26px;font-weight:700;letter-spacing:5px;flex-grow:1;text-align:left;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+button.copy{background:#2a2a31;color:#f5f1e6;border:0;border-radius:10px;min-height:44px;padding:0 16px;font:600 15px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;cursor:pointer}
+a.btn{display:block;width:100%;box-sizing:border-box;background:#ece4d0;color:#141210;text-decoration:none;font-weight:600;font-size:17px;padding:16px;border-radius:14px;margin-top:14px}
+ol{text-align:left;color:#b5ad99;font-size:15px;line-height:1.5;padding-left:22px;margin:20px 0 0;width:100%;box-sizing:border-box}
+ol li{margin-bottom:6px} ol b{color:#f5f1e6}
+small{color:#9a937f;font-size:13px;margin-top:14px}
 </style>
 </head>
 <body>
-<img src="invite-card.jpg" alt="A challenge: Come take my crown. A friend bets they can conquer screen time better than you.">
+<main>
+<img src="invite-card.jpg" alt="Hear ye, hear ye. A challenge for the crown: “I can conquer my screen time better than you. Prove me wrong.”">
 <h1>Do you accept?</h1>
-<p>Each day you both start with 1,000 points. Time on social and video apps costs the most. At 8 AM, you see who kept more.</p>
-<div class="code" id="code">······</div>
+<p>Each day you both start with 1,000 points. Social and video apps cost the most. At 8 AM, the seal breaks and you see who kept more.</p>
+<div id="codewrap" style="width:100%">
+<div class="lbl">YOUR CHALLENGE CODE</div>
+<div class="codebox"><span class="code" id="code"></span><button class="copy" id="copy" type="button">Copy</button></div>
+</div>
 <a class="btn" href="https://apps.apple.com/app/id6828258627">Get the app</a>
-<small>Get the app, then enter this code to start your battle. Free to play. Ages 13 and up.</small>
+<ol id="steps"><li><b>Copy your code</b> above.</li><li><b>Get Conquer</b>. It's free.</li><li>Open it, and it offers to <b>paste your code</b>. Your battle begins.</li></ol>
+<small>Free to play. Ages 13 and up.</small>
+</main>
 <script>
-var c=(new URLSearchParams(location.search).get('c')||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,12);
-if(c)document.getElementById('code').textContent=c;else document.getElementById('code').style.display='none';
+var c=(new URLSearchParams(location.search).get('c')||'').replace(/[^A-Za-z0-9-]/g,'').toUpperCase().slice(0,14);
+var codeEl=document.getElementById('code'),btn=document.getElementById('copy');
+if(c){codeEl.textContent=c;}else{document.getElementById('codewrap').style.display='none';document.getElementById('steps').style.display='none';}
+btn.addEventListener('click',function(){
+  function done(){btn.textContent='Copied';setTimeout(function(){btn.textContent='Copy';},2000);}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(c).then(done,fallback);}else{fallback();}
+  function fallback(){var r=document.createRange();r.selectNodeContents(codeEl);var s=getSelection();s.removeAllRanges();s.addRange(r);try{document.execCommand('copy');done();}catch(e){}}
+});
 </script>
 </body>
 </html>

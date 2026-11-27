@@ -141,14 +141,14 @@ input.code{text-transform:uppercase;letter-spacing:4px;font-variant-numeric:tabu
 // =====================================================================================
 // Conquer Your Screen Time (build 4, design handoff 2026-11-25).
 // Every player starts the day with 1,000 points. Every 15 minutes in a tier spends points: Red 40, Orange 20, Free 0.
-// The same for everyone. Up to 6 separate one-on-one rivalries (5 invitees plus your inviter); one daily score counts
-// in every match. Results open for everyone at 8 AM their time, sealed until the player breaks the seal.
+// The same for everyone. Anyone can download and play (no invite needed, invites are free). Up to 6 separate
+// one-on-one rivalries; one daily score counts in every match. Results open for everyone at 8 AM their time, sealed until the player breaks the seal.
 // Privacy: minutes per tier stay on this phone. Only the day's points total goes online, after the day ends,
 // once per match, tied to an anonymous player ID and the match code. No names: you name your rivals on your own phone.
 // =====================================================================================
 const IS_APP = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
 const CFG = window.FRIENDS_CONFIG || {};
-const BANK = 1000, STEP = 15, REVEAL_HOUR = 8, MAX_RIVALS = 6, INVITES = 5, KEEP_DAYS = 40, RETURN_DAYS = 7;
+const BANK = 1000, STEP = 15, REVEAL_HOUR = 8, MAX_RIVALS = 6, KEEP_DAYS = 40, RETURN_DAYS = 7;
 const TIERS = [
   {id:'red', name:'Red', cost:40, color:'var(--red)', ticks:['Social','Entertainment'], note:'Social media, short video and streaming.'},
   {id:'orange', name:'Orange', cost:20, color:'var(--orange)', ticks:['Games','Shopping & Food','Safari'], note:'Games, shopping and web browsing.'},
@@ -469,13 +469,13 @@ function setupView(){
       <p>Every 15 minutes on your phone costs you a few. Social apps cost the most. Texting, calls and Maps are free.</p>
       <p>At 8 AM, you'll see who kept more.</p></div>
     <div class="stack" style="margin-top:44px">
-      <label for="wcode" style="font-size:15px;font-weight:600">Conquer is invite only. Have a code?</label>
+      <button class="main" onclick="go('connect')">Get started</button>
+      <label for="wcode" class="faint" style="margin-top:18px">Did a friend send you a code?</label>
       <input type="text" class="code" id="wcode" maxlength="11" placeholder="e.g. 7Q4KXM" autocomplete="off" autocapitalize="characters">
       <p class="faint" id="err" style="color:var(--red);margin:0"></p>
-      <button class="main" id="go" onclick="welcomeJoin()">Join</button>
+      <button id="go" onclick="welcomeJoin()">Accept the challenge</button>
     </div>
-    <p class="faint" style="text-align:center;margin-top:14px">Don't have one? Ask a friend who plays. Everyone gets 5 invites to share. Ages 13 and up.</p>
-    ${testMode() ? `<div style="text-align:center"><button class="link" onclick="go('connect')">Test builds: start without a code</button></div>` : ''}`;
+    <p class="faint" style="text-align:center;margin-top:14px">Free to play. Ages 13 and up.</p>`;
   if (st === 'invited') return invitedView();
   if (st === 'connect') return `
     <h1 style="margin-top:40px">Connect Screen Time</h1>
@@ -518,15 +518,14 @@ function invitedView(){
         <div style="position:absolute;top:70px;left:50%;margin-left:12px;clip-path:polygon(52% 0,100% 0,100% 100%,50% 100%,45% 78%,55% 55%,44% 30%);transform:rotate(16deg)">${seal(92)}</div>
         <div style="position:absolute;top:0;filter:drop-shadow(0 0 16px rgba(201,165,74,.5))" class="bf-up">${crown(92)}</div>
       </div>
-      <p class="lbl gold" style="margin-top:28px">One of only five · Reserved for you</p>
+      <p class="lbl gold" style="margin-top:28px">A friend challenged you</p>
       <h1 style="font-size:40px">You're in.</h1>
     </div>
-    <p class="dim s15">Conquer Your Screen Time is invitation only. Every player gets just five, and a friend gave one of theirs to you.</p>
-    <p class="dim s15">They think you can take the crown. Your place is paid for, and it's yours for good.</p>
-    <div class="card"><p class="lbl" style="margin-top:0">Your seat includes</p>
-      <div class="perk"><span>◆</span><div>A battle with the friend who chose you</div></div>
-      <div class="perk" style="padding-bottom:0"><span>◆</span><div>Five invitations of your own to give</div></div></div>
-    <button class="main" onclick="claimSeat()">Claim your seat</button>
+    <p class="dim s15">They think they can spend less time on their phone than you. Every morning at 8 AM, you'll see who kept more points.</p>
+    <div class="card"><p class="lbl" style="margin-top:0">What you get</p>
+      <div class="perk"><span>◆</span><div>A daily battle with the friend who challenged you</div></div>
+      <div class="perk" style="padding-bottom:0"><span>◆</span><div>Challenge up to 6 friends of your own</div></div></div>
+    <button class="main" onclick="claimSeat()">Accept the challenge</button>
     <p class="faint" style="text-align:center">Free to play. Ages 13 and up.</p>`;
 }
 function go(step){ S.setupStep = step; save(); render(); }
@@ -540,7 +539,7 @@ async function welcomeJoin(){
 }
 function netErr(e){ return /^net|sign-in|token|Failed|Load failed|NetworkError/.test(e.message) ? 'Couldn\'t reach the server. Check your connection.' : e.message; }
 function claimSeat(){
-  nameSheet('Who invited you?', 'Claim your seat', async name => {
+  nameSheet('Who challenged you?', 'Accept the challenge', async name => {
     await joinMatch(S.pendingCode, name); delete S.pendingCode; go('connect');
   });
 }
@@ -594,9 +593,9 @@ function matchCard(){
     if (w.length) return `<div class="card stack"><h2>Waiting for ${esc(listNames(w.map(m => m.name)))}</h2>
       <p class="dim s15">Your battle starts the day they join with your code.</p><button class="main" onclick="openPage('invites')">See your invites</button></div>`;
     return `<div class="card stack"><h2>Play a friend</h2>
-      <p class="dim s15">Send a friend one of your five invitations. Once they join, every day is a battle.</p>
+      <p class="dim s15">Challenge a friend. Once they join, every day is a battle.</p>
       ${Net.on() ? `<button class="main" onclick="openPage('invites')">Invite a friend</button>` : ''}
-      ${!inviter() && Net.on() ? `<button onclick="openJoin()">I have a code</button>` : ''}
+      ${Net.on() ? `<button onclick="openJoin()">I have a code</button>` : ''}
       ${testMode() ? `<button onclick="addPractice()">Add a pretend rival</button><p class="faint">Test builds only.</p>` : ''}</div>`;
   }
   const open = resultDay(), dc = dayCrowns(open);
@@ -761,34 +760,30 @@ function openGold(){
     <div style="text-align:center"><button class="link" onclick="toast('Nothing to restore yet.')">Restore purchases</button></div>`);
 }
 
-// ---------- Invites (5 per player) ----------
+// ---------- Invites (free, up to 6 rivals at once) ----------
 function invitesView(){
-  const mine = own(), free = testMode(), slots = [];
-  for (let i = 0; i < INVITES; i++) slots.push(mine[i] || null);
-  const slot = m => {
-    if (!m) return `<div class="slot open"><div class="ico">${ICON.plus}</div><div class="grow"><b>Available</b><div class="faint">Invite a friend you'll actually play</div></div>
-      <button class="small" onclick="newInvite()">${free ? 'Free' : '$0.99'}</button></div>`;
+  const row = m => {
     if (m.active) return `<div class="slot"><div class="ico" style="background:var(--free)">${ICON.check}</div><div class="grow"><b>Joined</b><div class="faint">You named them ${esc(m.name)}</div></div></div>`;
     const age = diffDays(m.made, today());
-    if (m.ended || age >= RETURN_DAYS) return `<div class="slot"><div class="ico">${ICON.back}</div><div class="grow"><b>Back to you</b><div class="faint">${m.ended ? 'This battle ended.' : 'No one used it in 7 days.'} Send it again for free.</div></div>
-      <button class="small main" onclick="resend('${m.code}')">Send again</button></div>`;
+    if (m.ended || age >= RETURN_DAYS) return `<div class="slot"><div class="ico">${ICON.back}</div><div class="grow"><b>${esc(m.name)}</b><div class="faint">${m.ended ? 'This battle ended.' : 'No one used this code in 7 days.'}</div></div>
+      <button class="small main" onclick="resend('${m.code}')">Send a new one</button></div>`;
     const left = RETURN_DAYS - age;
-    return `<div class="slot"><div class="ico">${ICON.clock}</div><div class="grow"><b>Waiting · ${esc(m.code)}</b><div class="faint">For ${esc(m.name)}. Comes back to you in ${left} ${left === 1 ? 'day' : 'days'} if no one uses it</div></div>
+    return `<div class="slot"><div class="ico">${ICON.clock}</div><div class="grow"><b>Waiting · ${esc(m.code)}</b><div class="faint">For ${esc(m.name)}. Works for ${left} more ${left === 1 ? 'day' : 'days'}</div></div>
       <button class="small" onclick="shareInvite('${m.code}')">Share</button></div>`;
   };
-  return `${backBar('Your 5 invites')}
-    <p class="dim s15">Each invite costs $0.99. Your friend plays free, forever, and gets 5 invites to share too.${free ? ' Free while testing.' : ''}</p>
-    ${Net.on() ? slots.map(slot).join('') : '<p class="faint">Playing with friends isn\'t switched on in this build.</p>'}
-    ${!inviter() && rivals().length < MAX_RIVALS && Net.on() ? `<div style="text-align:center"><button class="link" onclick="openJoin()">Have a code from a friend?</button></div>` : ''}
-    ${testMode() && rivals().length < MAX_RIVALS ? `<div style="text-align:center"><button class="link" onclick="addPractice()">Test builds: add a pretend rival</button></div>` : ''}
-    <div style="text-align:center"><button class="link" onclick="toast('Nothing to restore yet.')">Restore purchases</button></div>
-    <p class="faint" style="text-align:center">Each code works once. Paying never changes points or who wins.</p>`;
+  const room = rivals().length + waiting().length < MAX_RIVALS;
+  return `${backBar('Invite friends')}
+    <p class="dim s15">Invites are free. You can battle up to 6 friends at once, each one on one.</p>
+    ${Net.on() ? own().map(row).join('') + (room ? `<div class="slot open"><div class="ico">${ICON.plus}</div><div class="grow"><b>Challenge a friend</b><div class="faint">Send them a code to join your battle</div></div>
+      <button class="small" onclick="newInvite()">Invite</button></div>` : '') : '<p class="faint">Playing with friends isn\'t switched on in this build.</p>'}
+    ${room && Net.on() ? `<div style="text-align:center"><button class="link" onclick="openJoin()">Have a code from a friend?</button></div>` : ''}
+    ${testMode() && room ? `<div style="text-align:center"><button class="link" onclick="addPractice()">Test builds: add a pretend rival</button></div>` : ''}
+    <p class="faint" style="text-align:center">Each code works once.</p>`;
 }
 function roomForOne(){ if (rivals().length + waiting().length >= MAX_RIVALS) { toast('You can play up to 6 rivals at once.'); return false; } return true; }
 function newInvite(){
-  if (!testMode()) { toast('Buying invitations arrives in a later build.'); return; }
   if (!roomForOne()) return;
-  nameSheet('Who\'s it for?', 'Make the invitation', async name => { const m = await createMatch(name); repaint(); shareInvite(m.code); });
+  nameSheet('Who\'s it for?', 'Make the invite', async name => { const m = await createMatch(name); repaint(); shareInvite(m.code); });
 }
 async function resend(code){
   const m = S.matches.find(x => x.code === code); if (!m) return;
@@ -796,11 +791,12 @@ async function resend(code){
   S.matches = S.matches.filter(x => x !== m); delete S.res[m.code]; delete S.sentTo[m.code]; save();
   repaint(); newInvite();
 }
-// The suggested message (board 3b) and a link to the invitation page, which Messages shows as the cream card with
-// the wax seal (board 3b). The page has no names and no price; the code rides in the link.
+// The suggested message and a link to the invite page, which Messages shows as the cream card with the wax seal.
+// The page has no names and no price; the code rides in the link. Wording: the Designer's call (placeholder since
+// Conquer went open to everyone, 2026-11-27).
 const INVITE_URL = 'https://gamesbyvidal.github.io/conquer/invite.html?c=';
 async function shareInvite(code){
-  const text = 'I only get five of these. This one has your name on it.', url = INVITE_URL + code;
+  const text = 'I challenge you. Whoever spends less time on their phone takes the crown.', url = INVITE_URL + code;
   try { if (navigator.share) { await navigator.share({text, url}); return; } } catch(e) { if (e && e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(text + '\n' + url); toast('Copied. Paste it into a message.'); } catch(e) { toast('Your code is ' + code); }
 }
@@ -1013,7 +1009,7 @@ function confirmDelete(){
 async function doDelete(){
   $('#del').disabled = true;
   try { await deleteAll(); closeSheet(); closePage(); render();
-    sheet(`<div class="stack"><h2>All done. Your data is deleted.</h2><p class="dim s15">Nothing of yours is left on our server. To play again, you'll need a new invite code.</p><button class="main" onclick="closeSheet()">OK</button></div>`); }
+    sheet(`<div class="stack"><h2>All done. Your data is deleted.</h2><p class="dim s15">Nothing of yours is left on our server. You can start again any time.</p><button class="main" onclick="closeSheet()">OK</button></div>`); }
   catch(e) { $('#del').disabled = false; toast('Couldn\'t reach the server. Try again with a connection.'); }
 }
 

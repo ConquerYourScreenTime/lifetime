@@ -58,7 +58,8 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "ceaseSet", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "treasurySet", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "heraldSet", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "redHours", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "redHours", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "guardLabels", returnType: CAPPluginReturnPromise)
     ]
 
     static let group = "group.io.github.gamesbyvidal.lifetime"
@@ -900,6 +901,7 @@ extension ScreenTimePlugin {
         let pend = d?.array(forKey: "cease-next")
         let out: [String: Any] = [
             "sentry": ["mode": d?.string(forKey: "sentry-mode") ?? "off", "apps": s?.applicationTokens.count ?? 0, "since": d?.string(forKey: "sentry-since") ?? ""] as [String: Any],
+            "red": ["apps": Weapons.red?.applicationTokens.count ?? 0, "cats": Weapons.red?.categoryTokens.count ?? 0, "webs": Weapons.red?.webDomainTokens.count ?? 0] as [String: Any],
             "fortress": Weapons.fortressUntil,
             "banish": Weapons.banishUntil, "morning": Weapons.morningMinutes,
             "cease": pend ?? (Weapons.ceaseList() as [Any]), "ceasePending": pend != nil, "ceaseOn": Weapons.ceaseActive,
@@ -997,6 +999,25 @@ extension ScreenTimePlugin {
             UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { ok, _ in if !ok { d?.set(false, forKey: "herald-on") }; go() }
         } else { go() }
     }
+    // Shows which apps a weapon guards. The page leaves empty boxes marked data-guard="sentry:0" or "red:3", and sends their
+    // positions here. Apple's Label(token) draws each app's icon and name on top of the box. The app itself never learns the names.
+    @objc func guardLabels(_ call: CAPPluginCall) {
+        let items = call.getArray("items", JSObject.self) ?? []
+        let color = UIColor(hex: call.getString("color") ?? "") ?? .white
+        let size = CGFloat(call.getDouble("size") ?? 15)
+        DispatchQueue.main.async {
+            guard let web = self.bridge?.webView, let parent = web.superview else { call.resolve(); return }
+            let layer = GuardLayer.shared
+            if layer.superview !== parent { layer.removeFromSuperview(); parent.insertSubview(layer, aboveSubview: web) }
+            layer.frame = web.frame
+            layer.show(items.compactMap { o -> (String, Int, CGRect)? in
+                guard let key = o["key"] as? String, let i = (o["i"] as? Int) ?? (o["i"] as? Double).map({ Int($0) }) else { return nil }
+                let n = { (k: String) -> CGFloat in CGFloat((o[k] as? Double) ?? Double((o[k] as? Int) ?? 0)) }
+                return (key, i, CGRect(x: n("x"), y: n("y"), width: n("w"), height: n("h")))
+            }, color: Color(color), size: size)
+            call.resolve()
+        }
+    }
     // Red and Orange minutes by hour for the last `days` days, and when Red minutes last grew. Read by Royal Advisor and Missions.
     @objc func redHours(_ call: CAPPluginCall) {
         let d = Weapons.d, n = max(1, min(40, call.getInt("days") ?? 14))
@@ -1008,6 +1029,91 @@ extension ScreenTimePlugin {
                         "hours": d?.dictionary(forKey: "fhour-red-" + day) ?? [:]] as [String: Any]
         }
         call.resolve(["days": out, "redLast": d?.double(forKey: "fred-last") ?? 0])
+    }
+}
+
+// One guarded item, drawn by Apple.
+private enum GuardItem: Equatable {
+    case app(ApplicationToken), cat(ActivityCategoryToken), web(WebDomainToken)
+}
+private struct GuardLabelView: View {
+    let item: GuardItem
+    let color: Color
+    let size: CGFloat
+    var body: some View {
+        Group {
+            switch item {
+            case .app(let t): Label(t)
+            case .cat(let t): Label(t)
+            case .web(let t): Label(t)
+            }
+        }
+        .labelStyle(.titleAndIcon)
+        .font(.system(size: size, weight: .semibold))
+        .foregroundColor(color)
+        .lineLimit(1)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+}
+// A see-through layer over the web page that holds the labels. Touches pass through to the page.
+private final class GuardLayer: UIView {
+    static let shared: GuardLayer = { let v = GuardLayer(); v.isUserInteractionEnabled = false; v.clipsToBounds = true; v.backgroundColor = .clear; return v }()
+    private var hosts: [String: UIHostingController<GuardLabelView>] = [:]
+    private var cacheData: [String: Data] = [:]
+    private var cacheItems: [String: [GuardItem]] = [:]
+
+    // The items behind a key, in a fixed order so "red:3" always means the same app.
+    private func list(_ key: String) -> [GuardItem] {
+        let dkey = key == "sentry" ? "sentry-sel" : "tier-red"
+        guard let data = Weapons.d?.data(forKey: dkey) else { return [] }
+        if cacheData[key] == data, let l = cacheItems[key] { return l }
+        guard let s = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) else { return [] }
+        let enc = { (e: Encodable) -> String in (try? JSONEncoder().encode(AnyEnc(e)))?.base64EncodedString() ?? "" }
+        let l = s.applicationTokens.map { (enc($0), GuardItem.app($0)) }.sorted { $0.0 < $1.0 }.map { $0.1 }
+            + s.categoryTokens.map { (enc($0), GuardItem.cat($0)) }.sorted { $0.0 < $1.0 }.map { $0.1 }
+            + s.webDomainTokens.map { (enc($0), GuardItem.web($0)) }.sorted { $0.0 < $1.0 }.map { $0.1 }
+        cacheData[key] = data; cacheItems[key] = l
+        return l
+    }
+    func show(_ items: [(String, Int, CGRect)], color: Color, size: CGFloat) {
+        var keep = Set<String>()
+        for (key, i, rect) in items {
+            let l = list(key)
+            guard i >= 0, i < l.count, rect.width > 0, rect.height > 0 else { continue }
+            let id = key + ":" + String(i)
+            keep.insert(id)
+            let view = GuardLabelView(item: l[i], color: color, size: size)
+            if let h = hosts[id] {
+                if h.rootView.item != l[i] || h.rootView.size != size || h.rootView.color != color { h.rootView = view }
+                h.view.frame = rect
+            } else {
+                let h = UIHostingController(rootView: view)
+                h.view.backgroundColor = .clear
+                h.view.isUserInteractionEnabled = false
+                h.view.frame = rect
+                addSubview(h.view)
+                hosts[id] = h
+            }
+        }
+        for (id, h) in hosts where !keep.contains(id) { h.view.removeFromSuperview(); hosts[id] = nil }
+    }
+}
+private struct AnyEnc: Encodable {
+    let e: Encodable
+    init(_ e: Encodable) { self.e = e }
+    func encode(to encoder: Encoder) throws { try e.encode(to: encoder) }
+}
+private extension UIColor {
+    convenience init?(hex: String) {
+        var h = hex.trimmingCharacters(in: .whitespaces)
+        if h.hasPrefix("rgb") {
+            let n = h.components(separatedBy: CharacterSet(charactersIn: "0123456789.").inverted).compactMap { Double($0) }
+            guard n.count >= 3 else { return nil }
+            self.init(red: n[0] / 255, green: n[1] / 255, blue: n[2] / 255, alpha: n.count > 3 ? n[3] : 1); return
+        }
+        if h.hasPrefix("#") { h.removeFirst() }
+        guard h.count == 6, let v = Int(h, radix: 16) else { return nil }
+        self.init(red: CGFloat((v >> 16) & 255) / 255, green: CGFloat((v >> 8) & 255) / 255, blue: CGFloat(v & 255) / 255, alpha: 1)
     }
 }
 

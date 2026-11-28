@@ -111,7 +111,9 @@ a.ul{color:inherit;text-decoration:underline}
 .wrow.active{border-color:rgba(201,165,74,.7)}
 .wrow b{font-size:16px;font-weight:600} .wrow .faint{font-size:13px}
 .glab{display:flex;align-items:center;font-size:15px;font-weight:600;color:var(--ink);min-width:0;overflow:hidden;white-space:nowrap}
-.glist .glab{height:40px;border-top:1px solid var(--line)} .glist .glab:first-child{border-top:none}
+.gicon{width:36px;height:36px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;font-size:24px}
+.grow-g{display:flex;align-items:center;gap:12px;min-height:50px;border-top:1px solid var(--line)} .glist .grow-g:first-child{border-top:none}
+.gcount{color:#d9d0b8;font-weight:600;font-size:13px;margin:0 0 8px}
 .wico{width:40px;height:40px;border-radius:11px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--dim);flex:none}
 .wright{font-size:14px;font-weight:600;color:var(--dim);text-align:right;flex:none;max-width:40%} .wright.gold{color:var(--gold)}
 .dyn{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--gold);display:flex;gap:4px;align-items:center;flex:none}
@@ -1051,19 +1053,25 @@ const foot = t => `<p class="faint" style="text-align:center;margin-top:28px">${
 // and name over them (ST.guardLabels), so the app itself never learns which apps they are. In a browser, stand-in names show.
 const NATIVE_LABELS = ST !== fakeST;
 const FAKE_NAMES = ['Instagram', 'TikTok', 'YouTube', 'Snapchat', 'Social', 'reddit.com'];
-function guardBox(key, i, style){ return `<div class="glab" data-guard="${key}:${i}" ${style ? `style="${style}"` : ''}>${NATIVE_LABELS ? '' : FAKE_NAMES[i % 6]}</div>`; }
+function guardBox(key, i, part, style){
+  const fake = NATIVE_LABELS ? '' : part === 'icon' ? `<i style="width:100%;height:100%;border-radius:inherit;background:linear-gradient(135deg,#f9a03f,#c13584)"></i>` : FAKE_NAMES[i % 6];
+  return `<div class="glab ${part === 'icon' ? 'gicon' : ''}" data-guard="${key}:${i}" data-part="${part}" ${style ? `style="${style}"` : ''}>${fake}</div>`;
+}
 function plural(n, one, many){ return n + ' ' + (n === 1 ? one : many); }
 function redCountText(){
   const r = (W && W.red) || {};
-  return [r.apps && plural(r.apps, 'app', 'apps'), r.cats && plural(r.cats, 'category', 'categories'), r.webs && plural(r.webs, 'website', 'websites')].filter(Boolean).join(', ');
+  return [r.apps && plural(r.apps, 'app', 'apps'), r.cats && plural(r.cats, 'category', 'categories'), r.webs && plural(r.webs, 'website', 'websites')].filter(Boolean).join(' · ');
 }
+// "What it locks" (handoff section 22): label with Change, the count, the first 5 items, then Show all.
 function guardList(title){
-  const r = (W && W.red) || {}, n = (r.apps || 0) + (r.cats || 0) + (r.webs || 0);
-  if (!n) return `<p class="lbl" style="margin:18px 0 8px">${title}</p><div class="card"><p class="faint" style="margin:0">No Red apps picked yet. Pick them in Settings, under My app colors.</p></div>`;
+  const r = (W && W.red) || {}, a = r.apps || 0, c = r.cats || 0, n = a + c + (r.webs || 0);
+  const head = `<div class="spread" style="margin:18px 0 4px;align-items:baseline"><span class="lbl">${title}</span><button class="link" style="padding:0;color:var(--ink)" onclick="changeTiers()">Change</button></div>`;
+  if (!n) return head + `<div class="card"><p class="faint" style="margin:0">No Red apps picked yet. Tap Change to pick them.</p></div>`;
   const shown = pageState.guardAll ? n : Math.min(n, 5);
-  return `<div class="spread" style="margin:18px 0 8px;align-items:baseline"><span class="lbl">${title}</span><span class="faint">${redCountText()}</span></div>
-    <div class="card glist" style="padding:2px 16px">${Array.from({length:shown}, (_, i) => guardBox('red', i)).join('')}
-    ${n > shown ? `<button class="link" style="padding:10px 0;border-top:1px solid var(--line);width:100%;text-align:left" onclick="pageState.guardAll=true;repaint()">Show all ${n}</button>` : ''}</div>`;
+  const row = i => `<div class="grow-g">${guardBox('red', i, 'icon')}<div class="grow" style="min-width:0">${guardBox('red', i, 'title', 'height:22px')}${i >= a ? `<div class="faint" style="font-size:12px">${i < a + c ? 'Category' : 'Website'}</div>` : ''}</div></div>`;
+  return head + `<p class="gcount">${redCountText()}</p>
+    <div class="card glist" style="padding:2px 14px">${Array.from({length:shown}, (_, i) => row(i)).join('')}
+    ${n > shown ? `<button class="link" style="padding:12px 0;border-top:1px solid var(--line);width:100%;text-align:center;color:var(--ink)" onclick="pageState.guardAll=true;repaint()">Show all ${n}</button>` : ''}</div>`;
 }
 // Sends the boxes' places on screen to the phone. A box that is covered (by a sheet, say) or off screen is left out.
 let guardQueued = false;
@@ -1073,7 +1081,7 @@ function syncGuards(){
   requestAnimationFrame(() => {
     guardQueued = false;
     const items = [], vh = innerHeight, vw = innerWidth;
-    let color = '', size = 15;
+    let color = '';
     document.querySelectorAll('[data-guard]').forEach(el => {
       const b = el.getBoundingClientRect();
       if (b.bottom <= 0 || b.top >= vh || b.width <= 0) return;
@@ -1081,12 +1089,13 @@ function syncGuards(){
       const top = document.elementFromPoint(Math.min(cx, b.left + 8), cy);
       if (!top || !(top === el || el.contains(top))) return;
       const [key, i] = el.dataset.guard.split(':');
-      if (!color) { const cs = getComputedStyle(el); color = cs.color; size = parseFloat(cs.fontSize) || 15; }
-      items.push({key, i: +i, x: b.left, y: b.top, w: b.width, h: b.height});
+      const cs = getComputedStyle(el), part = el.dataset.part || 'both';
+      if (!color && part !== 'icon') color = cs.color;
+      items.push({key, i: +i, part, size: part === 'icon' ? Math.round(b.height * 0.62) : parseFloat(cs.fontSize) || 15, x: b.left, y: b.top, w: b.width, h: b.height});
     });
     if (!items.length && !syncGuards.shown) return;
     syncGuards.shown = items.length > 0;
-    ST.guardLabels({items, color, size}).catch(() => {});
+    ST.guardLabels({items, color: color || '#f5f1e6'}).catch(() => {});
   });
 }
 if (NATIVE_LABELS) {
@@ -1104,9 +1113,9 @@ function weaponPage(id){
       return weaponHead('The Sentry', 'Before a guarded app opens, you see your points and pause for 5 seconds. Then you choose: stay, or enter for 15 minutes.', dy ? 'Dynasty' : 'For everyone')
         + (dy ? `<div class="card" style="padding:4px 16px">
             <div class="setrow"><div class="grow"><b class="s15">Every Red app</b><div class="faint">The Sentry stands guard on all of them</div></div>${swt(sen.mode === 'all', "sentryMode(this.checked ? 'all' : (W.sentry.apps ? 'one' : 'off'))")}</div></div>` : '')
-        + (dy && sen.mode === 'all' ? guardList('Guarding') : '')
+        + (dy && sen.mode === 'all' ? guardList('What the Sentry guards') : '')
         + `<p class="lbl" style="margin:18px 0 8px">${dy && sen.mode === 'all' ? 'Or guard just one app' : 'Your guarded app · free play gets one'}</p>
-        <div class="card"><div class="row"><div class="wico">${WICON.shield}</div><div class="grow" style="min-width:0">${sen.apps ? guardBox('sentry', 0, 'height:24px;font-size:16px') : '<b>No app yet</b>'}<div class="faint">${sen.apps ? since : 'Pick the one you open without thinking'}</div></div>
+        <div class="card"><div class="row">${sen.apps ? guardBox('sentry', 0, 'icon', 'width:44px;height:44px;border-radius:11px') : `<div class="wico">${WICON.shield}</div>`}<div class="grow" style="min-width:0">${sen.apps ? guardBox('sentry', 0, 'title', 'height:24px;font-size:17px') : '<b>No app yet</b>'}<div class="faint">${sen.apps ? since : 'Pick the one you open without thinking'}</div></div>
           ${sen.apps ? swt(sen.mode !== 'off', "sentryMode(this.checked ? 'one' : 'off')", sen.mode === 'all') : ''}</div></div>
         <button onclick="sentryPick()">${sen.apps ? 'Change' : 'Choose'} in Apple's list</button>
         <p class="faint">Pick the one app you open without thinking. Keep Phone, Maps and Messages off this list.</p>
@@ -1115,19 +1124,18 @@ function weaponPage(id){
     case 'fortress': {
       if (s.fortress > nowSec()) {
         const left = Math.max(0, Math.round(s.fortress - nowSec())), h = Math.floor(left / 3600), m = Math.floor(left % 3600 / 60);
-        return weaponHead('Fortress mode', 'Your Red apps stay locked until the time is up.')
+        return weaponHead('Fortress mode', 'Raise the walls. Your Red apps stay locked until the time is up. Leaving early takes a 30-second wait.')
           + `<div style="text-align:center;margin:30px 0"><div style="display:flex;justify-content:center">${crown(72)}</div>
             <div class="big" style="font-size:64px">${h}:${String(m).padStart(2, '0')}</div><p class="dim s15">left · unlocks at ${clock(s.fortress)}</p></div>
-          ${guardList('Locked')}
+          ${guardList('What the Fortress locks')}
           <button onclick="leaveWall()">Leave early</button>`;
       }
       const hrs = pageState.hrs || 2;
-      return weaponHead('Fortress mode', 'Your Red apps stay locked until the time is up.')
+      return weaponHead('Fortress mode', 'Raise the walls. Your Red apps stay locked until the time is up. Leaving early takes a 30-second wait.')
         + `<div class="picks">${[1, 2, 4].map(n => `<button class="${n === hrs ? 'on' : ''}" onclick="pageState.hrs=${n};repaint()"><b class="d">${n}</b><span>${n === 1 ? 'hour' : 'hours'}</span></button>`).join('')}</div>
-        <div class="card"><p class="s15" style="margin:0">Locks: your Red apps</p><p class="s15" style="margin:4px 0">Still open: texts, calls, Maps and everything free</p>
-          <p class="faint" style="margin:0">Leaving early is allowed, after a 30-second wait.</p></div>
-        ${guardList('It locks')}
-        <button class="main" style="margin-top:18px" onclick="raiseWall(${hrs})">Lock for ${hrs} ${hrs === 1 ? 'hour' : 'hours'}</button>`;
+        ${guardList('What the Fortress locks')}
+        <button class="main" style="margin-top:18px" onclick="raiseWall(${hrs})">Raise the walls for ${hrs} ${hrs === 1 ? 'hour' : 'hours'}</button>
+        ${foot('Texts, calls and Maps still work.')}`;
     }
     case 'ceasefire': {
       const list = s.cease && s.cease.length ? s.cease : CEASE_DEFAULT;
@@ -1140,18 +1148,18 @@ function weaponPage(id){
           <div class="faint">${c.days === 'weekdays' ? 'Monday to Friday' : 'Every day'}</div></div>${swt(c.on, `ceaseEdit(${i},'on',this.checked)`)}</div>`).join('')}</div>
         ${list.length < 6 ? '<button class="link" style="color:var(--ink);padding-left:0" onclick="ceaseAdd()">+ Add a ceasefire</button>' : ''}
         ${s.ceasePending ? '<p class="faint">Your changes start tomorrow.</p>' : ''}
-        ${guardList('A ceasefire locks')}
+        ${guardList('What it locks')}
         ${foot('During a ceasefire, texts, calls and Maps still work. Changes start the next day.')}`;
     }
     case 'banish': {
       if (s.banish > nowSec()) return weaponHead('Banish', 'One tap, and your Red apps are gone until morning.')
         + `<div class="card" style="text-align:center;padding:28px 18px"><div style="color:var(--dim)">${WICON.door}</div><h2 style="margin-top:10px">Banished until ${clock(s.banish)}</h2>
-          <p class="dim s15" style="margin:0">Your Red apps are locked. They come back in the morning.</p></div>${guardList('Banished')}${foot('Texts, calls and Maps still work.')}`;
+          <p class="dim s15" style="margin:0">Your Red apps are locked. They come back in the morning.</p></div>${guardList('What it locks')}${foot('Texts, calls and Maps still work.')}`;
       const mm = s.morning || 420;
       return weaponHead('Banish', 'One tap, and your Red apps are gone until morning.')
         + `<div class="card" style="text-align:center;padding:28px 18px"><div style="color:var(--dim)">${WICON.door}</div><h2 style="margin-top:10px">Banish until ${hhmm(mm)}?</h2>
           <p class="dim s15" style="margin:0">Your Red apps lock now and stay locked until morning. You can't undo it tonight.</p></div>
-        ${guardList('Banish locks')}
+        ${guardList('What it locks')}
         <p class="lbl" style="margin:18px 0 8px">Morning starts at</p>
         <div class="card" style="padding:0 16px"><select class="selrow" onchange="banishMorning(+this.value)">${[300, 330, 360, 390, 420, 450, 480, 510, 540, 600].map(v => `<option value="${v}" ${v === mm ? 'selected' : ''}>${hhmm2(v)}</option>`).join('')}</select></div>
         <button class="main" style="margin-top:28px" onclick="banishNow()">Banish them</button>
@@ -1168,7 +1176,7 @@ function weaponPage(id){
         <div class="picks">${[[30, '30', 'min'], [60, '1', 'hour'], [120, '2', 'hours']].map(([v, n, u]) => `<button class="${v === (tm || 60) ? 'on' : ''}" onclick="treasurySet(${v}, true)"><b class="d">${n}</b><span>${u}</span></button>`).join('')}</div>
         <div class="card" style="padding:4px 16px"><div class="setrow"><div class="grow"><b class="s15">Treasury on</b><div class="faint">Counts Red apps only</div></div>${swt(tm > 0, `treasurySet(this.checked ? ${tm || 60} : 0)`)}</div></div>
         ${tm !== now ? '<p class="faint">Your change starts tomorrow.</p>' : ''}
-        ${guardList('It counts and locks')}
+        ${guardList('What it locks')}
         ${foot('Texts, calls and Maps never count. Changes start the next day.')}`;
     }
     case 'advisor': return advisorPage();

@@ -1004,17 +1004,17 @@ extension ScreenTimePlugin {
     @objc func guardLabels(_ call: CAPPluginCall) {
         let items = call.getArray("items", JSObject.self) ?? []
         let color = UIColor(hex: call.getString("color") ?? "") ?? .white
-        let size = CGFloat(call.getDouble("size") ?? 15)
         DispatchQueue.main.async {
             guard let web = self.bridge?.webView, let parent = web.superview else { call.resolve(); return }
             let layer = GuardLayer.shared
             if layer.superview !== parent { layer.removeFromSuperview(); parent.insertSubview(layer, aboveSubview: web) }
             layer.frame = web.frame
-            layer.show(items.compactMap { o -> (String, Int, CGRect)? in
+            layer.show(items.compactMap { o -> GuardSpot? in
                 guard let key = o["key"] as? String, let i = (o["i"] as? Int) ?? (o["i"] as? Double).map({ Int($0) }) else { return nil }
                 let n = { (k: String) -> CGFloat in CGFloat((o[k] as? Double) ?? Double((o[k] as? Int) ?? 0)) }
-                return (key, i, CGRect(x: n("x"), y: n("y"), width: n("w"), height: n("h")))
-            }, color: Color(color), size: size)
+                return GuardSpot(key: key, i: i, part: (o["part"] as? String) ?? "both", size: n("size") > 0 ? n("size") : 15,
+                                 rect: CGRect(x: n("x"), y: n("y"), width: n("w"), height: n("h")))
+            }, color: Color(color))
             call.resolve()
         }
     }
@@ -1036,23 +1036,32 @@ extension ScreenTimePlugin {
 private enum GuardItem: Equatable {
     case app(ApplicationToken), cat(ActivityCategoryToken), web(WebDomainToken)
 }
+private struct GuardSpot { let key: String; let i: Int; let part: String; let size: CGFloat; let rect: CGRect }
+// part: "icon" (the app's icon, filling the box), "title" (its name) or "both".
 private struct GuardLabelView: View {
     let item: GuardItem
+    let part: String
     let color: Color
     let size: CGFloat
     var body: some View {
-        Group {
+        let label = Group {
             switch item {
             case .app(let t): Label(t)
             case .cat(let t): Label(t)
             case .web(let t): Label(t)
             }
         }
-        .labelStyle(.titleAndIcon)
-        .font(.system(size: size, weight: .semibold))
-        .foregroundColor(color)
-        .lineLimit(1)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        switch part {
+        case "icon":
+            label.labelStyle(.iconOnly).font(.system(size: size)).imageScale(.large)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        case "title":
+            label.labelStyle(.titleOnly).font(.system(size: size, weight: .semibold)).foregroundColor(color).lineLimit(1)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        default:
+            label.labelStyle(.titleAndIcon).font(.system(size: size, weight: .semibold)).foregroundColor(color).lineLimit(1)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
     }
 }
 // A see-through layer over the web page that holds the labels. Touches pass through to the page.
@@ -1075,14 +1084,14 @@ private final class GuardLayer: UIView {
         cacheData[key] = data; cacheItems[key] = l
         return l
     }
-    func show(_ items: [(String, Int, CGRect)], color: Color, size: CGFloat) {
+    func show(_ items: [GuardSpot], color: Color) {
         var keep = Set<String>()
-        for (key, i, rect) in items {
-            let l = list(key)
+        for g in items {
+            let l = list(g.key), i = g.i, rect = g.rect, size = g.size
             guard i >= 0, i < l.count, rect.width > 0, rect.height > 0 else { continue }
-            let id = key + ":" + String(i)
+            let id = g.key + ":" + String(i) + ":" + g.part
             keep.insert(id)
-            let view = GuardLabelView(item: l[i], color: color, size: size)
+            let view = GuardLabelView(item: l[i], part: g.part, color: color, size: size)
             if let h = hosts[id] {
                 if h.rootView.item != l[i] || h.rootView.size != size || h.rootView.color != color { h.rootView = view }
                 h.view.frame = rect

@@ -1308,11 +1308,13 @@ function advisorPage(){
   if (!WH) return head + '<p class="faint">Loading…</p>';
   // The last full week, Monday to Sunday, compared with the week before it.
   const lastSun = addDays(weekStart(today()), -1), mon = addDays(lastSun, -6), prevMon = addDays(mon, -7);
-  const day = d => WH.days[d];
+  // Only days since Conquer started counting. The phone reports zeros for earlier days, which aren't real.
+  const since = (tierInfo && tierInfo.since) || '';
+  const day = d => since && d >= since ? WH.days[d] : null;
   const days = Array.from({length:7}, (_, i) => addDays(mon, i)).filter(day);
-  if (days.length < 3) return head + `<div class="card"><b class="s15">Your first report arrives Sunday.</b><p class="faint" style="margin:6px 0 0">Your Advisor needs a few days of play to see the pattern.</p></div>${foot('Made on your phone. Nothing in this report leaves it.')}`;
+  if (!since || mon < since || days.length < 7) return head + `<div class="card"><b class="s15">Your first report arrives Sunday.</b><p class="faint" style="margin:6px 0 0">Your Advisor reports on full weeks, Monday to Sunday, once you've played one.</p></div>${foot('Made on your phone. Nothing in this report leaves it.')}`;
   const sum = ds => ds.reduce((a, d) => a + ((day(d) || {}).red || 0), 0);
-  const tot = sum(days), prevDays = Array.from({length:7}, (_, i) => addDays(prevMon, i)).filter(day), prev = prevDays.length >= 3 ? sum(prevDays) : null;
+  const tot = sum(days), prevDays = Array.from({length:7}, (_, i) => addDays(prevMon, i)).filter(day), prev = prevDays.length === 7 ? sum(prevDays) : null;
   const best = days.slice().sort((a, b) => (day(a).red || 0) - (day(b).red || 0))[0];
   const hours = Array(24).fill(0); days.forEach(d => Object.entries(day(d).hours || {}).forEach(([h, m]) => hours[+h] += m));
   const top = hours.indexOf(Math.max(...hours)), anyHour = Math.max(...hours) > 0;

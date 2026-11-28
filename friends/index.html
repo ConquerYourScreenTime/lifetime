@@ -69,10 +69,17 @@ input.code{text-transform:uppercase;letter-spacing:4px;font-variant-numeric:tabu
 .av{width:36px;height:36px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px;color:#fff;flex:none}
 .mrow{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
 .mrow:first-child{border-top:0}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:18;display:flex;justify-content:center;background:rgba(13,13,15,.92);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-top:1px solid rgba(236,228,208,.10);padding:6px 8px env(safe-area-inset-bottom)}
+.tabbar div{display:flex;width:100%;max-width:480px}
+.tabbar button{flex:1;background:none;color:#7d7869;padding:6px 0 4px;display:flex;flex-direction:column;align-items:center;gap:3px;font:600 10.5px -apple-system,system-ui,sans-serif;width:auto;border-radius:0}
+.tabbar button.on{color:#ece4d0}
+.tabbar svg{width:26px;height:26px}
+body.hasbar .app{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;justify-content:center;z-index:20;animation:fade .2s}
 .sheet{background:var(--bg);width:100%;max-width:480px;max-height:92vh;overflow:auto;border-radius:24px 24px 0 0;padding:20px 20px calc(24px + env(safe-area-inset-bottom))}
 .page{position:fixed;inset:0;z-index:15;background:var(--bg);overflow:auto;animation:fade .15s}
 .page .app{padding-top:calc(8px + env(safe-area-inset-top))}
+body.hasbar .toast{bottom:calc(84px + env(safe-area-inset-bottom))}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--card2);color:var(--ink);border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:50;font-size:15px;width:max-content;max-width:90vw}
 .sw{position:relative;width:51px;height:31px;flex:none}
 .sw input{opacity:0;width:0;height:0;position:absolute}
@@ -220,6 +227,7 @@ const ICON = {
   check:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d0d0f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>',
   clock:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>',
   back:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4"/></svg>',
+  battles:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M9 4l5 2v4.5c0 4-2.6 6.8-5 8-2.4-1.2-5-4-5-8V6z"/><path d="M15.5 5.2 20 7v4.5c0 4-2.6 6.8-5 8-.8-.4-1.6-1-2.3-1.7"/></svg>',
   plus:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
 };
 
@@ -513,9 +521,9 @@ let setupTier = 0;
 
 function render(){
   const app = $('#app');
-  if (!S.setup) { app.innerHTML = setupView(); return; }
+  if (!S.setup) { app.innerHTML = setupView(); tabBar(); return; }
   app.innerHTML = todayView();
-  repaint();
+  repaint(); tabBar();
 }
 function testMode(){ return !IS_APP || S.testflight; }
 
@@ -642,11 +650,7 @@ function todayView(){
   const m = todayMin, pts = m.points;
   const spent = TIERS.map(t => ({t, min:m[t.id]||0, pts:Math.floor((m[t.id]||0)/STEP)*t.cost}));
   return `
-  <div class="top"><span class="lbl" style="color:var(--dim)">${weekday(today())}</span>
-    <div class="icons"><button class="ib" aria-label="My Armory" onclick="openArmory()">${WICON.swords}</button>
-      <button class="ib" aria-label="Your crowns" onclick="openPage('crowns')">${crown(22)}</button>
-      <button class="ib" aria-label="Invites" onclick="openPage('invites')">${ICON.gift}</button>
-      <button class="ib" aria-label="Settings" onclick="openPage('settings')">${ICON.sliders}</button></div></div>
+  <div class="top"><span class="lbl" style="color:var(--dim)">${weekday(today())}</span></div>
   <div style="margin-top:26px"><span class="lbl">Points left today</span>
     <div class="big">${fmt(pts)}</div>
     <div class="rule"><i></i><b></b><span class="s15">of ${fmt(BANK)} · renews at midnight</span></div></div>
@@ -698,10 +702,32 @@ function openPage(view){
   const o = document.createElement('div'); o.className = 'page'; o.id = 'page'; o.dataset.view = view;
   o.innerHTML = `<div class="app">${PAGES[view]()}</div>`; document.body.appendChild(o);
   if (view === 'crowns') maybeDay30();
+  tabBar();
 }
-function closePage(){ const o = $('#page'); if (o) o.remove(); }
+function closePage(){ const o = $('#page'); if (o) o.remove(); tabBar(); }
+// The bottom tab bar (handoff section 23). Shown once setup is done. Tab pages have no back link; the app opens on Today.
+const TABS = [['today', 'Today', () => ICON.clock.replace(/width="18" height="18"/, 'width="26" height="26"')], ['matches', 'Battles', () => ICON.battles],
+  ['armory', 'Armory', () => WICON.swords], ['crowns', 'Crowns', () => crown(30, 'currentColor')], ['settings', 'Settings', () => ICON.sliders]];
+const TAB_VIEWS = ['matches', 'armory', 'crowns', 'settings'];
+function curTab(){ const o = $('#page'); return o ? (o.dataset.view === 'invites' ? 'matches' : o.dataset.view) : 'today'; }
+function tabBar(){
+  let bar = $('#tabbar');
+  const show = !!S.setup;
+  document.body.classList.toggle('hasbar', show);
+  if (!show) { if (bar) bar.remove(); return; }
+  if (!bar) { bar = document.createElement('nav'); bar.id = 'tabbar'; bar.className = 'tabbar'; document.body.appendChild(bar); }
+  const cur = curTab();
+  bar.innerHTML = `<div>${TABS.map(([id, name, ic]) => `<button class="${id === cur ? 'on' : ''}" aria-label="${name}" onclick="goTab('${id}')">${ic()}<span>${name}</span></button>`).join('')}</div>`;
+}
+function goTab(id){
+  if (id === curTab() && !(id === 'armory' && pageState.weapon)) return;
+  fx('tap');
+  if (id === 'today') closePage();
+  else if (id === 'armory') openArmory();
+  else { if (id === 'matches') pageState.tab = pageState.tab || 'week'; openPage(id); }
+}
 function repaint(){ const o = $('#page'); if (o && PAGES[o.dataset.view]) o.querySelector('.app').innerHTML = PAGES[o.dataset.view](); }
-function backBar(title){ return `<button class="back" onclick="closePage()">‹ Today</button><h1>${title}</h1>`; }
+function backBar(title){ return `<h1>${title}</h1>`; }
 function sheet(html){ closeSheet(); const o = document.createElement('div'); o.className = 'overlay'; o.id = 'sheet'; o.innerHTML = `<div class="sheet">${html}</div>`; o.addEventListener('click', e => { if (e.target === o) closeSheet(); }); document.body.appendChild(o); }
 function closeSheet(){ const o = $('#sheet'); if (o) o.remove(); }
 function nameSheet(title, action, fn){
@@ -732,7 +758,7 @@ function matchesView(){
   const tabs = [['day','Yesterday'],['week','Week'],['m30','30 days'],['all','All time']];
   let body = '';
   if (tab === 'all') body = goldPitch();
-  else if (!rs.length) body = '<p class="dim s15">No battles yet. Invite a friend to start one.</p>';
+  else if (!rs.length) body = '<p class="dim s15">No battles yet. Invite a friend to start one.</p>' + (Net.on() ? '<button class="main" onclick="openPage(\'invites\')">Challenge a friend</button>' : '');
   else {
     const from = tab === 'day' ? open : tab === 'week' ? weekStart(open) : addDays(open, -29);
     const rows = rs.map(m => ({m, ...totals(m, from, open)}));
@@ -755,6 +781,7 @@ function matchesView(){
   return `${backBar('Your battles')}
     <div class="tabs">${tabs.map(t => `<button class="${t[0] === tab ? 'on' : ''}" onclick="pageState.tab='${t[0]}';repaint()">${t[1]}</button>`).join('')}</div>
     ${body}
+    ${rs.length && Net.on() ? `<button style="margin-top:18px" onclick="openPage('invites')">Challenge a friend</button>` : ''}
     <p class="faint" style="text-align:center;margin-top:22px">One score counts in every battle. To end a battle, go to Settings.</p>`;
 }
 function goldPitch(){
@@ -859,7 +886,7 @@ function invitesView(){
     : `<div class="slot"><div class="ico">${ICON.clock}</div><div class="grow"><b>${esc(m.name)} · waiting</b><div class="faint">Sent ${m.made === today() ? 'today' : weekday(m.made)}. Nudge them?</div></div>
       <button class="small" onclick="shareInvite('${m.code}')">Nudge</button></div>`;
   const n = rivals().length + waiting().length, room = n < MAX_RIVALS;
-  return `${backBar('Challenge friends')}
+  return `<button class="back" onclick="openPage('matches')">‹ Battles</button><h1>Challenge friends</h1>
     <p class="dim s15">Invite as many friends as you like. Each one who joins becomes a battle of its own, up to 6 at a time.</p>
     ${Net.on() ? own().filter(m => !m.ended).map(row).join('') + `<p class="faint" style="text-align:center">${n} of ${MAX_RIVALS} battles · ${room ? 'room for ' + (MAX_RIVALS - n) + ' more' : 'all full'}</p>`
       + (room ? `<button class="main" onclick="newInvite()">Invite a friend</button>` : '') : '<p class="faint">Playing with friends isn\'t switched on in this build.</p>'}

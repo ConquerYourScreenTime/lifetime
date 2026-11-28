@@ -813,6 +813,7 @@ extension ScreenTimePlugin {
             case "seal": UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
             case "win": UINotificationFeedbackGenerator().notificationOccurred(.success); Conquer.chime()
             case "loss": UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            case "tap": UISelectionFeedbackGenerator().selectionChanged()
             default: break
             }
             call.resolve()

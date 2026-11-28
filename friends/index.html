@@ -1058,6 +1058,8 @@ function openWeapon(id){
   const w = WEAPONS.find(x => x.id === id);
   if (!w.free && !dynasty()) { openGold('', id); return; }
   pageState.guardAll = false;
+  // No list yet: a weapon that locks asks what to lock first, then opens (handoff 28e).
+  if (!hasList() && LIST_WEAPONS.some(x => x[0] === id)) { firstPick(id); return; }
   // From Today (no Armory page open), open the Armory on this weapon.
   if (curTab() !== 'armory') { openArmory(id); return; }
   pageState.weapon = id; repaint();
@@ -1099,7 +1101,8 @@ function wrow(w, opts){
 // Handoff 28e: under each weapon that locks, what it locks: the shared list (with its size) or its own custom list.
 function locksLine(id){
   const pair = LIST_WEAPONS.find(x => x[0] === id);
-  if (!pair || !hasList() || (id === 'sentry' && ((W.sentry || {}).mode !== 'all'))) return '';
+  if (!pair || !hasList()) return '';
+  if (id === 'sentry' && (W.sentry || {}).mode !== 'all') return (W.sentry || {}).mode === 'one' && (W.sentry || {}).apps ? '<div class="faint" style="margin-top:4px;font-size:13px">Guards 1 app</div>' : '';
   const l = (W.lists || {})[pair[1]] || W.list, n = (l.apps || 0) + (l.cats || 0) + (l.webs || 0);
   return `<div class="faint" style="margin-top:4px;font-size:13px">${l.own ? `<span class="cpill" style="margin-right:6px">Custom</span>Locks ${listCount(l)}` : `Locks your shared list · ${n}`}</div>`;
 }
@@ -1139,12 +1142,15 @@ function plural(n, one, many){ return n + ' ' + (n === 1 ? one : many); }
 const hasList = () => { const l = (W && W.list) || {}; return (l.apps || 0) + (l.cats || 0) + (l.webs || 0) > 0; };
 // The page's weapon ids, as the phone names them.
 const WNAME = {fortress:'wall', ceasefire:'cease', banish:'banish', treasury:'treasury', sentry:'sentry'};
-function pickCard(){
+function firstPick(id){
+  sheet(pickCard(id).replace('class="card" style="padding:22px 20px"', 'style="padding:6px 2px"') + `<button class="link" style="width:100%" onclick="closeSheet()">Not now</button>`);
+}
+function pickCard(then){
   return `<div class="card" style="padding:22px 20px"><div style="color:var(--ink)">${WICON.swords}</div>
     <h2 style="margin:12px 0 8px">Choose what your weapons lock</h2>
     <p class="dim s15" style="margin:0 0 12px">Battles count whole groups, like Social and Entertainment. Your weapons lock only what you choose.</p>
     <div class="dim s15 picklist"><p>✦ Pick the apps that pull you in, like Instagram or TikTok</p><p>✦ Add a whole category or websites if you like</p><p>✦ Tip: leave Phone, Maps and Messages off</p></div>
-    <button class="main" style="margin-top:14px" onclick="pickWeaponList()">Pick my apps</button>
+    <button class="main" style="margin-top:14px" onclick="${then ? `closeSheet();pickWeaponList('', '${then}')` : 'pickWeaponList()'}">Pick my apps</button>
     <p class="faint" style="text-align:center;margin:10px 0 0">Your choices never change your battle score.</p></div>`;
 }
 const WLABEL = {wall:'Fortress', cease:'Ceasefire', banish:'Banish', treasury:'Treasury', sentry:'The Sentry'};
@@ -1202,10 +1208,11 @@ function sharedListCard(){
     ${guardRows('list', W.list, {max:3})}</div>
     <p class="faint">Open a weapon to give it a custom list.</p>`;
 }
-async function pickWeaponList(weapon){
+async function pickWeaponList(weapon, then){
   const r = await ST.weaponListPick(weapon ? {weapon} : {}).catch(() => ({picked:false}));
   if (r.reason === 'many') toast('Up to 50 apps.');
   await loadWeapons(); repaint(); render();
+  if (then && hasList()) openWeapon(then);
 }
 async function weaponListReset(weapon){ await ST.weaponListReset({weapon}).catch(() => {}); await loadWeapons(); repaint(); }
 // The Sentry's one app (free play), chosen from the weapons list.

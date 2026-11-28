@@ -50,6 +50,8 @@ input[type=text]{font:17px var(--text);width:100%;height:56px;padding:0 18px;bor
 input.code{text-transform:uppercase;letter-spacing:4px;font-variant-numeric:tabular-nums}
 .dot{width:10px;height:10px;border-radius:50%;flex:none}
 .top{display:flex;justify-content:space-between;align-items:center;min-height:44px}
+/* Today's top-right crest (handoff 29): decorative only. */
+.crest{display:flex;flex-direction:column;align-items:center;gap:1px;pointer-events:none} .crest span{font-family:var(--display);font-weight:700;font-size:17px;line-height:1;color:var(--ink)}
 .icons{display:flex;gap:8px}
 .ib{width:44px;height:44px;border-radius:22px;background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--dim);padding:0;flex:none;font-size:22px;font-weight:400}
 .back{background:none;width:auto;padding:8px 0;color:var(--dim);font-size:15px;font-weight:600}
@@ -665,7 +667,8 @@ function todayView(){
   const m = todayMin, pts = m.points;
   const spent = TIERS.map(t => ({t, min:m[t.id]||0, pts:Math.floor((m[t.id]||0)/STEP)*t.cost}));
   return `
-  <div class="top"><span class="lbl" style="color:var(--dim)">${weekday(today())}</span></div>
+  <div class="top"><span class="lbl" style="color:var(--dim)">${weekday(today())}</span>
+    <div class="crest" aria-hidden="true">${crown(26)}<span>Conquer</span></div></div>
   <div style="margin-top:12px"><span class="lbl">Points left today</span>
     <div class="big">${fmt(pts)}</div>
     <div class="rule"><i></i><b></b><span class="s15">of ${fmt(BANK)} · renews at midnight</span></div></div>

@@ -141,6 +141,9 @@ select.selmini{width:auto;height:auto;color:var(--dim);font-size:15px;text-align
 .herald{background:linear-gradient(#2a2a31,#3a3226);padding:20px 14px}
 .herald .note{display:flex;gap:10px;background:rgba(20,18,16,.85);border-radius:16px;padding:12px;margin-top:12px}
 .mission.done b{text-decoration:line-through;color:var(--faint)} .mission.missed{opacity:.55}
+.mdot{width:22px;height:22px;border-radius:11px;border:1.5px solid rgba(236,228,208,.35);display:inline-flex;align-items:center;justify-content:center;flex:none;margin-right:12px;color:#141210}.mdot.done{background:var(--accent);border-color:var(--accent)}.mdot.done svg{width:14px;height:14px}.mdot.missed{opacity:.4}
+.qw{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.qw button{background:var(--card);border-radius:16px;padding:14px 4px;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--ink);font-weight:600;font-size:13px}.qw svg{width:26px;height:26px;color:var(--dim)}
+.tabbar .badge{position:relative}.tabbar .badge::after{content:'';position:absolute;top:4px;left:calc(50% + 12px);width:8px;height:8px;border-radius:4px;background:#8a2433;box-shadow:0 0 0 2px #0d0d0f}
 .mission .tick{width:26px;height:26px;border-radius:13px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex:none}
 .grow-row b{font-size:15px;font-weight:600} .grow-row .faint{font-size:13px}
 .slot{border-radius:18px;padding:14px 16px;margin:10px 0;display:flex;align-items:center;gap:12px}
@@ -484,6 +487,7 @@ async function refresh(){
   try {
     await ST.friendsResync().catch(()=>{});
     await ST.weaponsResume().catch(()=>{});
+    await loadWeapons().catch(()=>{});   // Today shows missions and active weapons
     tierInfo = await ST.tierStatus().catch(() => null);
     todayMin = await ST.friendsMinutes({day:today()}).catch(() => todayMin);
     wallUntil = dynasty() ? ((await ST.wallStatus().catch(() => ({until:0}))).until || 0) : 0;
@@ -655,7 +659,7 @@ function todayView(){
   const spent = TIERS.map(t => ({t, min:m[t.id]||0, pts:Math.floor((m[t.id]||0)/STEP)*t.cost}));
   return `
   <div class="top"><span class="lbl" style="color:var(--dim)">${weekday(today())}</span></div>
-  <div style="margin-top:26px"><span class="lbl">Points left today</span>
+  <div style="margin-top:12px"><span class="lbl">Points left today</span>
     <div class="big">${fmt(pts)}</div>
     <div class="rule"><i></i><b></b><span class="s15">of ${fmt(BANK)} · renews at midnight</span></div></div>
   <div class="bar"><i style="width:${pts/BANK*100}%;background:var(--accent)"></i>${spent.slice().reverse().map(s => `<i style="width:${s.pts/BANK*100}%;background:${s.t.color}"></i>`).join('')}</div>
@@ -665,8 +669,23 @@ function todayView(){
     <div><span class="dot" style="background:var(--free)"></span><span class="grow">Everything else · free</span><span class="num" style="color:var(--free)">0</span></div>
   </div>
   ${tierInfo && tierInfo.pending ? '<p class="faint">Your app color changes start tomorrow.</p>' : ''}
-  ${matchCard()}
+  ${todayMissions()}
+  ${todayWeapons()}
   ${!IS_APP ? demoTools() : ''}`;
+}
+// Today v2 (handoff section 25): no battles card. Missions and weapons sit under the points.
+function todayMissions(){
+  const list = missionsToday(), done = list.filter(m => m.state === 'done').length;
+  return `<div class="spread" style="margin:22px 0 8px;align-items:baseline"><span class="lbl">Today's missions</span><button class="link" style="padding:0;color:var(--dim)" onclick="openArmory('missions')">${done} of ${list.length} done ›</button></div>
+    <div class="card lines" style="padding:4px 16px">${list.map(m => `<div style="padding:12px 0"><span class="mdot ${m.state}">${m.state === 'done' ? ICON.check : ''}</span><span class="grow" style="${m.state === 'done' ? 'color:var(--faint);text-decoration:line-through' : m.state === 'missed' ? 'opacity:.5' : ''}">${m.name}</span><span class="faint" style="white-space:nowrap">${m.state === 'open' ? m.note : m.state === 'missed' ? 'Not today' : ''}</span></div>`).join('')}</div>`;
+}
+// A quick tile opens the weapon page, or the Dynasty offer when the weapon is locked (as in the Armory).
+function quickWeapon(id){ const w = WEAPONS.find(x => x.id === id); if (!w.free && !dynasty()) { openGold('', id); return; } openArmory(id); }
+function todayWeapons(){
+  const act = W ? WEAPONS.filter(w => w.id !== 'missions' && weaponLine(w.id)[2]) : [];
+  const quick = ['sentry', 'fortress', 'banish'].map(id => WEAPONS.find(w => w.id === id));
+  return `<div class="spread" style="margin:22px 0 8px;align-items:baseline"><span class="lbl">${act.length ? 'Weapons active now' : 'Your weapons'}</span><button class="link" style="padding:0;color:var(--dim)" onclick="openArmory()">Armory ›</button></div>
+    ${act.length ? act.map(w => wrow(w)).join('') : `<div class="qw">${quick.map(w => `<button onclick="quickWeapon('${w.id}')">${WICON[w.icon]}<span>${w.id === 'sentry' ? 'Sentry' : w.id === 'fortress' ? 'Fortress' : 'Banish'}</span></button>`).join('')}</div>`}`;
 }
 function matchCard(){
   const rs = rivals(), w = waiting();
@@ -719,7 +738,8 @@ function tabBar(){
   if (!show) { if (bar) bar.remove(); return; }
   if (!bar) { bar = document.createElement('nav'); bar.id = 'tabbar'; bar.className = 'tabbar'; document.body.appendChild(bar); }
   const cur = curTab();
-  bar.innerHTML = `<div>${TABS.map(([id, name, ic]) => `<button class="${id === cur ? 'on' : ''}" aria-label="${name}" onclick="goTab('${id}')">${ic()}<span>${name}</span></button>`).join('')}</div>`;
+  const unseen = (S.seen || '') < resultDay() && dayCrowns(resultDay()).of > 0;
+  bar.innerHTML = `<div>${TABS.map(([id, name, ic]) => `<button class="${id === cur ? 'on' : ''}${id === 'matches' && unseen ? ' badge' : ''}" aria-label="${name}" onclick="goTab('${id}')">${ic()}<span>${name}</span></button>`).join('')}</div>`;
 }
 function goTab(id){
   if (id === curTab() && !(id === 'armory' && pageState.weapon)) return;
@@ -1400,7 +1420,7 @@ function showReveal(day){
 function breakSeal(day, rs, head){
   const b = $('#sealbtn'); b.onclick = null; b.classList.remove('bf-bob'); b.classList.add('bf-open');
   fx('seal');
-  S.seen = [S.seen || '', day].sort().pop(); S.seenAt = Date.now(); save(); pushWidget();
+  S.seen = [S.seen || '', day].sort().pop(); S.seenAt = Date.now(); save(); pushWidget(); tabBar();
   setTimeout(() => showResult(day, rs, head), reduced() ? 0 : 650);
 }
 function confetti(o){

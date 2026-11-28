@@ -7,7 +7,8 @@ import UserNotifications
 // Conquer's weapons against screen time (design handoff sections 18 to 20). This one file is compiled into the app,
 // BlipMonitor and both shield extensions, so the lock rules live in one place.
 // Everything stays on this phone, in the App Group. No weapon ever changes points or who wins.
-// Locks use the Red apps the player picked in Apple's picker ("tier-red"). Texts, calls and Maps are never on that list.
+// Locks use the apps (and websites) the player picked one by one for the weapons ("wlist"), never whole categories,
+// so nothing important gets locked (Matthew 2026-11-28). Scoring still uses the Red and Orange tiers.
 enum Weapons {
     static let group = "group.io.github.gamesbyvidal.lifetime"
     static var d: UserDefaults? { UserDefaults(suiteName: group) }
@@ -18,6 +19,33 @@ enum Weapons {
         return s
     }
     static var red: FamilyActivitySelection? { selection("tier-red") }
+    // What a weapon locks. One shared list for now ("wlist"); a weapon's own list ("wlist-<weapon>") wins if one is ever saved.
+    // weapon: "wall" (Fortress), "cease", "banish", "treasury", "sentry".
+    static let listMax = 50
+    static func targets(_ weapon: String) -> FamilyActivitySelection? {
+        for key in ["wlist-" + weapon, "wlist"] {
+            if let data = d?.data(forKey: key), let s = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data),
+               !(s.applicationTokens.isEmpty && s.webDomainTokens.isEmpty) { return s }
+        }
+        return nil
+    }
+    // Build 13 locked whole Red categories (Messages and WhatsApp got caught). Once, lift any such lock; settings are kept.
+    static func migrateToList() {
+        guard d?.bool(forKey: "wlist-migrated") != true else { return }
+        for n in ["banish", "cease", "treasury", "wall"] { unlock(n) }
+        d?.removeObject(forKey: "banish-until"); d?.removeObject(forKey: "wall-until"); d?.removeObject(forKey: "treasury-out"); d?.removeObject(forKey: "cease-on")
+        DeviceActivityCenter().stopMonitoring([DeviceActivityName("banish"), DeviceActivityName("wall"), DeviceActivityName("treasury")])
+        d?.set(true, forKey: "wlist-migrated")
+    }
+    // After the list changes: locks that are on right now switch to the new list, and Treasury counts the new list.
+    static func relockActive() {
+        if banishUntil > 0, let t = targets("banish") { lock("banish", t) }
+        if ceaseActive, let t = targets("cease") { lock("cease", t) }
+        if treasuryOut, let t = targets("treasury") { lock("treasury", t) }
+        if fortressUntil > 0, let t = targets("wall") { lock("wall", t) }
+        startTreasury()
+        applySentry()
+    }
     static func store(_ name: String) -> ManagedSettingsStore { ManagedSettingsStore(named: ManagedSettingsStore.Name(name)) }
 
     static func lock(_ name: String, _ s: FamilyActivitySelection, except: Set<ApplicationToken> = [], exceptCats: Set<ActivityCategoryToken> = []) {
@@ -26,6 +54,7 @@ enum Weapons {
         st.shield.applications = apps.isEmpty ? nil : apps
         st.shield.applicationCategories = cats.isEmpty ? nil : .specific(cats, except: except)
         st.shield.webDomainCategories = s.categoryTokens.isEmpty ? nil : .specific(s.categoryTokens)
+        st.shield.webDomains = s.webDomainTokens.isEmpty ? nil : s.webDomainTokens
     }
     static func unlock(_ name: String) { store(name).clearAllSettings() }
 
@@ -64,12 +93,12 @@ enum Weapons {
     static func keeps(_ n: DeviceActivityName) -> Bool { n.rawValue.hasPrefix("cease-") || ["wall", "banish", "treasury", "sentry-pass"].contains(n.rawValue) }
 
     // ---------- The Sentry: a 5-second pause before a guarded app, then a 15-minute pass ----------
-    // "sentry-mode": "one" (free: the one app in "sentry-sel") or "all" (Dynasty: every Red app). Anything else is off.
+    // "sentry-mode": "one" (free: the one app in "sentry-sel") or "all" (Dynasty: every app on the weapons list). Anything else is off.
     static let passMinutes = 15.0
     static func sentryTarget() -> FamilyActivitySelection? {
         switch d?.string(forKey: "sentry-mode") {
         case "one": return selection("sentry-sel")
-        case "all": return red
+        case "all": return targets("sentry")
         default: return nil
         }
     }
@@ -108,7 +137,7 @@ enum Weapons {
     }
     static var banishUntil: Double { let u = d?.double(forKey: "banish-until") ?? 0; return u > now() ? u : 0 }
     static func banish() -> Double {
-        guard let r = red else { return 0 }
+        guard let r = targets("banish") else { return 0 }
         let until = nextMorning()
         lock("banish", r); d?.set(until.timeIntervalSince1970, forKey: "banish-until")
         startOnce("banish", until: until)
@@ -163,7 +192,7 @@ enum Weapons {
     }
     static func ceaseStarted(_ name: String) {
         var on = Set(d?.stringArray(forKey: "cease-on") ?? []); on.insert(name); d?.set(Array(on), forKey: "cease-on")
-        if let r = red { lock("cease", r) }
+        if let r = targets("cease") { lock("cease", r) }
     }
     static func ceaseEnded(_ name: String) {
         var on = Set(d?.stringArray(forKey: "cease-on") ?? []); on.remove(name); d?.set(Array(on), forKey: "cease-on")
@@ -182,19 +211,19 @@ enum Weapons {
     static func startTreasury() {
         let center = DeviceActivityCenter(), n = DeviceActivityName("treasury")
         let m = treasuryMinutes
-        guard m > 0, let r = red else { center.stopMonitoring([n]); unlock("treasury"); return }
+        guard m > 0, let r = targets("treasury") else { center.stopMonitoring([n]); unlock("treasury"); return }
         let ev: DeviceActivityEvent
         if #available(iOS 17.4, *) {
-            ev = DeviceActivityEvent(applications: r.applicationTokens, categories: r.categoryTokens, webDomains: [], threshold: DateComponents(minute: m), includesPastActivity: true)
+            ev = DeviceActivityEvent(applications: r.applicationTokens, categories: r.categoryTokens, webDomains: r.webDomainTokens, threshold: DateComponents(minute: m), includesPastActivity: true)
         } else {
-            ev = DeviceActivityEvent(applications: r.applicationTokens, categories: r.categoryTokens, webDomains: [], threshold: DateComponents(minute: m))
+            ev = DeviceActivityEvent(applications: r.applicationTokens, categories: r.categoryTokens, webDomains: r.webDomainTokens, threshold: DateComponents(minute: m))
         }
         let schedule = DeviceActivitySchedule(intervalStart: DateComponents(hour: 0, minute: 0), intervalEnd: DateComponents(hour: 23, minute: 59, second: 59), repeats: true)
         do { try center.startMonitoring(n, during: schedule, events: [DeviceActivityEvent.Name("spent"): ev]) }
         catch { center.stopMonitoring([n]); try? center.startMonitoring(n, during: schedule, events: [DeviceActivityEvent.Name("spent"): ev]) }
     }
     static func treasurySpent() {
-        guard treasuryMinutes > 0, let r = red else { return }
+        guard treasuryMinutes > 0, let r = targets("treasury") else { return }
         lock("treasury", r); d?.set(dayString(), forKey: "treasury-out")
     }
     static func treasuryNewDay() { unlock("treasury"); d?.removeObject(forKey: "treasury-out") }
@@ -234,7 +263,7 @@ enum Weapons {
     // Which lock is showing on an app right now, for the shield's words. Hard locks come before the Sentry.
     enum Why { case fortress(Double), ceasefire(Double?), banish(Double), treasury, sentry }
     static func why(_ app: ApplicationToken?, category: ActivityCategoryToken? = nil) -> Why {
-        let onRed: Bool = { guard let r = red else { return false }; return (app.map { r.applicationTokens.contains($0) } ?? false) || (category.map { r.categoryTokens.contains($0) } ?? false) }()
+        let onRed: Bool = { guard let r = targets("wall") ?? targets("banish") else { return false }; return (app.map { r.applicationTokens.contains($0) } ?? false) || (category.map { r.categoryTokens.contains($0) } ?? false) }()
         if onRed {
             if fortressUntil > 0 { return .fortress(fortressUntil) }
             if banishUntil > 0 { return .banish(banishUntil) }

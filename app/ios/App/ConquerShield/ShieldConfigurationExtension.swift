@@ -16,8 +16,8 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
     override func configuration(shielding application: Application, in category: ActivityCategory) -> ShieldConfiguration {
         make(application.token, category: category.token, name: application.localizedDisplayName)
     }
-    override func configuration(shielding webDomain: WebDomain) -> ShieldConfiguration { locked("Locked for now", "This site is one of your Red apps.") }
-    override func configuration(shielding webDomain: WebDomain, in category: ActivityCategory) -> ShieldConfiguration { locked("Locked for now", "This site is one of your Red apps.") }
+    override func configuration(shielding webDomain: WebDomain) -> ShieldConfiguration { locked("Locked for now", "This site is on your weapons list.") }
+    override func configuration(shielding webDomain: WebDomain, in category: ActivityCategory) -> ShieldConfiguration { locked("Locked for now", "This site is on your weapons list.") }
 
     // The app icon crown with its gold glow (handoff section 21). Every shield uses it.
     private func crown() -> UIImage? { UIImage(named: "SentryCrown") ?? UIImage(systemName: "crown.fill")?.withTintColor(gold, renderingMode: .alwaysOriginal) }
@@ -44,10 +44,10 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
 
     private func make(_ token: ApplicationToken?, category: ActivityCategoryToken?, name: String?) -> ShieldConfiguration {
         switch Weapons.why(token, category: category) {
-        case .fortress(let u): return locked("Fortress mode", "Your Red apps are locked until \(Weapons.clock(u)).")
-        case .banish(let u): return locked("Banished", "Your Red apps are gone until \(Weapons.clock(u)).")
-        case .ceasefire(let u): return locked("Ceasefire", u.map { "Your Red apps are locked until \(Weapons.clock($0))." } ?? "Your Red apps are locked for now.")
-        case .treasury: return locked("Treasury is empty", "Your Red apps are locked until midnight.")
+        case .fortress(let u): return locked("Fortress mode", "The apps on your list are locked until \(Weapons.clock(u)).")
+        case .banish(let u): return locked("Banished", "The apps on your list are gone until \(Weapons.clock(u)).")
+        case .ceasefire(let u): return locked("Ceasefire", u.map { "The apps on your list are locked until \(Weapons.clock($0))." } ?? "The apps on your list are locked for now.")
+        case .treasury: return locked("Treasury is empty", "The apps on your list are locked until midnight.")
         case .sentry:
             let app = name ?? "This app"
             // A whole-category lock reports the category to the button handler, so the pause is kept per category then.

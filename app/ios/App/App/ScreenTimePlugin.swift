@@ -59,7 +59,9 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "treasurySet", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "heraldSet", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "redHours", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "guardLabels", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "guardLabels", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "weaponListPick", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "sentryFromList", returnType: CAPPluginReturnPromise)
     ]
 
     static let group = "group.io.github.gamesbyvidal.lifetime"
@@ -778,12 +780,9 @@ extension ScreenTimePlugin {
     @objc func wallStart(_ call: CAPPluginCall) {
         let d = UserDefaults(suiteName: Self.group)
         let hours = max(1, min(4, call.getInt("hours") ?? 1))
-        guard let sel = Friends.selection(d, "red"), !(sel.applicationTokens.isEmpty && sel.categoryTokens.isEmpty) else { call.reject("No Red apps picked"); return }
+        guard let sel = Weapons.targets("wall") else { call.reject("No weapons list picked"); return }
         let now = Date(), end = now.addingTimeInterval(Double(hours) * 3600)
-        let store = ManagedSettingsStore(named: ManagedSettingsStore.Name("wall"))
-        store.shield.applications = sel.applicationTokens.isEmpty ? nil : sel.applicationTokens
-        store.shield.applicationCategories = sel.categoryTokens.isEmpty ? nil : .specific(sel.categoryTokens)
-        store.shield.webDomainCategories = sel.categoryTokens.isEmpty ? nil : .specific(sel.categoryTokens)
+        Weapons.lock("wall", sel)
         d?.set(end.timeIntervalSince1970, forKey: "wall-until")
         let cal = Calendar.current, parts: Set<Calendar.Component> = [.year, .month, .day, .hour, .minute, .second]
         let schedule = DeviceActivitySchedule(intervalStart: cal.dateComponents(parts, from: now.addingTimeInterval(-60)),
@@ -902,7 +901,7 @@ extension ScreenTimePlugin {
         let pend = d?.array(forKey: "cease-next")
         let out: [String: Any] = [
             "sentry": ["mode": d?.string(forKey: "sentry-mode") ?? "off", "apps": s?.applicationTokens.count ?? 0, "since": d?.string(forKey: "sentry-since") ?? ""] as [String: Any],
-            "red": ["apps": Weapons.red?.applicationTokens.count ?? 0, "cats": Weapons.red?.categoryTokens.count ?? 0, "webs": Weapons.red?.webDomainTokens.count ?? 0] as [String: Any],
+            "list": ["apps": Weapons.targets("wall")?.applicationTokens.count ?? 0, "webs": Weapons.targets("wall")?.webDomainTokens.count ?? 0, "max": Weapons.listMax] as [String: Any],
             "fortress": Weapons.fortressUntil,
             "banish": Weapons.banishUntil, "morning": Weapons.morningMinutes,
             "cease": pend ?? (Weapons.ceaseList() as [Any]), "ceasePending": pend != nil, "ceaseOn": Weapons.ceaseActive,
@@ -914,6 +913,7 @@ extension ScreenTimePlugin {
     // Each app open: apply changes that were waiting for a new day, and tidy up locks whose time has passed.
     @objc func weaponsResume(_ call: CAPPluginCall) {
         Self.work.async {
+            Weapons.migrateToList()
             if Weapons.applyCeasePending() { Weapons.startCeasefires() }
             if Weapons.applyTreasuryPending() { Weapons.startTreasury() }
             if (Weapons.d?.double(forKey: "banish-until") ?? 0) > 0 && Weapons.banishUntil == 0 { Weapons.endBanish() }
@@ -946,7 +946,39 @@ extension ScreenTimePlugin {
             self.bridge?.viewController?.present(host, animated: true)
         }
     }
-    // mode: "off", "one" (the picked app) or "all" (every Red app; Dynasty).
+    // What the weapons lock, picked app by app (and websites). Whole categories are refused: Apple gives a sealed token for a
+    // category, so the app can't tell which apps are in it, and Messages or WhatsApp could get locked.
+    @objc func weaponListPick(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            var saved = FamilyActivitySelection()
+            if let data = Weapons.d?.data(forKey: "wlist"), let old = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) { saved = old }
+            let picker = WeaponListPickerView(selection: saved) { picked in
+                self.bridge?.viewController?.dismiss(animated: true)
+                guard let picked = picked else { call.resolve(["picked": false]); return }
+                if !picked.categoryTokens.isEmpty { call.resolve(["picked": false, "reason": "category"]); return }
+                if picked.applicationTokens.count > Weapons.listMax { call.resolve(["picked": false, "reason": "many"]); return }
+                if let data = try? JSONEncoder().encode(picked) { Weapons.d?.set(data, forKey: "wlist") }
+                Self.work.async { Weapons.relockActive(); call.resolve(["picked": true, "apps": picked.applicationTokens.count, "webs": picked.webDomainTokens.count]) }
+            }
+            let host = UIHostingController(rootView: picker)
+            host.overrideUserInterfaceStyle = .dark
+            self.bridge?.viewController?.present(host, animated: true)
+        }
+    }
+    // The Sentry's one app, chosen from the weapons list by its place in it (the order the page shows).
+    @objc func sentryFromList(_ call: CAPPluginCall) {
+        let i = call.getInt("i") ?? -1
+        guard let s = Weapons.targets("sentry") else { call.reject("No list"); return }
+        let apps = GuardOrder.apps(s)
+        guard i >= 0, i < apps.count else { call.reject("No such app"); return }
+        var one = FamilyActivitySelection(); one.applicationTokens = [apps[i]]
+        if let data = try? JSONEncoder().encode(one) { Weapons.d?.set(data, forKey: "sentry-sel") }
+        Weapons.d?.set(Weapons.dayString(), forKey: "sentry-since")
+        if Weapons.d?.string(forKey: "sentry-mode") == nil || Weapons.d?.string(forKey: "sentry-mode") == "off" { Weapons.d?.set("one", forKey: "sentry-mode") }
+        Weapons.applySentry()
+        call.resolve(["picked": true])
+    }
+    // mode: "off", "one" (the picked app) or "all" (every app on the weapons list; Dynasty).
     @objc func sentrySet(_ call: CAPPluginCall) {
         let mode = call.getString("mode") ?? "off"
         Weapons.d?.set(["one", "all"].contains(mode) ? mode : "off", forKey: "sentry-mode")
@@ -1074,18 +1106,13 @@ private final class GuardLayer: UIView {
 
     // The items behind a key, in a fixed order so "red:3" always means the same app.
     private func list(_ key: String) -> [GuardItem] {
-        let dkey = key == "sentry" ? "sentry-sel" : "tier-red"
+        let dkey = key == "sentry" ? "sentry-sel" : "wlist"
         guard let data = Weapons.d?.data(forKey: dkey) else { return [] }
         if cacheData[key] == data, let l = cacheItems[key] { return l }
         guard let s = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) else { return [] }
-        let enc = { (e: Encodable) -> String in (try? JSONEncoder().encode(AnyEnc(e)))?.base64EncodedString() ?? "" }
-        let ordered: ([(String, GuardItem)]) -> [GuardItem] = { pairs in pairs.sorted { $0.0 < $1.0 }.map { $0.1 } }
-        let apps: [(String, GuardItem)] = s.applicationTokens.map { t in (enc(t), GuardItem.app(t)) }
-        let cats: [(String, GuardItem)] = s.categoryTokens.map { t in (enc(t), GuardItem.cat(t)) }
-        let webs: [(String, GuardItem)] = s.webDomainTokens.map { t in (enc(t), GuardItem.web(t)) }
-        var l: [GuardItem] = ordered(apps)
-        l.append(contentsOf: ordered(cats))
-        l.append(contentsOf: ordered(webs))
+        var l: [GuardItem] = GuardOrder.apps(s).map { GuardItem.app($0) }
+        l.append(contentsOf: GuardOrder.cats(s).map { GuardItem.cat($0) })
+        l.append(contentsOf: GuardOrder.webs(s).map { GuardItem.web($0) })
         cacheData[key] = data; cacheItems[key] = l
         return l
     }
@@ -1112,6 +1139,22 @@ private final class GuardLayer: UIView {
         for (id, h) in hosts where !keep.contains(id) { h.view.removeFromSuperview(); hosts[id] = nil }
     }
 }
+// A fixed order for picked items, so "list:3" always means the same app: apps, then categories, then websites.
+private enum GuardOrder {
+    static func key<T: Encodable>(_ t: T) -> String { (try? JSONEncoder().encode(t))?.base64EncodedString() ?? "" }
+    static func apps(_ s: FamilyActivitySelection) -> [ApplicationToken] {
+        let pairs: [(String, ApplicationToken)] = s.applicationTokens.map { (key($0), $0) }
+        return pairs.sorted { $0.0 < $1.0 }.map { $0.1 }
+    }
+    static func cats(_ s: FamilyActivitySelection) -> [ActivityCategoryToken] {
+        let pairs: [(String, ActivityCategoryToken)] = s.categoryTokens.map { (key($0), $0) }
+        return pairs.sorted { $0.0 < $1.0 }.map { $0.1 }
+    }
+    static func webs(_ s: FamilyActivitySelection) -> [WebDomainToken] {
+        let pairs: [(String, WebDomainToken)] = s.webDomainTokens.map { (key($0), $0) }
+        return pairs.sorted { $0.0 < $1.0 }.map { $0.1 }
+    }
+}
 private struct AnyEnc: Encodable {
     let e: Encodable
     init(_ e: Encodable) { self.e = e }
@@ -1128,6 +1171,63 @@ private extension UIColor {
         if h.hasPrefix("#") { h.removeFirst() }
         guard h.count == 6, let v = Int(h, radix: 16) else { return nil }
         self.init(red: CGFloat((v >> 16) & 255) / 255, green: CGFloat((v >> 8) & 255) / 255, blue: CGFloat(v & 255) / 255, alpha: 1)
+    }
+}
+
+// Apple's list for the weapons, with a tip pinned above it (handoff section 28). A whole group can't be used: the note
+// names it and Done stays off until it's unticked.
+private struct WeaponListPickerView: View {
+    @State var selection: FamilyActivitySelection
+    let done: (FamilyActivitySelection?) -> Void
+    private var apps: Int { selection.applicationTokens.count }
+    private var webs: Int { selection.webDomainTokens.count }
+    private var ok: Bool { selection.categoryTokens.isEmpty && apps <= Weapons.listMax && (apps + webs) > 0 }
+    private func chip(_ t: String) -> some View {
+        Text(t).font(.system(size: 14, weight: .semibold)).foregroundColor(ConquerStyle.ink)
+            .padding(.horizontal, 12).padding(.vertical, 6).background(ConquerStyle.bg.opacity(0.6)).clipShape(Capsule())
+    }
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Tick apps one by one").font(.system(size: 17, weight: .semibold)).foregroundColor(ConquerStyle.ink)
+                    Text("Open a group and tick single apps. Don't tick a whole group. Keep Phone, Maps and Messages off this list.")
+                        .font(.system(size: 14)).foregroundColor(ConquerStyle.dim).fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 8) {
+                        chip(apps == 1 ? "1 app" : "\(apps) apps")
+                        chip(webs == 1 ? "1 website" : "\(webs) websites")
+                    }.padding(.top, 2)
+                    if apps > Weapons.listMax {
+                        Text("Up to \(Weapons.listMax) apps. Untick a few.").font(.system(size: 14, weight: .semibold)).foregroundColor(ConquerStyle.red)
+                    }
+                }
+                .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                .background(ConquerStyle.card).clipShape(RoundedRectangle(cornerRadius: 16))
+                if let c = selection.categoryTokens.first {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("You ticked a whole group").font(.system(size: 16, weight: .semibold)).foregroundColor(ConquerStyle.ink)
+                        HStack(spacing: 4) {
+                            Text("Weapons lock only apps you pick one by one, so untick").font(.system(size: 14)).foregroundColor(ConquerStyle.dim)
+                            Label(c).labelStyle(.titleOnly).font(.system(size: 14, weight: .semibold)).foregroundColor(ConquerStyle.ink)
+                        }
+                        Text("and choose apps inside it.").font(.system(size: 14)).foregroundColor(ConquerStyle.dim)
+                    }
+                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(red: 0x2a/255, green: 0x16/255, blue: 0x1a/255))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(red: 0x8a/255, green: 0x24/255, blue: 0x33/255), lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                FamilyActivityPicker(selection: $selection)
+            }
+            .padding(.horizontal, 12).padding(.top, 8)
+            .background(ConquerStyle.bg.ignoresSafeArea())
+            .navigationTitle("What your weapons lock")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { done(nil) } }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { done(selection) }.disabled(!ok) }
+            }
+        }
     }
 }
 

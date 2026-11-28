@@ -1050,7 +1050,10 @@ function armoryBack(){ pageState.weapon = null; pageState.guardAll = false; repa
 function openWeapon(id){
   const w = WEAPONS.find(x => x.id === id);
   if (!w.free && !dynasty()) { openGold('', id); return; }
-  pageState.weapon = id; pageState.guardAll = false; repaint();
+  pageState.guardAll = false;
+  // From Today (no Armory page open), open the Armory on this weapon.
+  if (curTab() !== 'armory') { openArmory(id); return; }
+  pageState.weapon = id; repaint();
 }
 // The line under each name, and the note on the right.
 function weaponLine(id){

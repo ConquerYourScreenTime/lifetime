@@ -22,12 +22,19 @@ enum Weapons {
     // What a weapon locks. One shared list for now ("wlist"); a weapon's own list ("wlist-<weapon>") wins if one is ever saved.
     // weapon: "wall" (Fortress), "cease", "banish", "treasury", "sentry".
     static let listMax = 50
+    static let weaponNames = ["wall", "cease", "banish", "treasury", "sentry"]
     static func targets(_ weapon: String) -> FamilyActivitySelection? {
-        for key in ["wlist-" + weapon, "wlist"] {
+        for key in (weapon.isEmpty ? ["wlist"] : ["wlist-" + weapon, "wlist"]) {
             if let data = d?.data(forKey: key), let s = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data),
                !(s.applicationTokens.isEmpty && s.webDomainTokens.isEmpty) { return s }
         }
         return nil
+    }
+    // Counts for the page: apps, websites, and whether the weapon has its own list (nil = the shared list).
+    static func listInfo(_ weapon: String?) -> [String: Any] {
+        let t = targets(weapon ?? "")
+        return ["apps": t?.applicationTokens.count ?? 0, "webs": t?.webDomainTokens.count ?? 0, "max": listMax,
+                "own": weapon.map { d?.data(forKey: "wlist-" + $0) != nil } ?? false]
     }
     // Build 13 locked whole Red categories (Messages and WhatsApp got caught). Once, lift any such lock; settings are kept.
     static func migrateToList() {

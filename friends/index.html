@@ -125,7 +125,7 @@ a.ul{color:inherit;text-decoration:underline}
 .gicon{width:36px;height:36px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;font-size:24px}
 .grow-g{display:flex;align-items:center;gap:12px;min-height:50px;border-top:1px solid var(--line)} .glist .grow-g:first-child{border-top:none}
 .advbars{display:grid;grid-template-columns:repeat(7,1fr);gap:6px} .advbars div{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:var(--faint)} .advbars i{width:100%;height:28px;border-radius:6px;background:var(--card2)} .advbars i.on{background:var(--accent)}
-.gseg{margin:0 0 10px} .picklist p{margin:6px 0}
+.gseg{margin:0 0 10px} .cpill{background:var(--accent);color:#141210;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:6px} .twobtn{display:grid;grid-template-columns:1fr 1fr;gap:8px} .twobtn button{font-size:15px;padding:12px 6px} .picklist p{margin:6px 0}
 .gcount{color:#d9d0b8;font-weight:600;font-size:13px;margin:0 0 8px}
 .wico{width:40px;height:40px;border-radius:11px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--dim);flex:none}
 .wright{font-size:14px;font-weight:600;color:var(--dim);text-align:right;flex:none;max-width:40%} .wright.gold{color:var(--gold)}
@@ -269,9 +269,11 @@ const fakeST = {
   async env(){ return {testflight:true}; },
   _w(){ const d = this._d(); return d.w = d.w || {sentry:{mode:'off', apps:0, since:''}, banish:0, morning:420, cease:[], treasury:0, treasuryNow:0, herald:false, heraldAt:720}; },
   _list(){ return this._d().wlist || {apps:0, webs:0, max:50}; },
-  async weaponListPick(){ this._d().wlist = {apps:5, webs:2, max:50}; save(); return {picked:true, apps:5, webs:2}; },
+  _lists(){ const d = this._d(), o = {}; for (const w of ['wall', 'cease', 'banish', 'treasury', 'sentry']) o[w] = (d.wl || {})[w] ? {...d.wl[w], own:true} : {...this._list(), own:false}; return o; },
+  async weaponListPick({weapon} = {}){ const d = this._d(); if (!weapon || !d.wlist) d.wlist = {apps:5, webs:2, max:50}; else (d.wl = d.wl || {})[weapon] = {apps:3, webs:0, max:50}; save(); return {picked:true}; },
+  async weaponListReset({weapon}){ const d = this._d(); if (d.wl) delete d.wl[weapon]; save(); return {}; },
   async sentryFromList({i}){ const w = this._w(); w.sentry = {mode: w.sentry.mode === 'all' ? 'all' : 'one', apps:1, since:today()}; save(); return {picked:true}; },
-  async weaponStatus(){ const w = this._w(); return {...w, list: this._list(), fortress: this._d().wall > Date.now()/1000 ? this._d().wall : 0, ceasePending:false, ceaseOn:false, treasuryOut:false}; },
+  async weaponStatus(){ const w = this._w(); return {...w, list: this._list(), lists: this._lists(), fortress: this._d().wall > Date.now()/1000 ? this._d().wall : 0, ceasePending:false, ceaseOn:false, treasuryOut:false}; },
   async weaponsResume(){ return {}; },
   async sentryPick(){ const w = this._w(); w.sentry = {mode: w.sentry.mode === 'all' ? 'all' : 'one', apps:1, since:today()}; save(); return {picked:true}; },
   async sentrySet({mode}){ this._w().sentry.mode = mode; save(); return {}; },
@@ -1022,7 +1024,7 @@ const WICON = {
   door: SW + '<path d="M4 21V10a8 8 0 0 1 16 0v11"/><path d="M3 21h18"/><path d="M8 5.2V21M12 4v17M16 5.2V21M4 13h16M4 17h16"/></svg>',   // Banish: portcullis down
   coins: SW + '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>',
   scroll: SW + '<path d="M8 3h10v15a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-1h11v1a3 3 0 0 0 3 3M8 3a2 2 0 0 0-2 2v12M10 8h5M10 12h5"/></svg>',
-  horn: SW + '<path d="M4 10v4h3l7 4V6l-7 4zM17 9a4 4 0 0 1 0 6"/></svg>',
+  horn: SW + '<path d="M3 6.5v3M3 8h11"/><path d="M14 7.2 21 4v8l-7-3.2"/><path d="M6 8.5v8.5l3.5-2.2L13 17V8.5"/></svg>',
 };
 const WEAPONS = [
   {id:'sentry', name:'The Sentry', icon:'shield', free:true},
@@ -1097,7 +1099,7 @@ function armoryView(){
   if (pageState.weapon) return weaponPage(pageState.weapon);
   let top = `${backBar('My Armory')}<p class="dim s15" style="margin-top:0">Your weapons against screen time.</p>`;
   if (!W) return top + '<p class="faint">Loading…</p>';
-  top += hasList() ? guardList('What your weapons lock', {note: 'One list for every weapon. Each weapon page shows it too, with an Edit link.'}) : pickCard();
+  top += hasList() ? sharedListCard() : pickCard();
   if (!dynasty()) {
     const ready = WEAPONS.filter(w => w.free), locked = [WEAPONS[0], ...WEAPONS.filter(w => !w.free)];
     return top + `<p class="lbl" style="margin:18px 0 8px">Ready to use</p>${ready.map(w => wrow(w)).join('')}
@@ -1126,6 +1128,8 @@ function plural(n, one, many){ return n + ' ' + (n === 1 ? one : many); }
 // What the weapons lock (handoff sections 22, 26, 28): one list of single apps and websites, picked one by one.
 // Rows are Apple's labels; the tabs split apps and websites. With no list yet, the first-time card shows instead.
 const hasList = () => { const l = (W && W.list) || {}; return (l.apps || 0) + (l.webs || 0) > 0; };
+// The page's weapon ids, as the phone names them.
+const WNAME = {fortress:'wall', ceasefire:'cease', banish:'banish', treasury:'treasury', sentry:'sentry'};
 function pickCard(){
   return `<div class="card" style="padding:22px 20px"><div style="color:var(--ink)">${WICON.swords}</div>
     <h2 style="margin:12px 0 8px">Choose what your weapons lock</h2>
@@ -1134,25 +1138,48 @@ function pickCard(){
     <button class="main" style="margin-top:14px" onclick="pickWeaponList()">Pick my apps</button>
     <p class="faint" style="text-align:center;margin:10px 0 0">Your choices never change your battle score.</p></div>`;
 }
-function guardList(title, opts){
-  if (!hasList()) return `<p class="lbl" style="margin:18px 0 8px">${title}</p>` + pickCard();
-  const l = W.list, a = l.apps || 0, w = l.webs || 0;
+const WLABEL = {wall:'Fortress', cease:'Ceasefire', banish:'Banish', treasury:'Treasury', sentry:'The Sentry'};
+// The rows of one list with Apps | Websites tabs. key: 'list' (shared) or 'list-<weapon>'.
+function guardRows(key, l){
+  const a = l.apps || 0, w = l.webs || 0;
   const kind = (pageState.gkind === 'webs' && w) || !a ? 'webs' : 'apps', n = kind === 'apps' ? a : w, base = kind === 'apps' ? 0 : a;
   const shown = pageState.guardAll ? n : Math.min(n, 5);
-  const seg = a && w ? `<div class="tabs gseg">${[['apps', 'Apps ' + a], ['webs', 'Websites ' + w]].map(([k, t]) => `<button class="${k === kind ? 'on' : ''}" onclick="pageState.gkind='${k}';pageState.guardAll=false;repaint()">${t}</button>`).join('')}</div>`
-    : `<p class="gcount">${[a && plural(a, 'app', 'apps'), w && plural(w, 'website', 'websites')].filter(Boolean).join(' · ')}</p>`;
-  const row = i => `<div class="grow-g">${guardBox('list', base + i, 'icon')}<div class="grow" style="min-width:0">${guardBox('list', base + i, 'title', 'height:22px')}</div></div>`;
-  return `<div class="spread" style="margin:18px 0 6px;align-items:baseline"><span class="lbl">${title}</span><button class="link" style="padding:0;color:var(--ink)" onclick="pickWeaponList()">Edit</button></div>${seg}
-    <div class="card glist" style="padding:2px 14px">${Array.from({length:shown}, (_, i) => row(i)).join('')}
-    ${n > shown ? `<button class="link" style="padding:12px 0;border-top:1px solid var(--line);width:100%;text-align:center;color:var(--ink)" onclick="pageState.guardAll=true;repaint()">Show all ${n} ${kind === 'apps' ? 'apps' : 'websites'}</button>` : ''}</div>
-    ${opts && opts.note ? `<p class="faint">${opts.note}</p>` : ''}`;
+  const seg = `<div class="tabs gseg">${[['apps', 'Apps ' + a], ['webs', 'Websites ' + w]].map(([k, t]) => `<button class="${k === kind ? 'on' : ''}" onclick="pageState.gkind='${k}';pageState.guardAll=false;repaint()">${t}</button>`).join('')}</div>`;
+  const row = i => `<div class="grow-g">${guardBox(key, base + i, 'icon')}<div class="grow" style="min-width:0">${guardBox(key, base + i, 'title', 'height:22px')}</div></div>`;
+  return seg + `<div class="card glist" style="padding:2px 14px">${Array.from({length:shown}, (_, i) => row(i)).join('')}
+    ${n > shown ? `<button class="link" style="padding:12px 0;border-top:1px solid var(--line);width:100%;text-align:center;color:var(--ink)" onclick="pageState.guardAll=true;repaint()">Show all ${n} ${kind === 'apps' ? 'apps' : 'websites'}</button>` : ''}</div>`;
 }
-async function pickWeaponList(){
-  const r = await ST.weaponListPick().catch(() => ({picked:false}));
+// A weapon's "What it locks" (handoff section 28b): the shared list it follows, or its own custom list.
+function guardList(title, opts){
+  const wn = WNAME[(opts || {}).weapon];
+  if (!hasList()) return `<p class="lbl" style="margin:18px 0 8px">${title}</p>` + pickCard();
+  const l = (W.lists && W.lists[wn]) || W.list, name = WLABEL[wn];
+  if (l.own) return `<div class="spread" style="margin:18px 0 6px;align-items:center"><span class="row" style="gap:8px"><span class="lbl">${title}</span><span class="cpill">Custom list</span></span><button class="link" style="padding:0;color:var(--ink)" onclick="pickWeaponList('${wn}')">Edit</button></div>
+    ${guardRows('list-' + wn, l)}
+    <div style="text-align:center"><button class="link" style="color:var(--ink)" onclick="weaponListReset('${wn}')">Use my shared list again</button></div>`;
+  return `<p class="lbl" style="margin:18px 0 6px">${title}</p>${guardRows('list-' + wn, l)}
+    <p class="faint" style="margin:8px 0">Using your shared list</p>
+    <div class="twobtn"><button onclick="pickWeaponList()">Edit shared list</button><button onclick="pickWeaponList('${wn}')">Change for ${name} only</button></div>
+    <p class="faint">Editing the shared list changes every weapon that uses it.</p>`;
+}
+// My Armory top: the shared list, and which weapons have their own.
+function sharedListCard(){
+  const l = W.list, a = l.apps || 0, w = l.webs || 0;
+  const own = Object.entries(W.lists || {}).filter(([, v]) => v.own).map(([k]) => WLABEL[k]);
+  const join = xs => xs.length < 2 ? xs.join('') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
+  const icons = Array.from({length:Math.min(a, 5)}, (_, i) => guardBox('list', i, 'icon', `margin-left:${i ? -8 : 0}px;box-shadow:0 0 0 2px var(--card)`)).join('');
+  return `<div class="spread" style="margin:18px 0 6px;align-items:baseline"><span class="lbl">Your shared list</span><button class="link" style="padding:0;color:var(--ink)" onclick="pickWeaponList()">Edit</button></div>
+    <div class="card row" style="gap:14px"><div class="row" style="gap:0">${icons}</div><div class="grow"><b class="s15">${[plural(a, 'app', 'apps'), plural(w, 'website', 'websites')].join(' · ')}</b>
+      <div class="faint">Shared by every weapon${own.length ? ' except ' + join(own) : ''}</div></div></div>
+    ${own.length ? `<p class="faint">${join(own)} ${own.length === 1 ? 'has a custom list. Change it on the ' + own[0] + ' page.' : 'have custom lists. Change them on their own pages.'}</p>` : ''}`;
+}
+async function pickWeaponList(weapon){
+  const r = await ST.weaponListPick(weapon ? {weapon} : {}).catch(() => ({picked:false}));
   if (r.reason === 'category') toast('Pick apps one by one so nothing important gets locked.');
   else if (r.reason === 'many') toast('Up to 50 apps.');
   await loadWeapons(); repaint(); render();
 }
+async function weaponListReset(weapon){ await ST.weaponListReset({weapon}).catch(() => {}); await loadWeapons(); repaint(); }
 // The Sentry's one app (free play), chosen from the weapons list.
 function sentryChoose(){
   if (!hasList()) { pickWeaponList(); return; }
@@ -1208,7 +1235,7 @@ function weaponPage(id){
       return weaponHead('The Sentry', 'Before a guarded app opens, you see your points and pause for 5 seconds. Then you choose: stay, or enter for 15 minutes.', dy ? 'Dynasty' : 'For everyone')
         + (dy ? `<div class="card" style="padding:4px 16px">
             <div class="setrow"><div class="grow"><b class="s15">Every app on your list</b><div class="faint">The Sentry stands guard on all of them</div></div>${swt(sen.mode === 'all', "sentryMode(this.checked ? 'all' : (W.sentry.apps ? 'one' : 'off'))")}</div></div>` : '')
-        + (dy && sen.mode === 'all' ? guardList('What the Sentry guards') : '')
+        + (dy && sen.mode === 'all' ? guardList('What the Sentry guards', {weapon:'sentry'}) : '')
         + (!hasList() ? `<p class="lbl" style="margin:18px 0 8px">First, your list</p>${pickCard()}` : '')
         + `<p class="lbl" style="margin:18px 0 8px">${dy && sen.mode === 'all' ? 'Or guard just one app' : 'Your guarded app · free play gets one'}</p>
         <div class="card"><div class="row">${sen.apps ? guardBox('sentry', 0, 'icon', 'width:44px;height:44px;border-radius:11px') : `<div class="wico">${WICON.shield}</div>`}<div class="grow" style="min-width:0">${sen.apps ? guardBox('sentry', 0, 'title', 'height:24px;font-size:17px') : '<b>No app yet</b>'}<div class="faint">${sen.apps ? since : 'Pick the one you open without thinking'}</div></div>
@@ -1223,13 +1250,13 @@ function weaponPage(id){
         return weaponHead('Fortress mode', 'Raise the walls. The apps on your list stay locked until the time is up. Leaving early takes a 30-second wait.')
           + `<div style="text-align:center;margin:30px 0"><div style="display:flex;justify-content:center">${crown(72)}</div>
             <div class="big" style="font-size:64px">${h}:${String(m).padStart(2, '0')}</div><p class="dim s15">left · unlocks at ${clock(s.fortress)}</p></div>
-          ${guardList('What the Fortress locks')}
+          ${guardList('What the Fortress locks', {weapon:'fortress'})}
           <button onclick="leaveWall()">Leave early</button>`;
       }
       const hrs = pageState.hrs || 2;
       return weaponHead('Fortress mode', 'Raise the walls. The apps on your list stay locked until the time is up. Leaving early takes a 30-second wait.')
         + `<div class="picks">${[1, 2, 4].map(n => `<button class="${n === hrs ? 'on' : ''}" onclick="pageState.hrs=${n};repaint()"><b class="d">${n}</b><span>${n === 1 ? 'hour' : 'hours'}</span></button>`).join('')}</div>
-        ${guardList('What the Fortress locks')}
+        ${guardList('What the Fortress locks', {weapon:'fortress'})}
         <button class="main" style="margin-top:18px" onclick="raiseWall(${hrs})">Raise the walls for ${hrs} ${hrs === 1 ? 'hour' : 'hours'}</button>
         ${foot('Texts, calls and Maps still work.')}`;
     }
@@ -1244,18 +1271,18 @@ function weaponPage(id){
           <div class="faint">${c.days === 'weekdays' ? 'Monday to Friday' : 'Every day'}</div></div>${swt(c.on, `ceaseEdit(${i},'on',this.checked)`)}</div>`).join('')}</div>
         ${list.length < 6 ? '<button class="link" style="color:var(--ink);padding-left:0" onclick="ceaseAdd()">+ Add a ceasefire</button>' : ''}
         ${s.ceasePending ? '<p class="faint">Your changes start tomorrow.</p>' : ''}
-        ${guardList('What it locks')}
+        ${guardList('What it locks', {weapon:'ceasefire'})}
         ${foot('During a ceasefire, texts, calls and Maps still work. Changes start the next day.')}`;
     }
     case 'banish': {
       if (s.banish > nowSec()) return weaponHead('Banish', 'One tap, and the apps on your list are gone until morning.')
         + `<div class="card" style="text-align:center;padding:28px 18px"><div style="color:var(--dim)">${WICON.door}</div><h2 style="margin-top:10px">Banished until ${clock(s.banish)}</h2>
-          <p class="dim s15" style="margin:0">The apps on your list are locked. They come back in the morning.</p></div>${guardList('What it locks')}${foot('Texts, calls and Maps still work.')}`;
+          <p class="dim s15" style="margin:0">The apps on your list are locked. They come back in the morning.</p></div>${guardList('What it locks', {weapon:'banish'})}${foot('Texts, calls and Maps still work.')}`;
       const mm = s.morning || 420;
       return weaponHead('Banish', 'One tap, and the apps on your list are gone until morning.')
         + `<div class="card" style="text-align:center;padding:28px 18px"><div style="color:var(--dim)">${WICON.door}</div><h2 style="margin-top:10px">Banish until ${hhmm(mm)}?</h2>
           <p class="dim s15" style="margin:0">The apps on your list lock now and stay locked until morning. You can't undo it tonight.</p></div>
-        ${guardList('What it locks')}
+        ${guardList('What it locks', {weapon:'banish'})}
         <p class="lbl" style="margin:18px 0 8px">Morning starts at</p>
         <div class="card" style="padding:0 16px"><select class="selrow" onchange="banishMorning(+this.value)">${[300, 330, 360, 390, 420, 450, 480, 510, 540, 600].map(v => `<option value="${v}" ${v === mm ? 'selected' : ''}>${hhmm2(v)}</option>`).join('')}</select></div>
         <button class="main" style="margin-top:28px" onclick="banishNow()">Banish them</button>
@@ -1271,7 +1298,7 @@ function weaponPage(id){
         <div class="picks">${[[30, '30', 'min'], [60, '1', 'hour'], [120, '2', 'hours']].map(([v, n, u]) => `<button class="${v === (tm || 60) ? 'on' : ''}" onclick="treasurySet(${v}, true)"><b class="d">${n}</b><span>${u}</span></button>`).join('')}</div>
         <div class="card" style="padding:4px 16px"><div class="setrow"><div class="grow"><b class="s15">Treasury on</b><div class="faint">Counts only the apps on your list</div></div>${swt(tm > 0, `treasurySet(this.checked ? ${tm || 60} : 0)`)}</div></div>
         ${tm !== now ? '<p class="faint">Your change starts tomorrow.</p>' : ''}
-        ${guardList('What it locks')}
+        ${guardList('What it locks', {weapon:'treasury'})}
         ${foot('Texts, calls and Maps never count. Changes start the next day.')}`;
     }
     case 'advisor': return advisorPage();

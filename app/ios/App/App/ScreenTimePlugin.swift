@@ -61,7 +61,8 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "redHours", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "guardLabels", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "weaponListPick", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "sentryFromList", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "sentryFromList", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "weaponListReset", returnType: CAPPluginReturnPromise)
     ]
 
     static let group = "group.io.github.gamesbyvidal.lifetime"
@@ -901,7 +902,8 @@ extension ScreenTimePlugin {
         let pend = d?.array(forKey: "cease-next")
         let out: [String: Any] = [
             "sentry": ["mode": d?.string(forKey: "sentry-mode") ?? "off", "apps": s?.applicationTokens.count ?? 0, "since": d?.string(forKey: "sentry-since") ?? ""] as [String: Any],
-            "list": ["apps": Weapons.targets("wall")?.applicationTokens.count ?? 0, "webs": Weapons.targets("wall")?.webDomainTokens.count ?? 0, "max": Weapons.listMax] as [String: Any],
+            "list": Weapons.listInfo(nil),
+            "lists": Dictionary(uniqueKeysWithValues: Weapons.weaponNames.map { ($0, Weapons.listInfo($0)) }),
             "fortress": Weapons.fortressUntil,
             "banish": Weapons.banishUntil, "morning": Weapons.morningMinutes,
             "cease": pend ?? (Weapons.ceaseList() as [Any]), "ceasePending": pend != nil, "ceaseOn": Weapons.ceaseActive,
@@ -948,16 +950,20 @@ extension ScreenTimePlugin {
     }
     // What the weapons lock, picked app by app (and websites). Whole categories are refused: Apple gives a sealed token for a
     // category, so the app can't tell which apps are in it, and Messages or WhatsApp could get locked.
+    // weapon: nil or "" = the shared list. The first list ever picked, from anywhere, becomes the shared list; after that a
+    // weapon's own edits are kept as "wlist-<weapon>".
     @objc func weaponListPick(_ call: CAPPluginCall) {
+        let w = call.getString("weapon") ?? ""
+        let key = (w.isEmpty || Weapons.d?.data(forKey: "wlist") == nil || !Weapons.weaponNames.contains(w)) ? "wlist" : "wlist-" + w
         DispatchQueue.main.async {
             var saved = FamilyActivitySelection()
-            if let data = Weapons.d?.data(forKey: "wlist"), let old = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) { saved = old }
+            if let old = (w.isEmpty ? nil : Weapons.targets(w)) ?? Weapons.targets("") { saved = old }
             let picker = WeaponListPickerView(selection: saved) { picked in
                 self.bridge?.viewController?.dismiss(animated: true)
                 guard let picked = picked else { call.resolve(["picked": false]); return }
                 if !picked.categoryTokens.isEmpty { call.resolve(["picked": false, "reason": "category"]); return }
                 if picked.applicationTokens.count > Weapons.listMax { call.resolve(["picked": false, "reason": "many"]); return }
-                if let data = try? JSONEncoder().encode(picked) { Weapons.d?.set(data, forKey: "wlist") }
+                if let data = try? JSONEncoder().encode(picked) { Weapons.d?.set(data, forKey: key) }
                 Self.work.async { Weapons.relockActive(); call.resolve(["picked": true, "apps": picked.applicationTokens.count, "webs": picked.webDomainTokens.count]) }
             }
             let host = UIHostingController(rootView: picker)
@@ -965,10 +971,17 @@ extension ScreenTimePlugin {
             self.bridge?.viewController?.present(host, animated: true)
         }
     }
+    // A weapon goes back to following the shared list.
+    @objc func weaponListReset(_ call: CAPPluginCall) {
+        let w = call.getString("weapon") ?? ""
+        guard Weapons.weaponNames.contains(w) else { call.resolve(); return }
+        Weapons.d?.removeObject(forKey: "wlist-" + w)
+        Self.work.async { Weapons.relockActive(); call.resolve() }
+    }
     // The Sentry's one app, chosen from the weapons list by its place in it (the order the page shows).
     @objc func sentryFromList(_ call: CAPPluginCall) {
         let i = call.getInt("i") ?? -1
-        guard let s = Weapons.targets("sentry") else { call.reject("No list"); return }
+        guard let s = Weapons.targets("") else { call.reject("No list"); return }
         let apps = GuardOrder.apps(s)
         guard i >= 0, i < apps.count else { call.reject("No such app"); return }
         var one = FamilyActivitySelection(); one.applicationTokens = [apps[i]]
@@ -1106,7 +1119,10 @@ private final class GuardLayer: UIView {
 
     // The items behind a key, in a fixed order so "red:3" always means the same app.
     private func list(_ key: String) -> [GuardItem] {
-        let dkey = key == "sentry" ? "sentry-sel" : "wlist"
+        // "sentry" = the free Sentry's app, "list" = the shared list, "list-<weapon>" = what that weapon locks.
+        var dkey = "wlist"
+        if key == "sentry" { dkey = "sentry-sel" }
+        else if key.hasPrefix("list-"), Weapons.d?.data(forKey: "w" + key) != nil { dkey = "w" + key }
         guard let data = Weapons.d?.data(forKey: dkey) else { return [] }
         if cacheData[key] == data, let l = cacheItems[key] { return l }
         guard let s = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) else { return [] }

@@ -44,10 +44,10 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
 
     private func make(_ token: ApplicationToken?, category: ActivityCategoryToken?, name: String?) -> ShieldConfiguration {
         switch Weapons.why(token, category: category) {
-        case .fortress(let u): return locked("Fortress mode", "The apps on your list are locked until \(Weapons.clock(u)).")
-        case .banish(let u): return locked("Banished", "The apps on your list are gone until \(Weapons.clock(u)).")
-        case .ceasefire(let u): return locked("Ceasefire", u.map { "The apps on your list are locked until \(Weapons.clock($0))." } ?? "The apps on your list are locked for now.")
-        case .treasury: return locked("Treasury is empty", "The apps on your list are locked until midnight.")
+        case .fortress(let u): return locked("Fortress mode", "Everything on your list is locked until \(Weapons.clock(u)).")
+        case .banish(let u): return locked("Banished", "Everything on your list is gone until \(Weapons.clock(u)).")
+        case .ceasefire(let u): return locked("Ceasefire", u.map { "Everything on your list is locked until \(Weapons.clock($0))." } ?? "Everything on your list is locked for now.")
+        case .treasury: return locked("Treasury is empty", "Everything on your list is locked until midnight.")
         case .sentry:
             let app = name ?? "This app"
             // A whole-category lock reports the category to the button handler, so the pause is kept per category then.

@@ -1249,14 +1249,14 @@ function weaponPage(id){
     case 'fortress': {
       if (s.fortress > nowSec()) {
         const left = Math.max(0, Math.round(s.fortress - nowSec())), h = Math.floor(left / 3600), m = Math.floor(left % 3600 / 60);
-        return weaponHead('Fortress mode', 'Raise the walls. The apps on your list stay locked until the time is up. Leaving early takes a 30-second wait.')
+        return weaponHead('Fortress mode', 'Raise the walls. Everything on your list stays locked until the time is up. Leaving early takes a 30-second wait.')
           + `<div style="text-align:center;margin:30px 0"><div style="display:flex;justify-content:center">${crown(72)}</div>
             <div class="big" style="font-size:64px">${h}:${String(m).padStart(2, '0')}</div><p class="dim s15">left · unlocks at ${clock(s.fortress)}</p></div>
           ${guardList('What the Fortress locks', {weapon:'fortress'})}
           <button onclick="leaveWall()">Leave early</button>`;
       }
       const hrs = pageState.hrs || 2;
-      return weaponHead('Fortress mode', 'Raise the walls. The apps on your list stay locked until the time is up. Leaving early takes a 30-second wait.')
+      return weaponHead('Fortress mode', 'Raise the walls. Everything on your list stays locked until the time is up. Leaving early takes a 30-second wait.')
         + `<div class="picks">${[1, 2, 4].map(n => `<button class="${n === hrs ? 'on' : ''}" onclick="pageState.hrs=${n};repaint()"><b class="d">${n}</b><span>${n === 1 ? 'hour' : 'hours'}</span></button>`).join('')}</div>
         ${guardList('What the Fortress locks', {weapon:'fortress'})}
         <button class="main" style="margin-top:18px" onclick="raiseWall(${hrs})">Raise the walls for ${hrs} ${hrs === 1 ? 'hour' : 'hours'}</button>
@@ -1265,7 +1265,7 @@ function weaponPage(id){
     case 'ceasefire': {
       const list = s.cease && s.cease.length ? s.cease : CEASE_DEFAULT;
       const strip = Array.from({length:48}, (_, i) => { const t = i * 30; const c = list.find(c => c.on && (c.start < c.end ? t >= c.start && t < c.end : t >= c.start || t < c.end)); return `<i style="background:${c ? (CEASE_COLOR[list.indexOf(c) % 3]) : 'transparent'}"></i>`; }).join('');
-      return weaponHead('Ceasefire', 'The apps on your list lock at set times, every day, without you lifting a finger.')
+      return weaponHead('Ceasefire', 'Everything on your list locks at set times, every day, without you lifting a finger.')
         + `<p class="lbl" style="margin:14px 0 6px">Your day</p><div class="daystrip">${strip}</div>
         <div class="spread faint" style="font-size:11px"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
         <div class="card" style="padding:4px 16px;margin-top:14px">${list.map((c, i) => `<div class="setrow"><div class="grow"><b class="s15">${esc(c.name)}</b>
@@ -1277,13 +1277,13 @@ function weaponPage(id){
         ${foot('Anything you didn\'t pick stays open. Emergency calls always work. Changes start the next day.')}`;
     }
     case 'banish': {
-      if (s.banish > nowSec()) return weaponHead('Banish', 'One tap, and the apps on your list are gone until morning.')
+      if (s.banish > nowSec()) return weaponHead('Banish', 'One tap, and everything on your list is gone until morning.')
         + `<div class="card" style="text-align:center;padding:28px 18px"><div style="color:var(--dim)">${WICON.door}</div><h2 style="margin-top:10px">Banished until ${clock(s.banish)}</h2>
-          <p class="dim s15" style="margin:0">The apps on your list are locked. They come back in the morning.</p></div>${guardList('What it locks', {weapon:'banish'})}${foot('Anything you didn\'t pick stays open. Emergency calls always work.')}`;
+          <p class="dim s15" style="margin:0">Everything on your list is locked. It comes back in the morning.</p></div>${guardList('What it locks', {weapon:'banish'})}${foot('Anything you didn\'t pick stays open. Emergency calls always work.')}`;
       const mm = s.morning || 420;
-      return weaponHead('Banish', 'One tap, and the apps on your list are gone until morning.')
+      return weaponHead('Banish', 'One tap, and everything on your list is gone until morning.')
         + `<div class="card" style="text-align:center;padding:28px 18px"><div style="color:var(--dim)">${WICON.door}</div><h2 style="margin-top:10px">Banish until ${hhmm(mm)}?</h2>
-          <p class="dim s15" style="margin:0">The apps on your list lock now and stay locked until morning. You can't undo it tonight.</p></div>
+          <p class="dim s15" style="margin:0">Everything on your list locks now and stays locked until morning. You can't undo it tonight.</p></div>
         ${guardList('What it locks', {weapon:'banish'})}
         <p class="lbl" style="margin:18px 0 8px">Morning starts at</p>
         <div class="card" style="padding:0 16px"><select class="selrow" onchange="banishMorning(+this.value)">${[300, 330, 360, 390, 420, 450, 480, 510, 540, 600].map(v => `<option value="${v}" ${v === mm ? 'selected' : ''}>${hhmm2(v)}</option>`).join('')}</select></div>
@@ -1293,12 +1293,12 @@ function weaponPage(id){
     case 'treasury': {
       // Treasury counts the apps on the weapons list. The phone only says when the allowance runs out, not minutes so far.
       const tm = s.treasury || 0, now = s.treasuryNow || 0;
-      return weaponHead('Treasury', 'A daily allowance for the apps on your list. When it runs out, they lock until midnight.')
+      return weaponHead('Treasury', 'A daily allowance for everything on your list. When it runs out, it locks until midnight.')
         + (now ? `<div class="card"><p class="lbl" style="margin:0">Today</p><div class="row" style="align-items:baseline;gap:8px"><span class="big" style="font-size:44px">${s.treasuryOut ? 'Spent' : hm(now)}</span><span class="dim s15">${s.treasuryOut ? '' : 'a day'}</span></div>
           <p class="faint" style="margin:6px 0 0">${s.treasuryOut ? 'Your list is locked until midnight.' : 'When it runs out, your list locks until midnight.'}</p></div>` : '')
         + `<p class="lbl" style="margin:18px 0 8px">Daily allowance</p>
         <div class="picks">${[[30, '30', 'min'], [60, '1', 'hour'], [120, '2', 'hours']].map(([v, n, u]) => `<button class="${v === (tm || 60) ? 'on' : ''}" onclick="treasurySet(${v}, true)"><b class="d">${n}</b><span>${u}</span></button>`).join('')}</div>
-        <div class="card" style="padding:4px 16px"><div class="setrow"><div class="grow"><b class="s15">Treasury on</b><div class="faint">Counts only the apps on your list</div></div>${swt(tm > 0, `treasurySet(this.checked ? ${tm || 60} : 0)`)}</div></div>
+        <div class="card" style="padding:4px 16px"><div class="setrow"><div class="grow"><b class="s15">Treasury on</b><div class="faint">Counts only what's on your list</div></div>${swt(tm > 0, `treasurySet(this.checked ? ${tm || 60} : 0)`)}</div></div>
         ${tm !== now ? '<p class="faint">Your change starts tomorrow.</p>' : ''}
         ${guardList('What it locks', {weapon:'treasury'})}
         ${foot('Anything you didn\'t pick stays open. Emergency calls always work. Changes start the next day.')}`;

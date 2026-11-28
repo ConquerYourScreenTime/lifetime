@@ -1108,7 +1108,7 @@ function weaponPage(id){
         + `<p class="lbl" style="margin:18px 0 8px">${dy && sen.mode === 'all' ? 'Or guard just one app' : 'Your guarded app · free play gets one'}</p>
         <div class="card"><div class="row"><div class="wico">${WICON.shield}</div><div class="grow" style="min-width:0">${sen.apps ? guardBox('sentry', 0, 'height:24px;font-size:16px') : '<b>No app yet</b>'}<div class="faint">${sen.apps ? since : 'Pick the one you open without thinking'}</div></div>
           ${sen.apps ? swt(sen.mode !== 'off', "sentryMode(this.checked ? 'one' : 'off')", sen.mode === 'all') : ''}</div></div>
-        <button onclick="sentryPick()">Choose in Apple's list</button>
+        <button onclick="sentryPick()">${sen.apps ? 'Change' : 'Choose'} in Apple's list</button>
         <p class="faint">Pick the one app you open without thinking. Keep Phone, Maps and Messages off this list.</p>
         ${!dy ? `<button class="upsell" onclick="openGold('', 'sentry')"><div class="ib" style="background:none">${crown(24)}</div><div class="grow"><b class="s15">Guard every Red app</b><div class="faint">Dynasty posts the Sentry on all of them.</div></div><span class="gold s15" style="font-weight:600">See</span></button>` : ''}`;
     }

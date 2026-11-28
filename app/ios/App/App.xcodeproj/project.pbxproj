@@ -7,11 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B1E9C0DE0000000000000021 /* PlayfairDisplay-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B1E9C0DE0000000000000020 /* PlayfairDisplay-Bold.ttf */; };
-		B1E9C0DE0000000000000005 /* BlipWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E9C0DE0000000000000001 /* BlipWidget.swift */; };
-		B1E9C0DE0000000000000006 /* BlipWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B1E9C0DE0000000000000002 /* BlipWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		0D2329B7CB4CA2A7F46D0F25 /* Weapons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4735232B4A25E5383CC7B692 /* Weapons.swift */; };
 		102487B447FBA24DCA9EB04C /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A3AA586F1275ACCD00BC97FD /* Foundation.framework */; };
+		19E251CCB5DA1BDA6D918CF3 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A3AA586F1275ACCD00BC97FD /* Foundation.framework */; };
+		2D0CDC5A9EBCC12EE12D190F /* ConquerShield.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 03B0CB0182BD44A11391E969 /* ConquerShield.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		2D4EB2FE265933CC8642B3F0 /* ShieldConfigurationExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27B5C614C3656D8659E4CA3B /* ShieldConfigurationExtension.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		3952F521A9EA277F35BE4444 /* Weapons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4735232B4A25E5383CC7B692 /* Weapons.swift */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -20,21 +22,29 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		511102AB57227BE6828E741E /* MonitorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4242DFDEF86BAAB87FACC69 /* MonitorExtension.swift */; };
+		86885B8BAA2A75A6EFACC136 /* ConquerShieldAction.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 36B19FBEF84C68E858BF2D25 /* ConquerShieldAction.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		92DFB696D8560952E5A0BF7F /* Weapons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4735232B4A25E5383CC7B692 /* Weapons.swift */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
+		9B1F5A1F14A93D573C7B3273 /* Weapons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4735232B4A25E5383CC7B692 /* Weapons.swift */; };
 		A1B2C3D40000000000000002 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40000000000000001 /* MainViewController.swift */; };
 		A1B2C3D40000000000000004 /* StorePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D40000000000000003 /* StorePlugin.swift */; };
 		A1B2C3D400000000000000B2 /* PhotosPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D400000000000000B1 /* PhotosPlugin.swift */; };
+		B1E9C0DE0000000000000005 /* BlipWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E9C0DE0000000000000001 /* BlipWidget.swift */; };
+		B1E9C0DE0000000000000006 /* BlipWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B1E9C0DE0000000000000002 /* BlipWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B1E9C0DE0000000000000021 /* PlayfairDisplay-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B1E9C0DE0000000000000020 /* PlayfairDisplay-Bold.ttf */; };
 		CF23AC322B1B1DFAAC483B94 /* ScreenTimePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FD842C068A3B43E6256D3E9 /* ScreenTimePlugin.swift */; };
+		D993B607036E8978597E2375 /* ShieldActionExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08F7717E761D495C9A845125 /* ShieldActionExtension.swift */; };
 		E2E097B5915E69A37C45A641 /* BlipMonitor.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D588CF0A7A2230DD94193823 /* BlipMonitor.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		FB82A8A2D071BFEE86BC6F0F /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A3AA586F1275ACCD00BC97FD /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		B1E9C0DE0000000000000007 /* PBXContainerItemProxy */ = {
+		1F1898271638F8305D5D72D3 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = B1E9C0DE0000000000000009;
-			remoteInfo = BlipWidget;
+			remoteGlobalIDString = 323A62776826566A72C36EFC;
+			remoteInfo = ConquerShieldAction;
 		};
 		A98937DBC8DF163E2DC75A87 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -42,6 +52,20 @@
 			proxyType = 1;
 			remoteGlobalIDString = C59B5DA7393303525A28001D;
 			remoteInfo = BlipMonitor;
+		};
+		B1E9C0DE0000000000000007 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B1E9C0DE0000000000000009;
+			remoteInfo = BlipWidget;
+		};
+		DDEB9160AE1E0B4280037FF4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4318E8FAD3C6DC1C462F1AA5;
+			remoteInfo = ConquerShield;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -54,6 +78,8 @@
 			files = (
 				E2E097B5915E69A37C45A641 /* BlipMonitor.appex in Embed Foundation Extensions */,
 				B1E9C0DE0000000000000006 /* BlipWidget.appex in Embed Foundation Extensions */,
+				2D0CDC5A9EBCC12EE12D190F /* ConquerShield.appex in Embed Foundation Extensions */,
+				86885B8BAA2A75A6EFACC136 /* ConquerShieldAction.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -61,12 +87,12 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		B1E9C0DE0000000000000020 /* PlayfairDisplay-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PlayfairDisplay-Bold.ttf"; sourceTree = "<group>"; };
-		B1E9C0DE0000000000000001 /* BlipWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BlipWidget.swift; sourceTree = "<group>"; };
-		B1E9C0DE0000000000000003 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		B1E9C0DE0000000000000004 /* BlipWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = BlipWidget.entitlements; sourceTree = "<group>"; };
-		B1E9C0DE0000000000000002 /* BlipWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BlipWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		03B0CB0182BD44A11391E969 /* ConquerShield.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ConquerShield.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		08F7717E761D495C9A845125 /* ShieldActionExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShieldActionExtension.swift; sourceTree = "<group>"; };
+		27B5C614C3656D8659E4CA3B /* ShieldConfigurationExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShieldConfigurationExtension.swift; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		36B19FBEF84C68E858BF2D25 /* ConquerShieldAction.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ConquerShieldAction.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4735232B4A25E5383CC7B692 /* Weapons.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Weapons.swift; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -76,6 +102,7 @@
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		532538532B87CE915F07FA17 /* App.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		555D262080A2F035CFCD2AA9 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		6A1F6915ED0BCD3B9FB63702 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8FD842C068A3B43E6256D3E9 /* ScreenTimePlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenTimePlugin.swift; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -85,18 +112,19 @@
 		A1B2C3D400000000000000B1 /* PhotosPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosPlugin.swift; sourceTree = "<group>"; };
 		A3AA586F1275ACCD00BC97FD /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		A4242DFDEF86BAAB87FACC69 /* MonitorExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MonitorExtension.swift; sourceTree = "<group>"; };
+		ADB0CF28B07FFAB5932CA31F /* ConquerShield.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = ConquerShield.entitlements; sourceTree = "<group>"; };
+		ADBDA013C696A046EDE8DCFC /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AE778E0BF5458564E9C5CA42 /* ConquerShieldAction.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = ConquerShieldAction.entitlements; sourceTree = "<group>"; };
+		B1E9C0DE0000000000000001 /* BlipWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BlipWidget.swift; sourceTree = "<group>"; };
+		B1E9C0DE0000000000000002 /* BlipWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BlipWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1E9C0DE0000000000000003 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B1E9C0DE0000000000000004 /* BlipWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = BlipWidget.entitlements; sourceTree = "<group>"; };
+		B1E9C0DE0000000000000020 /* PlayfairDisplay-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PlayfairDisplay-Bold.ttf"; sourceTree = "<group>"; };
 		C9A5A1F5C8E3AD43505C2785 /* BlipMonitor.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = BlipMonitor.entitlements; sourceTree = "<group>"; };
 		D588CF0A7A2230DD94193823 /* BlipMonitor.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BlipMonitor.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		B1E9C0DE000000000000000B /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		504EC3011FED79650016851F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -113,21 +141,32 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B1E9C0DE000000000000000B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CE8AB1AC169D4BF8173EE699 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FB82A8A2D071BFEE86BC6F0F /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F370CF72F463BBBA8F6A12EA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				19E251CCB5DA1BDA6D918CF3 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		B1E9C0DE0000000000000008 /* BlipWidget */ = {
-			isa = PBXGroup;
-			children = (
-				B1E9C0DE0000000000000001 /* BlipWidget.swift */,
-				B1E9C0DE0000000000000020 /* PlayfairDisplay-Bold.ttf */,
-				B1E9C0DE0000000000000003 /* Info.plist */,
-				B1E9C0DE0000000000000004 /* BlipWidget.entitlements */,
-			);
-			name = BlipWidget;
-			path = BlipWidget;
-			sourceTree = "<group>";
-		};
 		2B283AC18007AB4304187405 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -156,6 +195,9 @@
 				2B283AC18007AB4304187405 /* Frameworks */,
 				3A08D3E32734C66D6B684CC1 /* BlipMonitor */,
 				B1E9C0DE0000000000000008 /* BlipWidget */,
+				6AFEA8393A655D220C0E6979 /* Shared */,
+				A661982165DE770F7E17DF91 /* ConquerShield */,
+				6A4780A6B276F089EC9DDBE5 /* ConquerShieldAction */,
 			);
 			sourceTree = "<group>";
 		};
@@ -165,6 +207,8 @@
 				504EC3041FED79650016851F /* App.app */,
 				D588CF0A7A2230DD94193823 /* BlipMonitor.appex */,
 				B1E9C0DE0000000000000002 /* BlipWidget.appex */,
+				03B0CB0182BD44A11391E969 /* ConquerShield.appex */,
+				36B19FBEF84C68E858BF2D25 /* ConquerShieldAction.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -190,6 +234,49 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		6A4780A6B276F089EC9DDBE5 /* ConquerShieldAction */ = {
+			isa = PBXGroup;
+			children = (
+				08F7717E761D495C9A845125 /* ShieldActionExtension.swift */,
+				ADBDA013C696A046EDE8DCFC /* Info.plist */,
+				AE778E0BF5458564E9C5CA42 /* ConquerShieldAction.entitlements */,
+			);
+			name = ConquerShieldAction;
+			path = ConquerShieldAction;
+			sourceTree = "<group>";
+		};
+		6AFEA8393A655D220C0E6979 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				4735232B4A25E5383CC7B692 /* Weapons.swift */,
+			);
+			name = Shared;
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		A661982165DE770F7E17DF91 /* ConquerShield */ = {
+			isa = PBXGroup;
+			children = (
+				27B5C614C3656D8659E4CA3B /* ShieldConfigurationExtension.swift */,
+				555D262080A2F035CFCD2AA9 /* Info.plist */,
+				ADB0CF28B07FFAB5932CA31F /* ConquerShield.entitlements */,
+			);
+			name = ConquerShield;
+			path = ConquerShield;
+			sourceTree = "<group>";
+		};
+		B1E9C0DE0000000000000008 /* BlipWidget */ = {
+			isa = PBXGroup;
+			children = (
+				B1E9C0DE0000000000000001 /* BlipWidget.swift */,
+				B1E9C0DE0000000000000020 /* PlayfairDisplay-Bold.ttf */,
+				B1E9C0DE0000000000000003 /* Info.plist */,
+				B1E9C0DE0000000000000004 /* BlipWidget.entitlements */,
+			);
+			name = BlipWidget;
+			path = BlipWidget;
+			sourceTree = "<group>";
+		};
 		D561ADD5A6A67C253258F09B /* iOS */ = {
 			isa = PBXGroup;
 			children = (
@@ -201,21 +288,38 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		B1E9C0DE0000000000000009 /* BlipWidget */ = {
+		323A62776826566A72C36EFC /* ConquerShieldAction */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = B1E9C0DE0000000000000010 /* Build configuration list for PBXNativeTarget "BlipWidget" */;
+			buildConfigurationList = 3B83881BFFD1558F1D006328 /* Build configuration list for PBXNativeTarget "ConquerShieldAction" */;
 			buildPhases = (
-				B1E9C0DE000000000000000A /* Sources */,
-				B1E9C0DE000000000000000B /* Frameworks */,
-				B1E9C0DE000000000000000C /* Resources */,
+				EB3A0B25F767C7E98AE409E1 /* Sources */,
+				F370CF72F463BBBA8F6A12EA /* Frameworks */,
+				DA9F43927282D75057C2540A /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = BlipWidget;
-			productName = BlipWidget;
-			productReference = B1E9C0DE0000000000000002 /* BlipWidget.appex */;
+			name = ConquerShieldAction;
+			productName = ConquerShieldAction;
+			productReference = 36B19FBEF84C68E858BF2D25 /* ConquerShieldAction.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		4318E8FAD3C6DC1C462F1AA5 /* ConquerShield */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B6BDAE9C8D3CA0A1233242B0 /* Build configuration list for PBXNativeTarget "ConquerShield" */;
+			buildPhases = (
+				212759E467402D7994F38986 /* Sources */,
+				CE8AB1AC169D4BF8173EE699 /* Frameworks */,
+				55BB50CFD00AA97B8191F239 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ConquerShield;
+			productName = ConquerShield;
+			productReference = 03B0CB0182BD44A11391E969 /* ConquerShield.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		504EC3031FED79650016851F /* App */ = {
@@ -232,6 +336,8 @@
 			dependencies = (
 				B2180D1297258100116217E2 /* PBXTargetDependency */,
 				B1E9C0DE000000000000000D /* PBXTargetDependency */,
+				9672EA3248140C15615F5272 /* PBXTargetDependency */,
+				88D7A2F4710DAE207AE25738 /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -240,6 +346,23 @@
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		B1E9C0DE0000000000000009 /* BlipWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B1E9C0DE0000000000000010 /* Build configuration list for PBXNativeTarget "BlipWidget" */;
+			buildPhases = (
+				B1E9C0DE000000000000000A /* Sources */,
+				B1E9C0DE000000000000000B /* Frameworks */,
+				B1E9C0DE000000000000000C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BlipWidget;
+			productName = BlipWidget;
+			productReference = B1E9C0DE0000000000000002 /* BlipWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		C59B5DA7393303525A28001D /* BlipMonitor */ = {
 			isa = PBXNativeTarget;
@@ -293,19 +416,13 @@
 				504EC3031FED79650016851F /* App */,
 				C59B5DA7393303525A28001D /* BlipMonitor */,
 				B1E9C0DE0000000000000009 /* BlipWidget */,
+				4318E8FAD3C6DC1C462F1AA5 /* ConquerShield */,
+				323A62776826566A72C36EFC /* ConquerShieldAction */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		B1E9C0DE000000000000000C /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				B1E9C0DE0000000000000021 /* PlayfairDisplay-Bold.ttf in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		3CB0326B1A0E7AB58F403716 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -326,14 +443,37 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		55BB50CFD00AA97B8191F239 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B1E9C0DE000000000000000C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1E9C0DE0000000000000021 /* PlayfairDisplay-Bold.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA9F43927282D75057C2540A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		B1E9C0DE000000000000000A /* Sources */ = {
+		212759E467402D7994F38986 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B1E9C0DE0000000000000005 /* BlipWidget.swift in Sources */,
+				2D4EB2FE265933CC8642B3F0 /* ShieldConfigurationExtension.swift in Sources */,
+				92DFB696D8560952E5A0BF7F /* Weapons.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -347,6 +487,24 @@
 				A1B2C3D400000000000000B2 /* PhotosPlugin.swift in Sources */,
 				A1B2C3D40000000000000002 /* MainViewController.swift in Sources */,
 				CF23AC322B1B1DFAAC483B94 /* ScreenTimePlugin.swift in Sources */,
+				0D2329B7CB4CA2A7F46D0F25 /* Weapons.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B1E9C0DE000000000000000A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1E9C0DE0000000000000005 /* BlipWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EB3A0B25F767C7E98AE409E1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D993B607036E8978597E2375 /* ShieldActionExtension.swift in Sources */,
+				9B1F5A1F14A93D573C7B3273 /* Weapons.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -355,12 +513,25 @@
 			buildActionMask = 2147483647;
 			files = (
 				511102AB57227BE6828E741E /* MonitorExtension.swift in Sources */,
+				3952F521A9EA277F35BE4444 /* Weapons.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		88D7A2F4710DAE207AE25738 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ConquerShieldAction;
+			target = 323A62776826566A72C36EFC /* ConquerShieldAction */;
+			targetProxy = 1F1898271638F8305D5D72D3 /* PBXContainerItemProxy */;
+		};
+		9672EA3248140C15615F5272 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ConquerShield;
+			target = 4318E8FAD3C6DC1C462F1AA5 /* ConquerShield */;
+			targetProxy = DDEB9160AE1E0B4280037FF4 /* PBXContainerItemProxy */;
+		};
 		B1E9C0DE000000000000000D /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = BlipWidget;
@@ -395,57 +566,6 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
-		B1E9C0DE000000000000000E /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_ENTITLEMENTS = BlipWidget/BlipWidget.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = BlipWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.github.gamesbyvidal.lifetime.widget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Debug;
-		};
-		B1E9C0DE000000000000000F /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_ENTITLEMENTS = BlipWidget/BlipWidget.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = BlipWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.github.gamesbyvidal.lifetime.widget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
 		1C8353A917C05D60EBCC4FFA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -470,6 +590,32 @@
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
+		};
+		3C0605E691D85D2C89DED7B4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ConquerShieldAction/ConquerShieldAction.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ConquerShieldAction/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.gamesbyvidal.lifetime.shieldaction;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
 		};
 		3D57E0D77755789A837BAE57 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -652,14 +798,141 @@
 			};
 			name = Release;
 		};
+		59F655188527DA405DFF8094 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ConquerShield/ConquerShield.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ConquerShield/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.gamesbyvidal.lifetime.shield;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		A2BE3793CB4AEE3127B0D162 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ConquerShieldAction/ConquerShieldAction.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ConquerShieldAction/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.gamesbyvidal.lifetime.shieldaction;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		B1E9C0DE000000000000000E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = BlipWidget/BlipWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlipWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.gamesbyvidal.lifetime.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		B1E9C0DE000000000000000F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = BlipWidget/BlipWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlipWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.gamesbyvidal.lifetime.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		DF281F82B88DC4839B4AA775 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ConquerShield/ConquerShield.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ConquerShield/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.gamesbyvidal.lifetime.shield;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		B1E9C0DE0000000000000010 /* Build configuration list for PBXNativeTarget "BlipWidget" */ = {
+		3B83881BFFD1558F1D006328 /* Build configuration list for PBXNativeTarget "ConquerShieldAction" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				B1E9C0DE000000000000000F /* Release */,
-				B1E9C0DE000000000000000E /* Debug */,
+				3C0605E691D85D2C89DED7B4 /* Release */,
+				A2BE3793CB4AEE3127B0D162 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -687,6 +960,24 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B1E9C0DE0000000000000010 /* Build configuration list for PBXNativeTarget "BlipWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B1E9C0DE000000000000000F /* Release */,
+				B1E9C0DE000000000000000E /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B6BDAE9C8D3CA0A1233242B0 /* Build configuration list for PBXNativeTarget "ConquerShield" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DF281F82B88DC4839B4AA775 /* Release */,
+				59F655188527DA405DFF8094 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

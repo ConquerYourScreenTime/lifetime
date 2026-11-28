@@ -107,6 +107,26 @@ input.code{text-transform:uppercase;letter-spacing:4px;font-variant-numeric:tabu
 .newpill{flex:none;background:var(--accent);color:var(--accent-ink);font-size:10px;font-weight:700;letter-spacing:1px;border-radius:99px;padding:3px 9px}
 .gold-btn{background:var(--gold)!important;color:var(--accent-ink)!important}
 a.ul{color:inherit;text-decoration:underline}
+.wrow{display:flex;align-items:center;gap:12px;text-align:left;padding:12px 14px;margin:8px 0;border-radius:16px;background:var(--grain-card),var(--card);background-size:180px 180px;border:1px solid rgba(236,228,208,.07);font-weight:400}
+.wrow.active{border-color:rgba(201,165,74,.7)}
+.wrow b{font-size:16px;font-weight:600} .wrow .faint{font-size:13px}
+.wico{width:40px;height:40px;border-radius:11px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--dim);flex:none}
+.wright{font-size:14px;font-weight:600;color:var(--dim);text-align:right;flex:none;max-width:40%} .wright.gold{color:var(--gold)}
+.dyn{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--gold);display:flex;gap:4px;align-items:center;flex:none}
+.picks{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+.picks button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px 6px;background:var(--card);border:1px solid rgba(255,255,255,.08);font-weight:400}
+.picks button b{font-size:30px} .picks button span{font-size:13px;color:var(--faint)}
+.picks button.on{border:1.5px solid var(--accent)}
+.sw.ivory input:checked+i{background:var(--accent)} .sw.ivory input:checked+i:after{background:#141210}
+.daystrip{display:flex;height:22px;border-radius:6px;overflow:hidden;background:var(--card2)} .daystrip i{flex:1}
+input.tm{font:inherit;color:inherit;background:none;border:0;padding:0;width:6.2em;-webkit-appearance:none;appearance:none}
+input.tm::-webkit-calendar-picker-indicator{display:none}
+select.selrow,select.selmini{font:600 17px var(--text);color:var(--ink);background:transparent;border:0;width:100%;height:52px;appearance:none;-webkit-appearance:none}
+select.selmini{width:auto;height:auto;color:var(--dim);font-size:15px;text-align:right}
+.herald{background:linear-gradient(#2a2a31,#3a3226);padding:20px 14px}
+.herald .note{display:flex;gap:10px;background:rgba(20,18,16,.85);border-radius:16px;padding:12px;margin-top:12px}
+.mission.done b{text-decoration:line-through;color:var(--faint)} .mission.missed{opacity:.55}
+.mission .tick{width:26px;height:26px;border-radius:13px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex:none}
 .grow-row b{font-size:15px;font-weight:600} .grow-row .faint{font-size:13px}
 .slot{border-radius:18px;padding:14px 16px;margin:10px 0;display:flex;align-items:center;gap:12px}
 .slot.open{background:transparent;border:1px dashed rgba(255,255,255,.18)}
@@ -226,6 +246,17 @@ const fakeST = {
   async wallStop(){ delete this._d().wall; save(); return {}; },
   async wallStatus(){ const u = this._d().wall || 0; return {until: u > Date.now()/1000 ? u : 0}; },
   async env(){ return {testflight:true}; },
+  _w(){ const d = this._d(); return d.w = d.w || {sentry:{mode:'off', apps:0, since:''}, banish:0, morning:420, cease:[], treasury:0, treasuryNow:0, herald:false, heraldAt:720}; },
+  async weaponStatus(){ const w = this._w(); return {...w, fortress: this._d().wall > Date.now()/1000 ? this._d().wall : 0, ceasePending:false, ceaseOn:false, treasuryOut:false}; },
+  async weaponsResume(){ return {}; },
+  async sentryPick(){ const w = this._w(); w.sentry = {mode: w.sentry.mode === 'all' ? 'all' : 'one', apps:1, since:today()}; save(); return {picked:true}; },
+  async sentrySet({mode}){ this._w().sentry.mode = mode; save(); return {}; },
+  async banishStart(){ const t = new Date(); t.setDate(t.getDate() + 1); t.setHours(7, 0, 0, 0); this._w().banish = t / 1000; save(); return {until: t / 1000}; },
+  async banishMorning({minutes}){ this._w().morning = minutes; save(); return {}; },
+  async ceaseSet({list}){ const w = this._w(), first = !w.cease.length; w.cease = list; save(); return {tomorrow: !first}; },
+  async treasurySet({minutes}){ const w = this._w(); w.treasury = minutes; if (!w.treasuryNow) w.treasuryNow = minutes; save(); return {tomorrow:false}; },
+  async heraldSet({on, at}){ const w = this._w(); w.herald = on; if (at) w.heraldAt = at; save(); return {on}; },
+  async redHours({days}){ const out = {}; for (let i = 0; i < days; i++) { const d = addDays(today(), -i), m = this._d().min[d] || {}; out[d] = {red:m.red || (i ? 30 + (i * 17) % 60 : 0), orange:m.orange || 0, hours: i ? {[String(19 + i % 4)]: 30 + (i * 17) % 60} : {}}; } return {days:out, redLast:0}; },
 };
 const ST = nativePlugin('ScreenTime') || fakeST;
 const Prefs = nativePlugin('Preferences');
@@ -435,6 +466,7 @@ async function refresh(){
   if (busy) return; busy = true;
   try {
     await ST.friendsResync().catch(()=>{});
+    await ST.weaponsResume().catch(()=>{});
     tierInfo = await ST.tierStatus().catch(() => null);
     todayMin = await ST.friendsMinutes({day:today()}).catch(() => todayMin);
     wallUntil = dynasty() ? ((await ST.wallStatus().catch(() => ({until:0}))).until || 0) : 0;
@@ -606,7 +638,8 @@ function todayView(){
   const spent = TIERS.map(t => ({t, min:m[t.id]||0, pts:Math.floor((m[t.id]||0)/STEP)*t.cost}));
   return `
   <div class="top"><span class="lbl" style="color:var(--dim)">${weekday(today())}</span>
-    <div class="icons"><button class="ib" aria-label="Your crowns" onclick="openPage('crowns')">${crown(22)}</button>
+    <div class="icons"><button class="ib" aria-label="My Armory" onclick="openArmory()">${WICON.swords}</button>
+      <button class="ib" aria-label="Your crowns" onclick="openPage('crowns')">${crown(22)}</button>
       <button class="ib" aria-label="Invites" onclick="openPage('invites')">${ICON.gift}</button>
       <button class="ib" aria-label="Settings" onclick="openPage('settings')">${ICON.sliders}</button></div></div>
   <div style="margin-top:26px"><span class="lbl">Points left today</span>
@@ -620,7 +653,6 @@ function todayView(){
   </div>
   ${tierInfo && tierInfo.pending ? '<p class="faint">Your app color changes start tomorrow.</p>' : ''}
   ${matchCard()}
-  ${dynasty() ? wallCard() : ''}
   <p class="dim s15" style="text-align:center;margin-top:36px">You're all caught up.<br>Put your phone down to keep your ${fmt(pts)}.</p>
   ${!IS_APP ? demoTools() : ''}`;
 }
@@ -654,7 +686,7 @@ function matchCard(){
 }
 
 // ---------- full-screen pages and sheets ----------
-const PAGES = {matches: matchesView, crowns: crownsView, invites: invitesView, settings: settingsView};
+const PAGES = {matches: matchesView, crowns: crownsView, invites: invitesView, settings: settingsView, armory: armoryView};
 const pageState = {tab:'week', rival:null};
 function openPage(view){
   closePage();
@@ -901,18 +933,6 @@ function pushWidget(){
 function dynasty(){ return testMode() && !!S.dynastyTest; }
 // Fortress mode (formerly Shield Wall): one tap locks the Red apps for 1, 2 or 4 hours (Apple's shield). Leaving early takes a 30-second wait.
 function clock(sec){ return new Date(sec * 1000).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}); }
-function wallCard(){
-  if (wallUntil * 1000 > Date.now()) return `<div class="card stack"><p class="lbl gold" style="margin:0">Fortress mode</p>
-    <h2>The fortress is sealed until ${clock(wallUntil)}</h2><p class="dim s15" style="margin-top:0">Your Red apps are locked. Hold the line.</p>
-    <button onclick="leaveWall()">Leave early</button></div>`;
-  return `<div class="card stack"><p class="lbl gold" style="margin:0">Fortress mode</p>
-    <p class="dim s15" style="margin-top:0">Lock your Red apps for a while. One tap, and they stay shut until the time is up.</p>
-    <div class="row">${[1,2,4].map(h => `<button class="small" style="flex:1" onclick="raiseWall(${h})">${h} hr</button>`).join('')}</div></div>`;
-}
-async function raiseWall(hours){
-  try { const r = await ST.wallStart({hours}); wallUntil = r.until || 0; render(); toast('Fortress mode is on until ' + clock(wallUntil) + '.'); }
-  catch(e) { toast('Pick your Red apps first, in Settings › My app colors.'); }
-}
 let wallTimer = null;
 function leaveWall(){
   let left = 30;
@@ -920,7 +940,337 @@ function leaveWall(){
     <button class="main" onclick="clearInterval(wallTimer);closeSheet()">Hold the line</button><button id="wgo" disabled>Open the gates</button></div>`);
   clearInterval(wallTimer);
   wallTimer = setInterval(() => { left--; const l = $('#wl'), b = $('#wgo'); if (!l) { clearInterval(wallTimer); return; } l.textContent = left;
-    if (left <= 0) { clearInterval(wallTimer); b.disabled = false; b.onclick = async () => { await ST.wallStop().catch(()=>{}); wallUntil = 0; closeSheet(); render(); }; } }, 1000);
+    if (left <= 0) { clearInterval(wallTimer); b.disabled = false; b.onclick = async () => { await ST.wallStop().catch(()=>{}); wallUntil = 0; closeSheet(); await loadWeapons(); repaint(); render(); }; } }, 1000);
+}
+
+// ---------- My Armory: weapons against screen time (design handoff sections 18 to 20) ----------
+// Free: the Sentry on one app, and Missions. Dynasty: everything else. Locks use the Red apps picked in Apple's list.
+// No weapon changes points or who wins, and whether someone has Dynasty never leaves this phone.
+const SW = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+const WICON = {
+  swords: SW + '<path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M9.5 17.5 21 6V3h-3L6.5 14.5M11 19l-6-6M8 16l-4 4M5 21l-2-2"/></svg>',
+  shield: SW + '<path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z"/></svg>',
+  medal: SW + '<path d="M8 3l2.5 6M16 3l-2.5 6"/><circle cx="12" cy="15" r="5"/></svg>',
+  castle: SW + '<path d="M4 21V9h3V6h2v3h6V6h2v3h3v12zM10 21v-4a2 2 0 0 1 4 0v4"/></svg>',
+  flag: SW + '<path d="M6 21V4M6 4h11l-2 4 2 4H6"/></svg>',
+  door: SW + '<path d="M14 4h5v16h-5M10 12H3M6 9l-3 3 3 3"/></svg>',
+  coins: SW + '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>',
+  scroll: SW + '<path d="M8 3h10v15a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-1h11v1a3 3 0 0 0 3 3M8 3a2 2 0 0 0-2 2v12M10 8h5M10 12h5"/></svg>',
+  horn: SW + '<path d="M4 10v4h3l7 4V6l-7 4zM17 9a4 4 0 0 1 0 6"/></svg>',
+};
+const WEAPONS = [
+  {id:'sentry', name:'The Sentry', icon:'shield', free:true},
+  {id:'missions', name:'Missions', icon:'medal', free:true},
+  {id:'fortress', name:'Fortress mode', icon:'castle'},
+  {id:'ceasefire', name:'Ceasefire', icon:'flag'},
+  {id:'banish', name:'Banish', icon:'door'},
+  {id:'treasury', name:'Treasury', icon:'coins'},
+  {id:'advisor', name:'Royal Advisor', icon:'scroll'},
+  {id:'herald', name:'Herald', icon:'horn'},
+];
+let W = null, WH = null;   // weapon status and Red hours from the phone
+const nowSec = () => Date.now() / 1000;
+const hhmm = min => { const h = Math.floor(min / 60) % 24, m = min % 60; return (h % 12 || 12) + (m ? ':' + String(m).padStart(2, '0') : '') + (h < 12 ? ' AM' : ' PM'); };
+const hhmm2 = min => { const h = Math.floor(min / 60) % 24, m = min % 60; return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h < 12 ? ' AM' : ' PM'); };
+async function loadWeapons(){
+  W = await ST.weaponStatus().catch(() => W);
+  WH = await ST.redHours({days:15}).catch(() => WH);
+  if (WH) missionsCheck();
+  // Dynasty ended (or the test switch went off): the Sentry goes back to its one app.
+  if (W && W.sentry && W.sentry.mode === 'all' && !dynasty()) { await ST.sentrySet({mode: W.sentry.apps ? 'one' : 'off'}).catch(()=>{}); W = await ST.weaponStatus().catch(() => W); }
+}
+async function openArmory(weapon){
+  pageState.weapon = weapon || null;
+  openPage('armory');
+  await loadWeapons(); repaint();
+}
+function armoryBack(){ pageState.weapon = null; repaint(); }
+function openWeapon(id){
+  const w = WEAPONS.find(x => x.id === id);
+  if (!w.free && !dynasty()) { openGold('', id); return; }
+  pageState.weapon = id; repaint();
+}
+// The line under each name, and the note on the right.
+function weaponLine(id){
+  const s = W || {}, sen = s.sentry || {}, dy = dynasty();
+  const today = WH && WH.days && WH.days[todayKey()] || {red:0};
+  switch (id) {
+    case 'sentry': return sen.mode === 'all' ? ['Guarding all your Red apps', 'On', true]
+      : sen.mode === 'one' && sen.apps ? ['A 5-second pause before one Red app', 'On · 1 app', true] : ['A 5-second pause before one Red app', 'Off'];
+    case 'missions': { const m = missionsToday(); return ['Daily goals that earn medals', m.filter(x => x.state === 'done').length + ' of 3 today']; }
+    case 'fortress': return s.fortress > nowSec() ? ['Red apps locked', 'Until ' + clock(s.fortress), true] : ['Lock Red apps for 1 to 4 hours', ''];
+    case 'ceasefire': {
+      const on = (s.cease || []).filter(c => c.on);
+      if (s.ceaseOn) return ['Red apps locked for now', 'On now', true];
+      return [on.length ? on.map(c => c.name).join(' and ') + (on.length === 1 ? ' hours' : '') : 'Red apps lock at set times', on.length ? 'Next ' + hhmm(nextCease(on)) : 'Off'];
+    }
+    case 'banish': return s.banish > nowSec() ? ['Red apps locked', 'Until ' + clock(s.banish), true] : ['Lock Red apps until morning', ''];
+    case 'treasury': return s.treasuryNow ? (s.treasuryOut ? ['Allowance spent', 'Locked till midnight', true] : ['Red apps lock after ' + hm(s.treasuryNow) + ' a day', Math.max(0, s.treasuryNow - today.red) + ' min left'])
+      : ['A daily allowance for Red apps', 'Off'];
+    case 'advisor': return ['Your week in review', 'Sunday'];
+    case 'herald': return ['A midday check-in on your points', s.herald ? hhmm(s.heraldAt) : 'Off'];
+  }
+}
+function todayKey(){ return today(); }
+function nextCease(on){
+  const d = new Date(), now = d.getHours() * 60 + d.getMinutes();
+  const starts = on.map(c => c.start).sort((a, b) => a - b);
+  return starts.find(x => x > now) ?? starts[0];
+}
+function wrow(w, opts){
+  const [sub, right, active] = weaponLine(w.id);
+  const locked = opts && opts.locked;
+  return `<button class="wrow ${!locked && active ? 'active' : ''}" onclick="openWeapon('${w.id}')"><div class="wico">${WICON[w.icon]}</div>
+    <div class="grow"><b>${locked && w.id === 'sentry' ? 'The Sentry, everywhere' : w.name}</b><div class="faint">${locked && w.id === 'sentry' ? 'Guard every Red app' : sub}</div></div>
+    ${locked ? `<span class="dyn">${crown(12)} DYNASTY</span>` : `<span class="wright ${active ? 'gold' : ''}">${right}</span>`}</button>`;
+}
+function armoryView(){
+  if (pageState.weapon) return weaponPage(pageState.weapon);
+  const top = `${backBar('My Armory')}<p class="dim s15" style="margin-top:0">Your weapons against screen time.</p>`;
+  if (!W) return top + '<p class="faint">Loading…</p>';
+  if (!dynasty()) {
+    const ready = WEAPONS.filter(w => w.free), locked = [WEAPONS[0], ...WEAPONS.filter(w => !w.free)];
+    return top + `<p class="lbl" style="margin:18px 0 8px">Ready to use</p>${ready.map(w => wrow(w)).join('')}
+      <div class="spread" style="margin:22px 0 8px"><span class="lbl">Dynasty</span><button class="link gold" style="padding:0" onclick="openGold('', '')">See Dynasty</button></div>
+      ${locked.map(w => wrow(w, {locked:true})).join('')}`;
+  }
+  const act = WEAPONS.filter(w => weaponLine(w.id)[2]), rest = WEAPONS.filter(w => !weaponLine(w.id)[2]);
+  return top + (act.length ? `<p class="lbl" style="margin:18px 0 8px">Active now</p>${act.map(w => wrow(w)).join('')}` : '')
+    + `<p class="lbl" style="margin:18px 0 8px">Ready</p>${rest.map(w => wrow(w)).join('')}`;
+}
+function weaponHead(title, desc, tag){
+  return `<button class="back" onclick="armoryBack()">‹ Armory</button>
+    <div class="spread" style="align-items:baseline"><h1>${title}</h1><span class="lbl gold">${tag || 'Dynasty'}</span></div>
+    <p class="dim s15" style="margin-top:0">${desc}</p>`;
+}
+const foot = t => `<p class="faint" style="text-align:center;margin-top:28px">${t}</p>`;
+function swt(on, fn, dis){ return `<label class="sw ivory"><input type="checkbox" ${on ? 'checked' : ''} ${dis ? 'disabled' : ''} onchange="${fn}"><i></i></label>`; }
+function weaponPage(id){
+  const s = W || {};
+  switch (id) {
+    case 'sentry': {
+      const sen = s.sentry || {}, dy = dynasty();
+      const since = sen.since ? 'Guarded since ' + weekday(sen.since) : '';
+      return weaponHead('The Sentry', 'Before a guarded app opens, you see your points and pause for 5 seconds. Then you choose: stay, or enter for 15 minutes.', dy ? 'Dynasty' : 'For everyone')
+        + (dy ? `<div class="card" style="padding:4px 16px">
+            <div class="setrow"><div class="grow"><b class="s15">Every Red app</b><div class="faint">The Sentry stands guard on all of them</div></div>${swt(sen.mode === 'all', "sentryMode(this.checked ? 'all' : (W.sentry.apps ? 'one' : 'off'))")}</div></div>` : '')
+        + `<p class="lbl" style="margin:18px 0 8px">${dy && sen.mode === 'all' ? 'Or guard just one app' : 'Your guarded app · free play gets one'}</p>
+        <div class="card"><div class="row"><div class="wico">${WICON.shield}</div><div class="grow"><b>${sen.apps ? 'Your guarded app' : 'No app yet'}</b><div class="faint">${sen.apps ? since : 'Pick the one you open without thinking'}</div></div>
+          ${sen.apps ? swt(sen.mode !== 'off', "sentryMode(this.checked ? 'one' : 'off')", sen.mode === 'all') : ''}</div></div>
+        <button onclick="sentryPick()">Choose in Apple's list</button>
+        <p class="faint">Pick the one app you open without thinking. Keep Phone, Maps and Messages off this list.</p>
+        ${!dy ? `<button class="upsell" onclick="openGold('', 'sentry')"><div class="ib" style="background:none">${crown(24)}</div><div class="grow"><b class="s15">Guard every Red app</b><div class="faint">Dynasty posts the Sentry on all of them.</div></div><span class="gold s15" style="font-weight:600">See</span></button>` : ''}`;
+    }
+    case 'fortress': {
+      if (s.fortress > nowSec()) {
+        const left = Math.max(0, Math.round(s.fortress - nowSec())), h = Math.floor(left / 3600), m = Math.floor(left % 3600 / 60);
+        return weaponHead('Fortress mode', 'Your Red apps stay locked until the time is up.')
+          + `<div style="text-align:center;margin:30px 0"><div style="display:flex;justify-content:center">${crown(72)}</div>
+            <div class="big" style="font-size:64px">${h}:${String(m).padStart(2, '0')}</div><p class="dim s15">left · unlocks at ${clock(s.fortress)}</p></div>
+          <button onclick="leaveWall()">Leave early</button>`;
+      }
+      const hrs = pageState.hrs || 2;
+      return weaponHead('Fortress mode', 'Your Red apps stay locked until the time is up.')
+        + `<div class="picks">${[1, 2, 4].map(n => `<button class="${n === hrs ? 'on' : ''}" onclick="pageState.hrs=${n};repaint()"><b class="d">${n}</b><span>${n === 1 ? 'hour' : 'hours'}</span></button>`).join('')}</div>
+        <div class="card"><p class="s15" style="margin:0">Locks: your Red apps</p><p class="s15" style="margin:4px 0">Still open: texts, calls, Maps and everything free</p>
+          <p class="faint" style="margin:0">Leaving early is allowed, after a 30-second wait.</p></div>
+        <button class="main" style="margin-top:18px" onclick="raiseWall(${hrs})">Lock for ${hrs} ${hrs === 1 ? 'hour' : 'hours'}</button>`;
+    }
+    case 'ceasefire': {
+      const list = s.cease && s.cease.length ? s.cease : CEASE_DEFAULT;
+      const strip = Array.from({length:48}, (_, i) => { const t = i * 30; const c = list.find(c => c.on && (c.start < c.end ? t >= c.start && t < c.end : t >= c.start || t < c.end)); return `<i style="background:${c ? (CEASE_COLOR[list.indexOf(c) % 3]) : 'transparent'}"></i>`; }).join('');
+      return weaponHead('Ceasefire', 'Your Red apps lock at set times, every day, without you lifting a finger.')
+        + `<p class="lbl" style="margin:14px 0 6px">Your day</p><div class="daystrip">${strip}</div>
+        <div class="spread faint" style="font-size:11px"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
+        <div class="card" style="padding:4px 16px;margin-top:14px">${list.map((c, i) => `<div class="setrow"><div class="grow"><b class="s15">${esc(c.name)}</b>
+          <div class="d" style="font-size:20px;${c.on ? '' : 'opacity:.5'}"><input class="tm" type="time" value="${hm24(c.start)}" onchange="ceaseEdit(${i},'start',this.value)"> to <input class="tm" type="time" value="${hm24(c.end)}" onchange="ceaseEdit(${i},'end',this.value)"></div>
+          <div class="faint">${c.days === 'weekdays' ? 'Monday to Friday' : 'Every day'}</div></div>${swt(c.on, `ceaseEdit(${i},'on',this.checked)`)}</div>`).join('')}</div>
+        ${list.length < 6 ? '<button class="link" style="color:var(--ink);padding-left:0" onclick="ceaseAdd()">+ Add a ceasefire</button>' : ''}
+        ${s.ceasePending ? '<p class="faint">Your changes start tomorrow.</p>' : ''}
+        ${foot('During a ceasefire, texts, calls and Maps still work. Changes start the next day.')}`;
+    }
+    case 'banish': {
+      if (s.banish > nowSec()) return weaponHead('Banish', 'One tap, and your Red apps are gone until morning.')
+        + `<div class="card" style="text-align:center;padding:28px 18px"><div style="color:var(--dim)">${WICON.door}</div><h2 style="margin-top:10px">Banished until ${clock(s.banish)}</h2>
+          <p class="dim s15" style="margin:0">Your Red apps are locked. They come back in the morning.</p></div>${foot('Texts, calls and Maps still work.')}`;
+      const mm = s.morning || 420;
+      return weaponHead('Banish', 'One tap, and your Red apps are gone until morning.')
+        + `<div class="card" style="text-align:center;padding:28px 18px"><div style="color:var(--dim)">${WICON.door}</div><h2 style="margin-top:10px">Banish until ${hhmm(mm)}?</h2>
+          <p class="dim s15" style="margin:0">Your Red apps lock now and stay locked until morning. You can't undo it tonight.</p></div>
+        <p class="lbl" style="margin:18px 0 8px">Morning starts at</p>
+        <div class="card" style="padding:0 16px"><select class="selrow" onchange="banishMorning(+this.value)">${[300, 330, 360, 390, 420, 450, 480, 510, 540, 600].map(v => `<option value="${v}" ${v === mm ? 'selected' : ''}>${hhmm2(v)}</option>`).join('')}</select></div>
+        <button class="main" style="margin-top:28px" onclick="banishNow()">Banish them</button>
+        <div style="text-align:center"><button class="link" onclick="armoryBack()">Not tonight</button></div>${foot('Texts, calls and Maps still work.')}`;
+    }
+    case 'treasury': {
+      const tm = s.treasury || 0, now = s.treasuryNow || 0, used = (WH && WH.days[today()] || {red:0}).red;
+      const left = Math.max(0, now - used);
+      return weaponHead('Treasury', 'A daily allowance for your Red apps. When it runs out, they lock until midnight.')
+        + (now ? `<div class="card"><p class="lbl" style="margin:0">Today</p><div class="row" style="align-items:baseline;gap:8px"><span class="big" style="font-size:56px">${left}</span><span class="dim s15">min left of ${hm(now)}</span></div>
+          <div class="bar" style="height:8px;margin:10px 0 6px;background:var(--card2)"><i style="width:${now ? left / now * 100 : 0}%;background:var(--accent)"></i></div>
+          <p class="faint" style="margin:0">${s.treasuryOut ? 'Spent. Your Red apps are locked until midnight.' : 'Red apps so far: ' + hm(used)}</p></div>` : '')
+        + `<p class="lbl" style="margin:18px 0 8px">Daily allowance</p>
+        <div class="picks">${[[30, '30', 'min'], [60, '1', 'hour'], [120, '2', 'hours']].map(([v, n, u]) => `<button class="${v === (tm || 60) ? 'on' : ''}" onclick="treasurySet(${v}, true)"><b class="d">${n}</b><span>${u}</span></button>`).join('')}</div>
+        <div class="card" style="padding:4px 16px"><div class="setrow"><div class="grow"><b class="s15">Treasury on</b><div class="faint">Counts Red apps only</div></div>${swt(tm > 0, `treasurySet(this.checked ? ${tm || 60} : 0)`)}</div></div>
+        ${tm !== now ? '<p class="faint">Your change starts tomorrow.</p>' : ''}
+        ${foot('Texts, calls and Maps never count. Changes start the next day.')}`;
+    }
+    case 'advisor': return advisorPage();
+    case 'herald': return weaponHead('Herald', "A short check-in at midday, so the afternoon doesn't get away from you.")
+      + `<div class="card herald"><div class="d" style="font-size:52px;text-align:center;color:var(--ink)">${hhmm2(s.heraldAt || 720).replace(/ [AP]M/, '')}</div>
+        <div class="note"><div class="ib" style="width:36px;height:36px;border-radius:9px;background:#141210">${crown(20)}</div><div class="grow"><div class="spread"><b class="s15">Conquer</b><span class="faint">${hhmm2(s.heraldAt || 720)}</span></div>
+        <b class="s15">Midday report from your Herald</b><div class="s15">You have ${fmt(todayMin.points)} points left. Hold the line until dinner.</div></div></div></div>
+      <p class="lbl" style="margin:18px 0 8px">Settings</p>
+      <div class="card" style="padding:4px 16px"><div class="setrow"><b class="s15 grow">Midday check-in</b>${swt(s.herald, 'heraldSet(this.checked)')}</div>
+        <div class="setrow"><b class="s15 grow">Time</b><select class="selmini" onchange="heraldSet(true, +this.value)">${[600, 660, 720, 780, 840, 900, 960].map(v => `<option value="${v}" ${v === (s.heraldAt || 720) ? 'selected' : ''}>${hhmm2(v)}</option>`).join('')}</select></div></div>
+      ${foot('The Herald only reports your own points. It never mentions a rival or a result.')}`;
+    case 'missions': return missionsPage();
+  }
+}
+const CEASE_DEFAULT = [{name:'Night', start:1320, end:420, days:'all', on:false}, {name:'Work', start:480, end:960, days:'weekdays', on:false}, {name:'Dinner', start:1080, end:1140, days:'all', on:false}];
+const CEASE_COLOR = ['#6b1d27', '#4a3d1c', '#3d2a3a'];
+const hm24 = m => String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+async function saveCease(list){
+  try { const r = await ST.ceaseSet({list}); toast(r.tomorrow ? 'Saved. Your ceasefires change from tomorrow.' : 'Ceasefire is set.'); }
+  catch(e) { toast('That didn\'t save. Try again.'); }
+  await loadWeapons(); repaint();
+}
+function ceaseEdit(i, key, val){
+  const list = JSON.parse(JSON.stringify(W.cease && W.cease.length ? W.cease : CEASE_DEFAULT));
+  if (key === 'on') list[i].on = val;
+  else { const [h, m] = val.split(':').map(Number); if (isNaN(h)) return; list[i][key] = h * 60 + m; }
+  if (list[i].start === list[i].end) { toast('A ceasefire needs a start and an end.'); repaint(); return; }
+  saveCease(list);
+}
+function ceaseAdd(){
+  const list = JSON.parse(JSON.stringify(W.cease && W.cease.length ? W.cease : CEASE_DEFAULT));
+  list.push({name:'Ceasefire ' + (list.length + 1), start:780, end:840, days:'all', on:true});
+  saveCease(list);
+}
+async function sentryPick(){
+  const r = await ST.sentryPick().catch(() => ({picked:false}));
+  if (!r.picked && r.count > 1) toast('Pick just one app. Free play guards one.');
+  else if (!r.picked && r.count === 1) toast('Pick one app, not a whole category.');
+  else if (r.picked) toast('The Sentry stands guard.');
+  await loadWeapons(); repaint();
+}
+async function sentryMode(mode){ await ST.sentrySet({mode}).catch(()=>{}); await loadWeapons(); repaint(); }
+async function raiseWall(hours){
+  try { const r = await ST.wallStart({hours}); wallUntil = r.until || 0; toast('Fortress mode is on until ' + clock(wallUntil) + '.'); }
+  catch(e) { toast('Pick your Red apps first, in Settings › My app colors.'); }
+  await loadWeapons(); repaint();
+}
+async function banishMorning(min){ await ST.banishMorning({minutes:min}).catch(()=>{}); await loadWeapons(); repaint(); }
+async function banishNow(){
+  try { const r = await ST.banishStart(); toast('Banished until ' + clock(r.until) + '.'); }
+  catch(e) { toast('Pick your Red apps first, in Settings › My app colors.'); }
+  await loadWeapons(); repaint();
+}
+async function treasurySet(min, pick){
+  if (pick && !(W.treasury > 0)) { W.treasury = min; repaint(); return; }  // choosing a size before switching it on
+  try { const r = await ST.treasurySet({minutes:min}); if (r.tomorrow) toast('Saved. It changes from tomorrow.'); }
+  catch(e) { toast('That didn\'t save. Try again.'); }
+  await loadWeapons(); repaint();
+}
+async function heraldSet(on, at){
+  const r = await ST.heraldSet(at ? {on, at} : {on}).catch(() => ({on:false}));
+  if (on && !r.on) toast('Turn on notifications for Conquer in Settings to hear from your Herald.');
+  await loadWeapons(); repaint();
+}
+
+// ---------- Royal Advisor: the week in review, made on the phone ----------
+function advisorPage(){
+  const head = weaponHead('Royal Advisor', 'Your week in review, every Sunday.');
+  if (!WH) return head + '<p class="faint">Loading…</p>';
+  // The last full week, Monday to Sunday, compared with the week before it.
+  const lastSun = addDays(weekStart(today()), -1), mon = addDays(lastSun, -6), prevMon = addDays(mon, -7);
+  const day = d => WH.days[d];
+  const days = Array.from({length:7}, (_, i) => addDays(mon, i)).filter(day);
+  if (days.length < 3) return head + `<div class="card"><b class="s15">Your first report arrives Sunday.</b><p class="faint" style="margin:6px 0 0">Your Advisor needs a few days of play to see the pattern.</p></div>${foot('Made on your phone. Nothing in this report leaves it.')}`;
+  const sum = ds => ds.reduce((a, d) => a + ((day(d) || {}).red || 0), 0);
+  const tot = sum(days), prevDays = Array.from({length:7}, (_, i) => addDays(prevMon, i)).filter(day), prev = prevDays.length >= 3 ? sum(prevDays) : null;
+  const best = days.slice().sort((a, b) => (day(a).red || 0) - (day(b).red || 0))[0];
+  const hours = Array(24).fill(0); days.forEach(d => Object.entries(day(d).hours || {}).forEach(([h, m]) => hours[+h] += m));
+  const top = hours.indexOf(Math.max(...hours)), anyHour = Math.max(...hours) > 0;
+  const tip = !anyHour ? ['You barely touched your Red apps. Keep your Sentry on guard.', 'Open the Sentry', 'sentry']
+    : top >= 20 || top < 5 ? [`Late nights are your weak spot. A Ceasefire from ${hhmm(Math.max(0, top - 1) * 60)} would cover most of it.`, 'Set a Ceasefire', 'ceasefire']
+    : top >= 17 ? [`Evenings are your weak spot. A Ceasefire from ${hhmm(top * 60)} would cover most of it.`, 'Set a Ceasefire', 'ceasefire']
+    : top < 10 ? ['Mornings are your weak spot. A daily allowance would keep them in check.', 'Set up Treasury', 'treasury']
+    : ['Afternoons are your weak spot. A Fortress for an hour or two would cover them.', 'Open Fortress mode', 'fortress'];
+  const diff = prev === null ? null : tot - prev;
+  return head + `<p class="lbl" style="margin:8px 0">${shortDate(mon)} to ${shortDate(lastSun)}</p>
+    <div class="card"><div class="faint">Time on Red apps</div><div class="row" style="align-items:baseline;gap:8px"><span class="d" style="font-size:32px">${hm(tot)}</span>
+      ${diff ? `<span class="s15" style="font-weight:600;color:${diff < 0 ? 'var(--free)' : 'var(--red)'}">${diff < 0 ? '−' : '+'}${hm(Math.abs(diff)).replace(' min', '')}</span>` : ''}</div>
+      ${prev !== null ? `<p class="faint" style="margin:4px 0 0">${diff < 0 ? 'Down from ' : diff > 0 ? 'Up from ' : 'Same as '}${hm(prev)} the week before.</p>` : ''}</div>
+    <div class="tiles" style="grid-template-columns:1fr 1fr"><div style="text-align:left;padding:12px 14px">Best day<b class="d" style="font-size:20px">${weekday(best)}</b>${hm(day(best).red)} on Red apps</div>
+      <div style="text-align:left;padding:12px 14px">Toughest hour<b class="d" style="font-size:20px">${anyHour ? hhmm(top * 60) : 'None'}</b>${anyHour ? 'Most Red time starts here' : 'No Red time to speak of'}</div></div>
+    <div class="card"><p class="lbl" style="margin:0 0 6px">Your Advisor suggests</p><p class="s15" style="margin:0 0 12px">${tip[0]}</p>
+      <button onclick="openWeapon('${tip[2]}')">${tip[1]}</button></div>
+    ${foot('Made on your phone. Nothing in this report leaves it.')}`;
+}
+function shortDate(d){ return toDate(d).toLocaleDateString('en-US', {month:'short', day:'numeric'}); }
+
+// ---------- Missions (free for everyone): three a day; each one finished earns a medal. Medals never touch points. ----------
+const MISSION_POOL = [
+  [{id:'early9', name:'No Red apps before 9 AM', until:9}, {id:'early10', name:'No Red apps before 10 AM', until:10}],
+  [{id:'gap2', name:'Two hours in a row with no Red apps', gap:120}, {id:'gap3', name:'Three hours in a row with no Red apps', gap:180}],
+  [{id:'keep800', name:'Keep 800 points until 6 PM', keep:800, by:18}, {id:'keep900', name:'Keep 900 points until noon', keep:900, by:12}],
+];
+function dayHash(d){ let h = 0; for (const c of d) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; }
+function missionsFor(d){ const h = dayHash(d); return MISSION_POOL.map((pair, i) => pair[(h >> i) & 1]); }
+// Points by the end of an hour, from the hours the phone recorded (Red 40 and Orange 20 per 15 minutes).
+function pointsBy(d, hour){
+  const x = WH && WH.days[d]; if (!x) return BANK;
+  const redBy = Object.entries(x.hours || {}).filter(([h]) => +h < hour).reduce((a, [, m]) => a + m, 0);
+  const share = x.red ? redBy / x.red : 0, orangeBy = Math.round((x.orange || 0) * share);
+  return points({red:redBy, orange:orangeBy});
+}
+function missionsToday(){
+  const d = today(), now = new Date(), hr = now.getHours(), x = (WH && WH.days[d]) || {red:0, orange:0, hours:{}};
+  const rec = (S.missions = S.missions || {})[d] = (S.missions || {})[d] || {done:{}, best:0};
+  return missionsFor(d).map(m => {
+    let state = 'open', note = '', prog = null, sub = '';
+    if (rec.done[m.id]) { state = 'done'; sub = 'Done at ' + rec.done[m.id]; }
+    else if (m.until) {
+      const used = Object.entries(x.hours || {}).some(([h, v]) => +h < m.until && v > 0);
+      if (used) { state = 'missed'; sub = 'Not today'; } else if (hr >= m.until) { state = 'done'; sub = 'Done at ' + hhmm2(m.until * 60); } else note = 'Until ' + hhmm(m.until * 60);
+    } else if (m.gap) {
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6).getTime() / 1000;
+      const since = Math.max(WH ? WH.redLast || 0 : 0, startOfDay), run = Math.max(0, Math.floor((nowSec() - since) / 60));
+      rec.best = Math.max(rec.best || 0, now.getHours() >= 6 ? run : 0);
+      if (rec.best >= m.gap) { state = 'done'; sub = 'Done at ' + clock(nowSec()); }
+      else { prog = rec.best / m.gap; note = (m.gap - rec.best) + ' min to go'; sub = hm(rec.best) + ' so far'; }
+    } else if (m.keep) {
+      const pts = hr >= m.by ? pointsBy(d, m.by) : todayMin.points;
+      if (pts < m.keep) { state = 'missed'; sub = 'Not today'; } else if (hr >= m.by) { state = 'done'; sub = 'Done at ' + hhmm2(m.by * 60); }
+      else { note = 'Until ' + hhmm(m.by * 60); sub = 'You have ' + fmt(pts) + ' now'; }
+    }
+    if (state === 'done' && !rec.done[m.id]) rec.done[m.id] = sub.replace('Done at ', '');
+    return {...m, state, note, prog, sub};
+  });
+}
+function missionsCheck(){
+  const before = JSON.stringify(S.missions || {});
+  missionsToday();
+  // Keep 40 days, like everything else.
+  const cut = addDays(today(), -40); Object.keys(S.missions).forEach(k => { if (k < cut) delete S.missions[k]; });
+  if (JSON.stringify(S.missions) !== before) save();
+}
+function medals(){ return Object.values(S.missions || {}).reduce((a, r) => a + Object.keys(r.done || {}).length, 0) + (S.medalsOld || 0); }
+function missionStreak(){
+  let n = 0; for (let d = today(); ; d = addDays(d, -1)) { const r = (S.missions || {})[d]; if (r && Object.keys(r.done || {}).length) n++; else if (d !== today()) break; if (n > 400) break; }
+  return n;
+}
+function missionsPage(){
+  const list = missionsToday(), st = missionStreak();
+  return weaponHead('Missions', 'Three small missions a day. Each one you finish earns a medal.', 'For everyone')
+    + `<div class="card row"><div class="wico" style="background:none">${WICON.medal}</div><div class="grow"><div class="lbl">Your medals</div><div class="d" style="font-size:28px">${medals()}</div></div>
+      ${st ? `<div class="faint" style="text-align:right">${st}-day<br>mission streak</div>` : ''}</div>
+    <p class="lbl" style="margin:18px 0 8px">Today's missions</p>
+    ${list.map(m => `<div class="card mission ${m.state}"><div class="row"><div class="grow"><b class="s15">${m.name}</b><div class="faint">${m.sub}</div></div>
+      ${m.state === 'done' ? `<span class="tick">${ICON.check}</span>` : `<span class="faint" style="color:var(--dim)">${m.note}</span>`}</div>
+      ${m.prog !== null && m.state === 'open' ? `<div class="bar" style="height:6px;margin:10px 0 0;background:var(--card2)"><i style="width:${m.prog * 100}%;background:var(--accent)"></i></div>` : ''}</div>`).join('')}
+    ${foot('New missions every morning. Medals never change your points or who wins.')}`;
 }
 
 // ---------- haptics and sound (handoff section 13): seal, win and loss only ----------

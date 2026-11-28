@@ -39,6 +39,11 @@ class MonitorExtension: DeviceActivityMonitor {
             defaults?.removeObject(forKey: "wall-until")
             WidgetCenter.shared.reloadAllTimelines()
         }
+        // Other weapons (Shared/Weapons.swift).
+        if activity.rawValue.hasPrefix("cease-") { Weapons.ceaseEnded(activity.rawValue) }
+        if activity == DeviceActivityName("banish") { Weapons.unlock("banish"); defaults?.removeObject(forKey: "banish-until") }
+        if activity == DeviceActivityName("sentry-pass") { Weapons.applySentry() }
+        if activity == DeviceActivityName("treasury") { Weapons.treasuryNewDay() }
     }
 
     override func intervalDidStart(for activity: DeviceActivityName) {
@@ -49,6 +54,9 @@ class MonitorExtension: DeviceActivityMonitor {
         // Blip friends game: "fclock" wakes us at midnight to send yesterday's points total. Its watchers never restart Classic's counter.
         if activity == DeviceActivityName("fclock") { friendsMidnight(); return }
         if activity == DeviceActivityName("wall") { return }
+        if activity.rawValue.hasPrefix("cease-") { Weapons.ceaseStarted(activity.rawValue); return }
+        if activity == DeviceActivityName("treasury") { Weapons.treasuryNewDay(); return }
+        if ["banish", "sentry-pass"].contains(activity.rawValue) { return }
         if activity.rawValue.hasPrefix("tier-") { return }
         if activity != DeviceActivityName("daily"), !DeviceActivityCenter().activities.contains(DeviceActivityName("daily")) { restartDaily() }
         let key = "minutes-" + today()
@@ -127,6 +135,7 @@ class MonitorExtension: DeviceActivityMonitor {
     override func eventDidReachThreshold(_ event: DeviceActivityEvent.Name, activity: DeviceActivityName) {
         super.eventDidReachThreshold(event, activity: activity)
         // TestFlight check: per-category steps ("c3_45" = category #3 passed 45 minutes). Logged only, never counted.
+        if activity == DeviceActivityName("treasury") { Weapons.treasurySpent(); return }
         if activity == DeviceActivityName("cats") { log("cat " + event.rawValue.dropFirst().replacingOccurrences(of: "_", with: ": ") + "m"); return }
         // TestFlight check: websites-only ("web45"), build 20 way ("picked45") and no-filter ("all45") watchers. Logged only, never counted.
         // TestFlight quick test ("qt-..." activities, "t7" = 7 minutes since the test started). New highs only.
@@ -153,8 +162,12 @@ class MonitorExtension: DeviceActivityMonitor {
             guard let m = Int(event.rawValue.dropFirst()) else { return }
             let tier = String(activity.rawValue.dropFirst(5))
             let key = "fmin-" + tier + "-" + today()
-            guard m > (defaults?.integer(forKey: key) ?? 0), possible(m, name: activity.rawValue) else { return }
+            let before = defaults?.integer(forKey: key) ?? 0
+            guard m > before, possible(m, name: activity.rawValue) else { return }
             defaults?.set(m, forKey: key)
+            Weapons.addHour(tier, m - before)   // Royal Advisor and Missions read these hours (on the phone only)
+            let r = defaults?.integer(forKey: "fmin-red-" + today()) ?? 0, o = defaults?.integer(forKey: "fmin-orange-" + today()) ?? 0
+            Weapons.scheduleHerald(points: Friends.points(red: r, orange: o))
             WidgetCenter.shared.reloadAllTimelines() // Conquer's widgets show the new points
             return
         }
@@ -203,7 +216,7 @@ enum Friends {
         let center = DeviceActivityCenter()
         // Blip Classic / Nomad watchers are not used by this game: stop them (iOS allows only 20 at once).
         let mine = Set((tiers.map { "tier-" + $0 } + ["fclock", "wall"]).map { DeviceActivityName($0) })  // "wall" = Fortress mode
-        center.stopMonitoring(center.activities.filter { !mine.contains($0) })
+        center.stopMonitoring(center.activities.filter { !mine.contains($0) && !Weapons.keeps($0) })
         let schedule = DeviceActivitySchedule(intervalStart: DateComponents(hour: 0, minute: 0),
                                               intervalEnd: DateComponents(hour: 23, minute: 59, second: 59), repeats: true)
         for t in tiers {
@@ -231,7 +244,7 @@ enum Friends {
     static func purge(_ d: UserDefaults?) {
         guard let d = d, let cutoff = Calendar.current.date(byAdding: .day, value: -keepDays, to: Date()) else { return }
         let oldest = dayString(cutoff)
-        for key in d.dictionaryRepresentation().keys where key.hasPrefix("fmin-") || key.hasPrefix("fsent-") || key.hasPrefix("at-tier-") {
+        for key in d.dictionaryRepresentation().keys where key.hasPrefix("fmin-") || key.hasPrefix("fhour-") || key.hasPrefix("fsent-") || key.hasPrefix("at-tier-") {
             let day = key.split(separator: "-").suffix(3).joined(separator: "-")
             if day < oldest { d.removeObject(forKey: key) }
         }
@@ -248,6 +261,10 @@ extension MonitorExtension {
             if Friends.tiers.contains(where: { Friends.selection(defaults, $0) != nil && !running.contains("tier-" + $0) }) { try? Friends.startWatchers(defaults) }
         }
         Friends.purge(defaults)
+        if Weapons.applyCeasePending() { Weapons.startCeasefires() }
+        if Weapons.applyTreasuryPending() { Weapons.startTreasury() }
+        Weapons.treasuryNewDay()
+        Weapons.scheduleHerald(points: Friends.bank)
         guard let y = Calendar.current.date(byAdding: .day, value: -1, to: Date()) else { return }
         let day = Friends.dayString(y)
         guard let since = defaults?.string(forKey: "friends-since"), day >= since else { return }

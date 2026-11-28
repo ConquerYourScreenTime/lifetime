@@ -48,7 +48,17 @@ public class ScreenTimePlugin: CAPPlugin, CAPBridgedPlugin {
         // Dynasty tools (build 5)
         CAPPluginMethod(name: "wallStart", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "wallStop", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "wallStatus", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "wallStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "weaponStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "weaponsResume", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "sentryPick", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "sentrySet", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "banishStart", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "banishMorning", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "ceaseSet", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "treasurySet", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "heraldSet", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "redHours", returnType: CAPPluginReturnPromise)
     ]
 
     static let group = "group.io.github.gamesbyvidal.lifetime"
@@ -505,7 +515,7 @@ enum Friends {
         let center = DeviceActivityCenter()
         // Blip Classic / Nomad watchers are not used by this game: stop them (iOS allows only 20 at once).
         let mine = Set((tiers.map { "tier-" + $0 } + ["fclock", "wall"]).map { DeviceActivityName($0) })  // "wall" = Fortress mode
-        center.stopMonitoring(center.activities.filter { !mine.contains($0) })
+        center.stopMonitoring(center.activities.filter { !mine.contains($0) && !Weapons.keeps($0) })
         let schedule = DeviceActivitySchedule(intervalStart: DateComponents(hour: 0, minute: 0),
                                               intervalEnd: DateComponents(hour: 23, minute: 59, second: 59), repeats: true)
         for t in tiers {
@@ -533,7 +543,7 @@ enum Friends {
     static func purge(_ d: UserDefaults?) {
         guard let d = d, let cutoff = Calendar.current.date(byAdding: .day, value: -keepDays, to: Date()) else { return }
         let oldest = dayString(cutoff)
-        for key in d.dictionaryRepresentation().keys where key.hasPrefix("fmin-") || key.hasPrefix("fsent-") || key.hasPrefix("at-tier-") {
+        for key in d.dictionaryRepresentation().keys where key.hasPrefix("fmin-") || key.hasPrefix("fhour-") || key.hasPrefix("fsent-") || key.hasPrefix("at-tier-") {
             let day = key.split(separator: "-").suffix(3).joined(separator: "-")
             if day < oldest { d.removeObject(forKey: key) }
         }
@@ -878,4 +888,145 @@ enum Conquer {
 class ConquerNotes: NSObject, NotificationHandlerProtocol {
     func willPresent(notification: UNNotification) -> UNNotificationPresentationOptions { [.banner, .list, .sound] }
     func didReceive(response: UNNotificationResponse) { Conquer.handle(response) {} }
+}
+
+
+// ---------- Weapons against screen time (design handoff sections 18 to 20; the rules are in Shared/Weapons.swift) ----------
+extension ScreenTimePlugin {
+    // Everything My Armory shows. Counts and times only: Apple never tells the app which apps were picked.
+    @objc func weaponStatus(_ call: CAPPluginCall) {
+        let d = Weapons.d
+        let s = Weapons.selection("sentry-sel")
+        let pend = d?.array(forKey: "cease-next")
+        let out: [String: Any] = [
+            "sentry": ["mode": d?.string(forKey: "sentry-mode") ?? "off", "apps": s?.applicationTokens.count ?? 0, "since": d?.string(forKey: "sentry-since") ?? ""] as [String: Any],
+            "fortress": Weapons.fortressUntil,
+            "banish": Weapons.banishUntil, "morning": Weapons.morningMinutes,
+            "cease": pend ?? (Weapons.ceaseList() as [Any]), "ceasePending": pend != nil, "ceaseOn": Weapons.ceaseActive,
+            "treasury": (d?.object(forKey: "treasury-next") as? Int) ?? Weapons.treasuryMinutes, "treasuryNow": Weapons.treasuryMinutes, "treasuryOut": Weapons.treasuryOut,
+            "herald": d?.bool(forKey: "herald-on") == true, "heraldAt": d?.object(forKey: "herald-at") as? Int ?? 720,
+        ]
+        call.resolve(out)
+    }
+    // Each app open: apply changes that were waiting for a new day, and tidy up locks whose time has passed.
+    @objc func weaponsResume(_ call: CAPPluginCall) {
+        Self.work.async {
+            if Weapons.applyCeasePending() { Weapons.startCeasefires() }
+            if Weapons.applyTreasuryPending() { Weapons.startTreasury() }
+            if (Weapons.d?.double(forKey: "banish-until") ?? 0) > 0 && Weapons.banishUntil == 0 { Weapons.endBanish() }
+            if (Weapons.d?.double(forKey: "wall-until") ?? 0) > 0 && Weapons.fortressUntil == 0 { Conquer.lowerWall(Weapons.d) }
+            if Weapons.d?.string(forKey: "treasury-out").map({ $0 != Weapons.dayString() }) == true { Weapons.treasuryNewDay() }
+            if Weapons.ceaseActive && Weapons.ceaseEndsAt() == nil { Weapons.d?.removeObject(forKey: "cease-on"); Weapons.unlock("cease") }
+            Weapons.applySentry()
+            let day = Weapons.dayString(), d = Weapons.d
+            Weapons.scheduleHerald(points: Friends.points(red: d?.integer(forKey: "fmin-red-" + day) ?? 0, orange: d?.integer(forKey: "fmin-orange-" + day) ?? 0))
+            call.resolve()
+        }
+    }
+    // The Sentry's one guarded app (free play). Picked only in Apple's list.
+    @objc func sentryPick(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            var saved = FamilyActivitySelection()
+            if let old = Weapons.selection("sentry-sel") { saved = old }
+            let picker = WeaponPickerView(selection: saved, title: "Pick one app to guard") { picked in
+                self.bridge?.viewController?.dismiss(animated: true)
+                guard let picked = picked else { call.resolve(["picked": false]); return }
+                if picked.applicationTokens.count != 1 || !picked.categoryTokens.isEmpty { call.resolve(["picked": false, "count": picked.applicationTokens.count + picked.categoryTokens.count]); return }
+                if let data = try? JSONEncoder().encode(picked) { Weapons.d?.set(data, forKey: "sentry-sel") }
+                Weapons.d?.set(Weapons.dayString(), forKey: "sentry-since")
+                if Weapons.d?.string(forKey: "sentry-mode") == nil || Weapons.d?.string(forKey: "sentry-mode") == "off" { Weapons.d?.set("one", forKey: "sentry-mode") }
+                Weapons.applySentry()
+                call.resolve(["picked": true])
+            }
+            let host = UIHostingController(rootView: picker)
+            host.overrideUserInterfaceStyle = .dark
+            self.bridge?.viewController?.present(host, animated: true)
+        }
+    }
+    // mode: "off", "one" (the picked app) or "all" (every Red app; Dynasty).
+    @objc func sentrySet(_ call: CAPPluginCall) {
+        let mode = call.getString("mode") ?? "off"
+        Weapons.d?.set(["one", "all"].contains(mode) ? mode : "off", forKey: "sentry-mode")
+        Weapons.applySentry()
+        call.resolve()
+    }
+    @objc func banishStart(_ call: CAPPluginCall) {
+        let until = Weapons.banish()
+        if until == 0 { call.reject("No Red apps picked"); return }
+        call.resolve(["until": until])
+    }
+    @objc func banishMorning(_ call: CAPPluginCall) {
+        Weapons.d?.set(max(240, min(720, call.getInt("minutes") ?? 420)), forKey: "banish-morning")
+        call.resolve()
+    }
+    // A new ceasefire list. Before any ceasefire has been set it applies now; after that, from tomorrow.
+    @objc func ceaseSet(_ call: CAPPluginCall) {
+        let list = (call.getArray("list", JSObject.self) ?? []).prefix(6).map { w -> [String: Any] in
+            ["name": (w["name"] as? String) ?? "", "start": (w["start"] as? Int) ?? 0, "end": (w["end"] as? Int) ?? 0,
+             "days": (w["days"] as? String) == "weekdays" ? "weekdays" : "all", "on": (w["on"] as? Bool) == true]
+        }
+        let d = Weapons.d
+        let first = d?.object(forKey: "cease-list") == nil
+        Self.work.async {
+            if first { d?.set(Array(list), forKey: "cease-list"); Weapons.startCeasefires() }
+            else { d?.set(Array(list), forKey: "cease-next"); d?.set(Weapons.dayString(), forKey: "cease-next-day") }
+            call.resolve(["tomorrow": !first])
+        }
+    }
+    // Allowance in minutes (30, 60 or 120; 0 = off). Same rule: first setting now, changes from tomorrow.
+    @objc func treasurySet(_ call: CAPPluginCall) {
+        let m = [0, 30, 60, 120].contains(call.getInt("minutes") ?? 0) ? (call.getInt("minutes") ?? 0) : 60
+        let d = Weapons.d
+        let first = d?.object(forKey: "treasury-min") == nil
+        Self.work.async {
+            if first { d?.set(m, forKey: "treasury-min"); Weapons.startTreasury() }
+            else { d?.set(m, forKey: "treasury-next"); d?.set(Weapons.dayString(), forKey: "treasury-next-day") }
+            call.resolve(["tomorrow": !first])
+        }
+    }
+    @objc func heraldSet(_ call: CAPPluginCall) {
+        let d = Weapons.d
+        d?.set(call.getBool("on") ?? false, forKey: "herald-on")
+        if let at = call.getInt("at") { d?.set(max(600, min(960, at)), forKey: "herald-at") }
+        let go = {
+            let day = Weapons.dayString()
+            Weapons.scheduleHerald(points: Friends.points(red: d?.integer(forKey: "fmin-red-" + day) ?? 0, orange: d?.integer(forKey: "fmin-orange-" + day) ?? 0))
+            call.resolve(["on": d?.bool(forKey: "herald-on") == true])
+        }
+        if d?.bool(forKey: "herald-on") == true {
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { ok, _ in if !ok { d?.set(false, forKey: "herald-on") }; go() }
+        } else { go() }
+    }
+    // Red and Orange minutes by hour for the last `days` days, and when Red minutes last grew. Read by Royal Advisor and Missions.
+    @objc func redHours(_ call: CAPPluginCall) {
+        let d = Weapons.d, n = max(1, min(40, call.getInt("days") ?? 14))
+        var out: [String: Any] = [:]
+        for i in 0..<n {
+            guard let date = Calendar.current.date(byAdding: .day, value: -i, to: Date()) else { continue }
+            let day = Weapons.dayString(date)
+            out[day] = ["red": d?.integer(forKey: "fmin-red-" + day) ?? 0, "orange": d?.integer(forKey: "fmin-orange-" + day) ?? 0,
+                        "hours": d?.dictionary(forKey: "fhour-red-" + day) ?? [:]] as [String: Any]
+        }
+        call.resolve(["days": out, "redLast": d?.double(forKey: "fred-last") ?? 0])
+    }
+}
+
+private struct WeaponPickerView: View {
+    @State var selection: FamilyActivitySelection
+    let title: String
+    let done: (FamilyActivitySelection?) -> Void
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                Text("Keep Phone, Maps and Messages off this list.").font(.footnote).foregroundColor(.secondary).padding(.vertical, 8)
+                FamilyActivityPicker(selection: $selection)
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { done(nil) } }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { done(selection) } }
+            }
+        }
+    }
 }

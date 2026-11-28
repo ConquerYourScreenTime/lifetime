@@ -1093,23 +1093,31 @@ function wrow(w, opts){
   const [sub, right, active] = weaponLine(w.id);
   const locked = opts && opts.locked;
   return `<button class="wrow ${!locked && active ? 'active' : ''}" onclick="openWeapon('${w.id}')"><div class="wico">${WICON[w.icon]}</div>
-    <div class="grow"><b>${locked && w.id === 'sentry' ? 'The Sentry, everywhere' : w.name}</b><div class="faint">${locked && w.id === 'sentry' ? 'Guard every app on your list' : sub}</div></div>
+    <div class="grow"><b>${locked && w.id === 'sentry' ? 'The Sentry, everywhere' : w.name}</b><div class="faint">${locked && w.id === 'sentry' ? 'Guard every app on your list' : sub}</div>${locked || !(opts && opts.lists) ? '' : locksLine(w.id)}</div>
     ${locked ? `<span class="dyn">${crown(12)} DYNASTY</span>` : `<span class="wright ${active ? 'gold' : ''}">${right}</span>`}</button>`;
+}
+// Handoff 28e: under each weapon that locks, what it locks: the shared list (with its size) or its own custom list.
+function locksLine(id){
+  const pair = LIST_WEAPONS.find(x => x[0] === id);
+  if (!pair || !hasList() || (id === 'sentry' && ((W.sentry || {}).mode !== 'all'))) return '';
+  const l = (W.lists || {})[pair[1]] || W.list, n = (l.apps || 0) + (l.cats || 0) + (l.webs || 0);
+  return `<div class="faint" style="margin-top:4px;font-size:13px">${l.own ? `<span class="cpill" style="margin-right:6px">Custom</span>Locks ${listCount(l)}` : `Locks your shared list · ${n}`}</div>`;
 }
 function armoryView(){
   if (pageState.weapon) return weaponPage(pageState.weapon);
   let top = `${backBar('My Armory')}<p class="dim s15" style="margin-top:0">Your weapons against screen time.</p>`;
   if (!W) return top + '<p class="faint">Loading…</p>';
-  top += hasList() ? sharedListCard() : pickCard();
+  // Weapons first (handoff 28e); the shared list sits underneath them.
+  const bottom = `<div style="margin-top:26px">${hasList() ? sharedListCard() : pickCard()}</div>`;
   if (!dynasty()) {
     const ready = WEAPONS.filter(w => w.free), locked = [WEAPONS[0], ...WEAPONS.filter(w => !w.free)];
-    return top + `<p class="lbl" style="margin:18px 0 8px">Ready to use</p>${ready.map(w => wrow(w)).join('')}
+    return top + `<p class="lbl" style="margin:18px 0 8px">Ready to use</p>${ready.map(w => wrow(w, {lists:true})).join('')}
       <div class="spread" style="margin:22px 0 8px"><span class="lbl">Dynasty</span><button class="link gold" style="padding:0" onclick="openGold('', '')">See Dynasty</button></div>
-      ${locked.map(w => wrow(w, {locked:true})).join('')}`;
+      ${locked.map(w => wrow(w, {locked:true})).join('')}` + bottom;
   }
   const act = WEAPONS.filter(w => weaponLine(w.id)[2]), rest = WEAPONS.filter(w => !weaponLine(w.id)[2]);
-  return top + (act.length ? `<p class="lbl" style="margin:18px 0 8px">Active now</p>${act.map(w => wrow(w)).join('')}` : '')
-    + `<p class="lbl" style="margin:18px 0 8px">Ready</p>${rest.map(w => wrow(w)).join('')}`;
+  return top + (act.length ? `<p class="lbl" style="margin:18px 0 8px">Active now</p>${act.map(w => wrow(w, {lists:true})).join('')}` : '')
+    + `<p class="lbl" style="margin:18px 0 8px">Ready</p>${rest.map(w => wrow(w, {lists:true})).join('')}` + bottom;
 }
 function weaponHead(title, desc, tag){
   return `<button class="back" onclick="armoryBack()">‹ Armory</button>
@@ -1181,7 +1189,7 @@ function guardList(title, opts){
     <div class="twobtn"><button onclick="pickWeaponList()">Edit shared list</button><button onclick="pickWeaponList('${wn}')">Change for ${name} only</button></div>
     <p class="faint">Editing the shared list changes every weapon that uses it.</p>`;
 }
-// My Armory top (handoff section 28d): the shared list, explained, then which list each weapon uses.
+// My Armory (handoff sections 28d, 28e): the shared list, explained, under the weapons.
 const LIST_WEAPONS = [['sentry', 'sentry'], ['fortress', 'wall'], ['ceasefire', 'cease'], ['treasury', 'treasury'], ['banish', 'banish']];
 function listCount(l){
   const parts = [[l.apps, 'app', 'apps'], [l.cats, 'category', 'categories'], [l.webs, 'website', 'websites']].filter(x => x[0] > 0);
@@ -1189,19 +1197,10 @@ function listCount(l){
   return plural(parts.reduce((t, x) => t + x[0], 0), 'item', 'items');
 }
 function sharedListCard(){
-  const dy = dynasty();
-  const rows = LIST_WEAPONS.map(([id, wn]) => {
-    const w = WEAPONS.find(x => x.id === id), l = (W.lists || {})[wn] || {}, open = w.free || dy;
-    const right = l.own ? `<span class="cpill">Custom</span><span class="faint" style="margin-left:8px">${listCount(l)}</span>` : `<span class="dim s15">Shared list</span>`;
-    return `<button class="grow-g rowbtn" style="padding-top:0;padding-bottom:0;min-height:52px" onclick="openWeapon('${id}')"><span style="color:var(--dim);display:flex;width:22px">${WICON[w.icon]}</span><span class="grow s15">${w.name}</span>
-      <span class="row" style="gap:0;align-items:center">${right}</span>${open ? '<span class="chev">›</span>' : `<span class="chev" style="font-size:14px">${ICON.lock}</span>`}</button>`;
-  }).join('');
   return `<div class="card" style="padding:20px 18px 16px"><div class="spread" style="align-items:baseline"><h2 style="margin:0;font-size:22px">Your shared list</h2><button class="link" style="padding:0;color:var(--ink)" onclick="pickWeaponList()">Edit</button></div>
-    <p class="dim s15" style="margin:6px 0 12px">What your weapons lock when you use them. Your battle score still counts Red and Orange apps.</p>
+    <p class="dim s15" style="margin:6px 0 12px">What your weapons lock. Your battle score still counts Red and Orange apps.</p>
     ${guardRows('list', W.list, {max:3})}</div>
-    <p class="lbl" style="margin:18px 0 8px">Which list each weapon uses</p>
-    <div class="card glist" style="padding:2px 14px">${rows}</div>
-    <p class="faint">Tap a weapon to give it a custom list, or to switch it back.</p>`;
+    <p class="faint">Open a weapon to give it a custom list.</p>`;
 }
 async function pickWeaponList(weapon){
   const r = await ST.weaponListPick(weapon ? {weapon} : {}).catch(() => ({picked:false}));

@@ -1378,13 +1378,16 @@ function advisorPage(){
   const days = Array.from({length:7}, (_, i) => addDays(mon, i)).filter(day);
   if (!since || mon < since || days.length < 7) {
     // First week (handoff section 27): which days of this week are gathered, M to S, and what the report will hold.
-    const wk = weekStart(today()), got = Array.from({length:7}, (_, k) => addDays(wk, k)).map(d => !!since && d >= since && d <= today());
+    // A mid-week start can't fill this week, so the first full week is next week: name that Sunday's date, bars all empty.
+    const wk0 = weekStart(today()), late = !since || since > wk0, wk = late ? addDays(wk0, 7) : wk0;
+    const got = Array.from({length:7}, (_, k) => addDays(wk, k)).map(d => !!since && d >= since && d <= today());
     const n = got.filter(Boolean).length;
+    const sunTxt = late ? 'Sunday, ' + toDate(addDays(wk, 6)).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : 'Sunday';
     return head + `<div class="card" style="padding:20px"><div style="color:var(--ink)">${WICON.scroll}</div>
-      <h2 style="margin:10px 0 6px">Your first report arrives Sunday</h2>
+      <h2 style="margin:10px 0 6px">Your first report arrives ${sunTxt}</h2>
       <p class="dim s15" style="margin:0 0 14px">Your Advisor is watching this week. A full report needs a full week, Monday to Sunday.</p>
       <div class="advbars">${'MTWTFSS'.split('').map((l, k) => `<div><i class="${got[k] ? 'on' : ''}"></i><span>${l}</span></div>`).join('')}</div>
-      <p class="faint" style="margin:10px 0 0">${n} of 7 days gathered</p></div>
+      <p class="faint" style="margin:10px 0 0">${late ? 'Your first full week starts Monday' : n + ' of 7 days gathered'}</p></div>
       <p class="lbl" style="margin:18px 0 8px">What you'll get</p>
       <div class="card dim s15 picklist" style="padding:10px 16px"><p>✦ Time on Red apps vs the week before</p><p>✦ Best day and toughest hour</p><p>✦ One suggestion, with the weapon to match</p></div>
       ${foot('Made on your phone. Nothing in this report leaves it.')}`;

@@ -7,8 +7,8 @@ import UserNotifications
 // Conquer's weapons against screen time (design handoff sections 18 to 20). This one file is compiled into the app,
 // BlipMonitor and both shield extensions, so the lock rules live in one place.
 // Everything stays on this phone, in the App Group. No weapon ever changes points or who wins.
-// Locks use the apps (and websites) the player picked one by one for the weapons ("wlist"), never whole categories,
-// so nothing important gets locked (Matthew 2026-11-28). Scoring still uses the Red and Orange tiers.
+// Locks use only what the player picked for the weapons ("wlist": apps, categories, websites), never anything picked for
+// them, so the wrong apps never get locked (Matthew 2026-11-28). Scoring still uses the Red and Orange tiers.
 enum Weapons {
     static let group = "group.io.github.gamesbyvidal.lifetime"
     static var d: UserDefaults? { UserDefaults(suiteName: group) }
@@ -26,14 +26,14 @@ enum Weapons {
     static func targets(_ weapon: String) -> FamilyActivitySelection? {
         for key in (weapon.isEmpty ? ["wlist"] : ["wlist-" + weapon, "wlist"]) {
             if let data = d?.data(forKey: key), let s = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data),
-               !(s.applicationTokens.isEmpty && s.webDomainTokens.isEmpty) { return s }
+               !(s.applicationTokens.isEmpty && s.categoryTokens.isEmpty && s.webDomainTokens.isEmpty) { return s }
         }
         return nil
     }
-    // Counts for the page: apps, websites, and whether the weapon has its own list (nil = the shared list).
+    // Counts for the page: apps, categories, websites, and whether the weapon has its own list (nil = the shared list).
     static func listInfo(_ weapon: String?) -> [String: Any] {
         let t = targets(weapon ?? "")
-        return ["apps": t?.applicationTokens.count ?? 0, "webs": t?.webDomainTokens.count ?? 0, "max": listMax,
+        return ["apps": t?.applicationTokens.count ?? 0, "cats": t?.categoryTokens.count ?? 0, "webs": t?.webDomainTokens.count ?? 0, "max": listMax,
                 "own": weapon.map { d?.data(forKey: "wlist-" + $0) != nil } ?? false]
     }
     // Build 13 locked whole Red categories (Messages and WhatsApp got caught). Once, lift any such lock; settings are kept.

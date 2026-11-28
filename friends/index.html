@@ -268,9 +268,9 @@ const fakeST = {
   async wallStatus(){ const u = this._d().wall || 0; return {until: u > Date.now()/1000 ? u : 0}; },
   async env(){ return {testflight:true}; },
   _w(){ const d = this._d(); return d.w = d.w || {sentry:{mode:'off', apps:0, since:''}, banish:0, morning:420, cease:[], treasury:0, treasuryNow:0, herald:false, heraldAt:720}; },
-  _list(){ return this._d().wlist || {apps:0, webs:0, max:50}; },
+  _list(){ return this._d().wlist || {apps:0, cats:0, webs:0, max:50}; },
   _lists(){ const d = this._d(), o = {}; for (const w of ['wall', 'cease', 'banish', 'treasury', 'sentry']) o[w] = (d.wl || {})[w] ? {...d.wl[w], own:true} : {...this._list(), own:false}; return o; },
-  async weaponListPick({weapon} = {}){ const d = this._d(); if (!weapon || !d.wlist) d.wlist = {apps:5, webs:2, max:50}; else (d.wl = d.wl || {})[weapon] = {apps:3, webs:0, max:50}; save(); return {picked:true}; },
+  async weaponListPick({weapon} = {}){ const d = this._d(); if (!weapon || !d.wlist) d.wlist = {apps:4, cats:1, webs:1, max:50}; else (d.wl = d.wl || {})[weapon] = {apps:3, cats:0, webs:0, max:50}; save(); return {picked:true}; },
   async weaponListReset({weapon}){ const d = this._d(); if (d.wl) delete d.wl[weapon]; save(); return {}; },
   async sentryFromList({i}){ const w = this._w(); w.sentry = {mode: w.sentry.mode === 'all' ? 'all' : 'one', apps:1, since:today()}; save(); return {picked:true}; },
   async weaponStatus(){ const w = this._w(); return {...w, list: this._list(), lists: this._lists(), fortress: this._d().wall > Date.now()/1000 ? this._d().wall : 0, ceasePending:false, ceaseOn:false, treasuryOut:false}; },
@@ -1119,35 +1119,38 @@ const foot = t => `<p class="faint" style="text-align:center;margin-top:28px">${
 // Which apps a weapon guards. The page leaves empty boxes (data-guard="red:3"); on the phone Apple draws each app's icon
 // and name over them (ST.guardLabels), so the app itself never learns which apps they are. In a browser, stand-in names show.
 const NATIVE_LABELS = ST !== fakeST;
-const FAKE_NAMES = ['Instagram', 'TikTok', 'YouTube', 'Snapchat', 'Social', 'reddit.com'];
+const FAKE_NAMES = ['Instagram', 'TikTok', 'YouTube', 'Snapchat', 'Social', 'reddit.com'];  // in a browser: 4 apps, 1 category, 1 website
 function guardBox(key, i, part, style){
   const fake = NATIVE_LABELS ? '' : part === 'icon' ? `<i style="width:100%;height:100%;border-radius:inherit;background:linear-gradient(135deg,#f9a03f,#c13584)"></i>` : FAKE_NAMES[i % 6];
   return `<div class="glab ${part === 'icon' ? 'gicon' : ''}" data-guard="${key}:${i}" data-part="${part}" ${style ? `style="${style}"` : ''}>${fake}</div>`;
 }
 function plural(n, one, many){ return n + ' ' + (n === 1 ? one : many); }
-// What the weapons lock (handoff sections 22, 26, 28): one list of single apps and websites, picked one by one.
-// Rows are Apple's labels; the tabs split apps and websites. With no list yet, the first-time card shows instead.
-const hasList = () => { const l = (W && W.list) || {}; return (l.apps || 0) + (l.webs || 0) > 0; };
+// What the weapons lock (handoff sections 22, 28, 28b, 28c): whatever the player picks (apps, whole categories, websites).
+// Nothing is picked for them. Rows are Apple's labels; tabs split apps, categories and websites. No list yet: the first-time card.
+const hasList = () => { const l = (W && W.list) || {}; return (l.apps || 0) + (l.cats || 0) + (l.webs || 0) > 0; };
 // The page's weapon ids, as the phone names them.
 const WNAME = {fortress:'wall', ceasefire:'cease', banish:'banish', treasury:'treasury', sentry:'sentry'};
 function pickCard(){
   return `<div class="card" style="padding:22px 20px"><div style="color:var(--ink)">${WICON.swords}</div>
     <h2 style="margin:12px 0 8px">Choose what your weapons lock</h2>
-    <p class="dim s15" style="margin:0 0 12px">Battles count whole groups, like Social and Entertainment. Your weapons are different: they lock only the apps you pick, one by one.</p>
-    <div class="dim s15 picklist"><p>✦ Pick the apps that pull you in, like Instagram or TikTok</p><p>✦ Keep Phone, Maps and Messages off this list</p><p>✦ Add websites too, if you scroll in Safari</p></div>
+    <p class="dim s15" style="margin:0 0 12px">Battles count whole groups, like Social and Entertainment. Your weapons lock only what you choose.</p>
+    <div class="dim s15 picklist"><p>✦ Pick the apps that pull you in, like Instagram or TikTok</p><p>✦ Add a whole category or websites if you like</p><p>✦ Tip: leave Phone, Maps and Messages off</p></div>
     <button class="main" style="margin-top:14px" onclick="pickWeaponList()">Pick my apps</button>
     <p class="faint" style="text-align:center;margin:10px 0 0">Your choices never change your battle score.</p></div>`;
 }
 const WLABEL = {wall:'Fortress', cease:'Ceasefire', banish:'Banish', treasury:'Treasury', sentry:'The Sentry'};
-// The rows of one list with Apps | Websites tabs. key: 'list' (shared) or 'list-<weapon>'.
+// The rows of one list with Apps | Categories | Websites tabs; a tab with nothing in it is hidden. key: 'list' or 'list-<weapon>'.
+// The phone orders a list apps, then categories, then websites, so each tab's rows start after the ones before it.
 function guardRows(key, l){
-  const a = l.apps || 0, w = l.webs || 0;
-  const kind = (pageState.gkind === 'webs' && w) || !a ? 'webs' : 'apps', n = kind === 'apps' ? a : w, base = kind === 'apps' ? 0 : a;
+  const a = l.apps || 0, c = l.cats || 0, w = l.webs || 0;
+  const kinds = [['apps', 'Apps', a, 0, 'apps'], ['cats', 'Categories', c, a, 'categories'], ['webs', 'Websites', w, a + c, 'websites']].filter(k => k[2] > 0);
+  if (!kinds.length) return '';
+  const cur = kinds.find(k => k[0] === pageState.gkind) || kinds[0], kind = cur[0], n = cur[2], base = cur[3];
   const shown = pageState.guardAll ? n : Math.min(n, 5);
-  const seg = `<div class="tabs gseg">${[['apps', 'Apps ' + a], ['webs', 'Websites ' + w]].map(([k, t]) => `<button class="${k === kind ? 'on' : ''}" onclick="pageState.gkind='${k}';pageState.guardAll=false;repaint()">${t}</button>`).join('')}</div>`;
+  const seg = `<div class="tabs gseg">${kinds.map(([k, t, m]) => [k, t + ' ' + m]).map(([k, t]) => `<button class="${k === kind ? 'on' : ''}" onclick="pageState.gkind='${k}';pageState.guardAll=false;repaint()">${t}</button>`).join('')}</div>`;
   const row = i => `<div class="grow-g">${guardBox(key, base + i, 'icon')}<div class="grow" style="min-width:0">${guardBox(key, base + i, 'title', 'height:22px')}</div></div>`;
   return seg + `<div class="card glist" style="padding:2px 14px">${Array.from({length:shown}, (_, i) => row(i)).join('')}
-    ${n > shown ? `<button class="link" style="padding:12px 0;border-top:1px solid var(--line);width:100%;text-align:center;color:var(--ink)" onclick="pageState.guardAll=true;repaint()">Show all ${n} ${kind === 'apps' ? 'apps' : 'websites'}</button>` : ''}</div>`;
+    ${n > shown ? `<button class="link" style="padding:12px 0;border-top:1px solid var(--line);width:100%;text-align:center;color:var(--ink)" onclick="pageState.guardAll=true;repaint()">Show all ${n} ${cur[4]}</button>` : ''}</div>`;
 }
 // A weapon's "What it locks" (handoff section 28b): the shared list it follows, or its own custom list.
 function guardList(title, opts){
@@ -1164,19 +1167,18 @@ function guardList(title, opts){
 }
 // My Armory top: the shared list, and which weapons have their own.
 function sharedListCard(){
-  const l = W.list, a = l.apps || 0, w = l.webs || 0;
+  const l = W.list, a = l.apps || 0, c = l.cats || 0, w = l.webs || 0;
   const own = Object.entries(W.lists || {}).filter(([, v]) => v.own).map(([k]) => WLABEL[k]);
   const join = xs => xs.length < 2 ? xs.join('') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
-  const icons = Array.from({length:Math.min(a, 5)}, (_, i) => guardBox('list', i, 'icon', `margin-left:${i ? -8 : 0}px;box-shadow:0 0 0 2px var(--card)`)).join('');
+  const icons = Array.from({length:Math.min(a + c, 5)}, (_, i) => guardBox('list', i, 'icon', `margin-left:${i ? -8 : 0}px;box-shadow:0 0 0 2px var(--card)`)).join('');
   return `<div class="spread" style="margin:18px 0 6px;align-items:baseline"><span class="lbl">Your shared list</span><button class="link" style="padding:0;color:var(--ink)" onclick="pickWeaponList()">Edit</button></div>
-    <div class="card row" style="gap:14px"><div class="row" style="gap:0">${icons}</div><div class="grow"><b class="s15">${[plural(a, 'app', 'apps'), plural(w, 'website', 'websites')].join(' · ')}</b>
+    <div class="card row" style="gap:14px"><div class="row" style="gap:0">${icons}</div><div class="grow"><b class="s15">${[a && plural(a, 'app', 'apps'), c && plural(c, 'category', 'categories'), w && plural(w, 'website', 'websites')].filter(Boolean).join(' · ')}</b>
       <div class="faint">Shared by every weapon${own.length ? ' except ' + join(own) : ''}</div></div></div>
     ${own.length ? `<p class="faint">${join(own)} ${own.length === 1 ? 'has a custom list. Change it on the ' + own[0] + ' page.' : 'have custom lists. Change them on their own pages.'}</p>` : ''}`;
 }
 async function pickWeaponList(weapon){
   const r = await ST.weaponListPick(weapon ? {weapon} : {}).catch(() => ({picked:false}));
-  if (r.reason === 'category') toast('Pick apps one by one so nothing important gets locked.');
-  else if (r.reason === 'many') toast('Up to 50 apps.');
+  if (r.reason === 'many') toast('Up to 50 apps.');
   await loadWeapons(); repaint(); render();
 }
 async function weaponListReset(weapon){ await ST.weaponListReset({weapon}).catch(() => {}); await loadWeapons(); repaint(); }

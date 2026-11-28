@@ -948,8 +948,8 @@ extension ScreenTimePlugin {
             self.bridge?.viewController?.present(host, animated: true)
         }
     }
-    // What the weapons lock, picked app by app (and websites). Whole categories are refused: Apple gives a sealed token for a
-    // category, so the app can't tell which apps are in it, and Messages or WhatsApp could get locked.
+    // What the weapons lock: anything the player ticks (apps, whole categories, websites; handoff section 28c). Nothing is
+    // picked for them: with no list yet, Apple's list opens empty, never filled from the battle choice.
     // weapon: nil or "" = the shared list. The first list ever picked, from anywhere, becomes the shared list; after that a
     // weapon's own edits are kept as "wlist-<weapon>".
     @objc func weaponListPick(_ call: CAPPluginCall) {
@@ -961,10 +961,9 @@ extension ScreenTimePlugin {
             let picker = WeaponListPickerView(selection: saved) { picked in
                 self.bridge?.viewController?.dismiss(animated: true)
                 guard let picked = picked else { call.resolve(["picked": false]); return }
-                if !picked.categoryTokens.isEmpty { call.resolve(["picked": false, "reason": "category"]); return }
                 if picked.applicationTokens.count > Weapons.listMax { call.resolve(["picked": false, "reason": "many"]); return }
                 if let data = try? JSONEncoder().encode(picked) { Weapons.d?.set(data, forKey: key) }
-                Self.work.async { Weapons.relockActive(); call.resolve(["picked": true, "apps": picked.applicationTokens.count, "webs": picked.webDomainTokens.count]) }
+                Self.work.async { Weapons.relockActive(); call.resolve(["picked": true, "apps": picked.applicationTokens.count, "cats": picked.categoryTokens.count, "webs": picked.webDomainTokens.count]) }
             }
             let host = UIHostingController(rootView: picker)
             host.overrideUserInterfaceStyle = .dark
@@ -1190,14 +1189,15 @@ private extension UIColor {
     }
 }
 
-// Apple's list for the weapons, with a tip pinned above it (handoff section 28). A whole group can't be used: the note
-// names it and Done stays off until it's unticked.
+// Apple's list for the weapons, with a tip pinned above it (handoff section 28c). Anything can be ticked. The one limit is
+// Apple's: a lock holds up to 50 single apps.
 private struct WeaponListPickerView: View {
     @State var selection: FamilyActivitySelection
     let done: (FamilyActivitySelection?) -> Void
     private var apps: Int { selection.applicationTokens.count }
+    private var cats: Int { selection.categoryTokens.count }
     private var webs: Int { selection.webDomainTokens.count }
-    private var ok: Bool { selection.categoryTokens.isEmpty && apps <= Weapons.listMax && (apps + webs) > 0 }
+    private var ok: Bool { apps <= Weapons.listMax }
     private func chip(_ t: String) -> some View {
         Text(t).font(.system(size: 14, weight: .semibold)).foregroundColor(ConquerStyle.ink)
             .padding(.horizontal, 12).padding(.vertical, 6).background(ConquerStyle.bg.opacity(0.6)).clipShape(Capsule())
@@ -1206,11 +1206,12 @@ private struct WeaponListPickerView: View {
         NavigationView {
             VStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Tick apps one by one").font(.system(size: 17, weight: .semibold)).foregroundColor(ConquerStyle.ink)
-                    Text("Open a group and tick single apps. Don't tick a whole group. Keep Phone, Maps and Messages off this list.")
+                    Text("Pick what pulls you in").font(.system(size: 17, weight: .semibold)).foregroundColor(ConquerStyle.ink)
+                    Text("Single apps, whole categories or websites. Nothing is picked for you.")
                         .font(.system(size: 14)).foregroundColor(ConquerStyle.dim).fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 8) {
                         chip(apps == 1 ? "1 app" : "\(apps) apps")
+                        chip(cats == 1 ? "1 category" : "\(cats) categories")
                         chip(webs == 1 ? "1 website" : "\(webs) websites")
                     }.padding(.top, 2)
                     if apps > Weapons.listMax {
@@ -1219,20 +1220,6 @@ private struct WeaponListPickerView: View {
                 }
                 .padding(14).frame(maxWidth: .infinity, alignment: .leading)
                 .background(ConquerStyle.card).clipShape(RoundedRectangle(cornerRadius: 16))
-                if let c = selection.categoryTokens.first {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("You ticked a whole group").font(.system(size: 16, weight: .semibold)).foregroundColor(ConquerStyle.ink)
-                        HStack(spacing: 4) {
-                            Text("Weapons lock only apps you pick one by one, so untick").font(.system(size: 14)).foregroundColor(ConquerStyle.dim)
-                            Label(c).labelStyle(.titleOnly).font(.system(size: 14, weight: .semibold)).foregroundColor(ConquerStyle.ink)
-                        }
-                        Text("and choose apps inside it.").font(.system(size: 14)).foregroundColor(ConquerStyle.dim)
-                    }
-                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(red: 0x2a/255, green: 0x16/255, blue: 0x1a/255))
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(red: 0x8a/255, green: 0x24/255, blue: 0x33/255), lineWidth: 1))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                }
                 FamilyActivityPicker(selection: $selection)
             }
             .padding(.horizontal, 12).padding(.top, 8)

@@ -35,6 +35,7 @@
 		CF23AC322B1B1DFAAC483B94 /* ScreenTimePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FD842C068A3B43E6256D3E9 /* ScreenTimePlugin.swift */; };
 		D993B607036E8978597E2375 /* ShieldActionExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08F7717E761D495C9A845125 /* ShieldActionExtension.swift */; };
 		E2E097B5915E69A37C45A641 /* BlipMonitor.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D588CF0A7A2230DD94193823 /* BlipMonitor.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F89FFAA70F01F2181DC64055 /* SentryCrown@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = 69C1E4B5885780B29EDCBD0A /* SentryCrown@3x.png */; };
 		FB82A8A2D071BFEE86BC6F0F /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A3AA586F1275ACCD00BC97FD /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
@@ -103,6 +104,7 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		532538532B87CE915F07FA17 /* App.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		555D262080A2F035CFCD2AA9 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		69C1E4B5885780B29EDCBD0A /* SentryCrown@3x.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; path = "SentryCrown@3x.png"; sourceTree = "<group>"; };
 		6A1F6915ED0BCD3B9FB63702 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8FD842C068A3B43E6256D3E9 /* ScreenTimePlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenTimePlugin.swift; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -260,6 +262,7 @@
 				27B5C614C3656D8659E4CA3B /* ShieldConfigurationExtension.swift */,
 				555D262080A2F035CFCD2AA9 /* Info.plist */,
 				ADB0CF28B07FFAB5932CA31F /* ConquerShield.entitlements */,
+				69C1E4B5885780B29EDCBD0A /* SentryCrown@3x.png */,
 			);
 			name = ConquerShield;
 			path = ConquerShield;
@@ -447,6 +450,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F89FFAA70F01F2181DC64055 /* SentryCrown@3x.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

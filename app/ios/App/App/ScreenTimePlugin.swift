@@ -1079,9 +1079,13 @@ private final class GuardLayer: UIView {
         if cacheData[key] == data, let l = cacheItems[key] { return l }
         guard let s = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) else { return [] }
         let enc = { (e: Encodable) -> String in (try? JSONEncoder().encode(AnyEnc(e)))?.base64EncodedString() ?? "" }
-        let l = s.applicationTokens.map { (enc($0), GuardItem.app($0)) }.sorted { $0.0 < $1.0 }.map { $0.1 }
-            + s.categoryTokens.map { (enc($0), GuardItem.cat($0)) }.sorted { $0.0 < $1.0 }.map { $0.1 }
-            + s.webDomainTokens.map { (enc($0), GuardItem.web($0)) }.sorted { $0.0 < $1.0 }.map { $0.1 }
+        let ordered: ([(String, GuardItem)]) -> [GuardItem] = { pairs in pairs.sorted { $0.0 < $1.0 }.map { $0.1 } }
+        let apps: [(String, GuardItem)] = s.applicationTokens.map { t in (enc(t), GuardItem.app(t)) }
+        let cats: [(String, GuardItem)] = s.categoryTokens.map { t in (enc(t), GuardItem.cat(t)) }
+        let webs: [(String, GuardItem)] = s.webDomainTokens.map { t in (enc(t), GuardItem.web(t)) }
+        var l: [GuardItem] = ordered(apps)
+        l.append(contentsOf: ordered(cats))
+        l.append(contentsOf: ordered(webs))
         cacheData[key] = data; cacheItems[key] = l
         return l
     }

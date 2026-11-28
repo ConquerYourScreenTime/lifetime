@@ -69,6 +69,10 @@ input.code{text-transform:uppercase;letter-spacing:4px;font-variant-numeric:tabu
 .av{width:36px;height:36px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px;color:#fff;flex:none}
 .mrow{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
 .mrow:first-child{border-top:0}
+.ctiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:4px 0 14px}
+.ct{background:var(--card);border-radius:14px;padding:10px 2px;font-size:12px;font-weight:400;color:var(--dim);display:flex;flex-direction:column;align-items:center;border:1.5px solid transparent;width:auto}
+.ct.on{border-color:#ece4d0} .ct div{margin:6px 0 2px;display:flex;justify-content:center;height:20px;align-items:center} .ct b{font-size:15px;color:var(--ink)} .ct b.gold{color:var(--gold)}
+.rowbtn{width:100%;background:none;text-align:left;font-weight:400;padding-left:0;padding-right:0;border-radius:0} .rowbtn .chev{margin-left:8px;color:var(--dim)}
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:18;display:flex;justify-content:center;background:rgba(13,13,15,.92);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-top:1px solid rgba(236,228,208,.10);padding:6px 8px env(safe-area-inset-bottom)}
 .tabbar div{display:flex;width:100%;max-width:480px}
 .tabbar button{flex:1;background:none;color:#7d7869;padding:6px 0 4px;display:flex;flex-direction:column;align-items:center;gap:3px;font:600 10.5px -apple-system,system-ui,sans-serif;width:auto;border-radius:0}
@@ -694,21 +698,20 @@ function matchCard(){
 }
 
 // ---------- full-screen pages and sheets ----------
-const PAGES = {matches: matchesView, crowns: crownsView, invites: invitesView, settings: settingsView, armory: armoryView};
+const PAGES = {matches: matchesView, rival: rivalView, invites: invitesView, settings: settingsView, armory: armoryView};
 const pageState = {tab:'week', rival:null};
 function openPage(view){
   closePage();
   const o = document.createElement('div'); o.className = 'page'; o.id = 'page'; o.dataset.view = view;
   o.innerHTML = `<div class="app">${PAGES[view]()}</div>`; document.body.appendChild(o);
-  if (view === 'crowns') maybeDay30();
+  if (view === 'rival') maybeDay30();
   tabBar();
 }
 function closePage(){ const o = $('#page'); if (o) o.remove(); tabBar(); }
 // The bottom tab bar (handoff section 23). Shown once setup is done. Tab pages have no back link; the app opens on Today.
-const TABS = [['today', 'Today', () => ICON.clock.replace(/width="18" height="18"/, 'width="26" height="26"')], ['matches', 'Battles', () => ICON.battles],
-  ['armory', 'Armory', () => WICON.swords], ['crowns', 'Crowns', () => crown(30, 'currentColor')], ['settings', 'Settings', () => ICON.sliders]];
-const TAB_VIEWS = ['matches', 'armory', 'crowns', 'settings'];
-function curTab(){ const o = $('#page'); return o ? (o.dataset.view === 'invites' ? 'matches' : o.dataset.view) : 'today'; }
+const TABS = [['today', 'Today', () => ICON.clock.replace(/width="18" height="18"/, 'width="26" height="26"')], ['matches', 'Battles', () => crown(30, 'currentColor')],
+  ['armory', 'Armory', () => WICON.swords], ['settings', 'Settings', () => ICON.sliders]];
+function curTab(){ const o = $('#page'); return o ? (o.dataset.view === 'invites' || o.dataset.view === 'rival' ? 'matches' : o.dataset.view) : 'today'; }
 function tabBar(){
   let bar = $('#tabbar');
   const show = !!S.setup;
@@ -770,15 +773,22 @@ function matchesView(){
     const won = tab === 'day';
     const row = r => { const d = Math.abs(r.a - r.b), up = r.a > r.b;
       const v = up ? (won ? 'You won by ' : 'You lead by ') + fmt(d) : r.a === r.b ? 'All square' : esc(r.m.name) + (won ? ' won by ' : ' leads by ') + fmt(d);
-      return `<div class="mrow">${avatar(r.m)}<div class="grow"><b>${esc(r.m.name)}</b><div class="faint" style="color:${up ? 'var(--gold)' : 'var(--dim)'}">${v}</div></div>
-        <div style="text-align:right;font-size:13px" class="num"><div style="color:${up ? 'var(--gold)' : 'var(--ink)'}">You ${fmt(r.a)}</div><div class="faint">${esc(r.m.name)} ${fmt(r.b)}</div></div></div>`; };
+      const st = streak(r.m);
+      return `<button class="mrow rowbtn" onclick="pageState.rival='${r.m.code}';openPage('rival')">${avatar(r.m)}<div class="grow"><b>${esc(r.m.name)}</b><div class="faint" style="color:${up ? 'var(--gold)' : 'var(--dim)'}">${v}</div>${st > 1 ? `<div class="faint">Crown held ${st} days</div>` : ''}</div>
+        <div style="text-align:right;font-size:13px" class="num"><div style="color:${up ? 'var(--gold)' : 'var(--ink)'}">You ${fmt(r.a)}</div><div class="faint">${esc(r.m.name)} ${fmt(r.b)}</div></div><span class="chev">›</span></button>`; };
     const group = (label, list, fn, win) => list.length ? `<p class="lbl" style="margin-top:18px">${label} · ${list.length}</p><div class="card ${win ? 'win' : ''}" style="padding:4px 16px;margin-top:6px">${list.map(fn).join('')}</div>` : '';
-    body = `${has.length ? `<h2>${head}</h2>` : ''}<p class="faint">${rule}</p>
+    body = `<p class="faint" style="margin-top:0">${rule}</p>
       ${group(won ? 'You won' : 'You lead', ahead, row, true)}${group(won ? 'They won' : 'You trail', behind, row)}
       ${group('No result yet', none, r => `<div class="mrow">${avatar(r.m)}<div class="grow"><b>${esc(r.m.name)}</b><div class="faint">${r.m.startDay >= today() ? 'First battle day is today. Results at 8 AM tomorrow.' : 'Waiting for ' + esc(r.m.name) + '\'s phone to send its total.'}</div></div></div>`)}`;
   }
+  const sum = (() => { if (!rs.length) return '';
+    const yd = rs.map(m => pair(m, open)).filter(Boolean), yw = yd.filter(p => p[0] > p[1]).length;
+    const wk = rs.map(m => totals(m, weekStart(open), open)).filter(t => t.n), ww = wk.filter(t => t.a > t.b).length;
+    const t3 = rs.map(m => totals(m, addDays(open, -29), open)).filter(t => t.n), w3 = t3.filter(t => t.a > t.b).length;
+    const tile = (id, l, w, n) => `<button class="ct ${tab === id ? 'on' : ''}" onclick="pageState.tab='${id}';repaint()">${l}<div>${id === 'all' ? crown(24, 'pewter') : n ? crown(24, w ? 'gold' : 'pewter') : '–'}</div><b class="${id !== 'all' && w ? 'gold' : ''}">${id === 'all' ? 'Dynasty' : n ? w + ' of ' + n : '–'}</b></button>`;
+    return `<div class="ctiles">${tile('day', 'Yesterday', yw, yd.length)}${tile('week', 'This week', ww, wk.length)}${tile('m30', '30 days', w3, t3.length)}${tile('all', 'All time', 0, 0)}</div>`; })();
   return `${backBar('Your battles')}
-    <div class="tabs">${tabs.map(t => `<button class="${t[0] === tab ? 'on' : ''}" onclick="pageState.tab='${t[0]}';repaint()">${t[1]}</button>`).join('')}</div>
+    ${sum || `<div class="tabs">${tabs.map(t => `<button class="${t[0] === tab ? 'on' : ''}" onclick="pageState.tab='${t[0]}';repaint()">${t[1]}</button>`).join('')}</div>`}
     ${body}
     ${rs.length && Net.on() ? `<button style="margin-top:18px" onclick="openPage('invites')">Challenge a friend</button>` : ''}
     <p class="faint" style="text-align:center;margin-top:22px">One score counts in every battle. To end a battle, go to Settings.</p>`;
@@ -798,10 +808,10 @@ function goldPitch(){
 }
 
 // ---------- Your crowns (free: the last 30 days, per rival) ----------
-function crownsView(){
+// One rival's crowns (handoff section 24): opened from a row on Battles.
+function rivalView(){
   const rs = rivals();
-  if (!rs.length) return `${backBar('Your crowns')}<p class="dim s15">Crowns start once you have a rival. Invite a friend, and your first crown could be yours at 8 AM the next morning.</p>
-    <button class="main" onclick="openPage('invites')">Invite a friend</button>`;
+  if (!rs.length) return matchesView();
   const m = rs.find(x => x.code === pageState.rival) || rs[0], open = resultDay();
   const t30 = totals(m, addDays(open, -29), open), wk = totals(m, weekStart(open), open), lw = totals(m, addDays(weekStart(open), -7), addDays(weekStart(open), -1));
   const sign = t => t && t.n ? Math.sign(t.a - t.b) : null;
@@ -814,9 +824,9 @@ function crownsView(){
     cells += p ? (p[0] > p[1] ? `<i class="w">${crown(16, '#5a4318')}</i>` : '<i></i>') : '<i class="e"></i>';
   }
   const up = t30.a - t30.b, st = streak(m);
-  return `${backBar('Your crowns')}
-    ${rs.length > 1 ? `<div style="margin:6px 0 2px">${rs.map(r => `<button class="pill ${r === m ? 'on' : ''}" onclick="pageState.rival='${r.code}';repaint()">${esc(r.name)}</button>`).join('')}</div>` : ''}
-    <p class="dim s15" style="margin-top:0">You and ${esc(m.name)} · the last 30 days</p>
+  return `<button class="back" onclick="openPage('matches')">‹ Battles</button>
+    <div class="row" style="gap:12px;margin:6px 0 4px">${avatar(m)}<h1 style="margin:0">You and ${esc(m.name)}</h1></div>
+    <p class="dim s15" style="margin-top:0">The last 30 days</p>
     ${t30.n ? `<div class="champ ${up > 0 ? 'win' : ''}"><div>${crown(40, up > 0 ? 'gold' : 'pewter')}</div><div><p class="lbl gold" style="margin:0">30-Day Champion</p>
       <h2 style="margin:4px 0">${up > 0 ? 'You hold the title' : up < 0 ? esc(m.name) + ' holds the title' : 'All square'}</h2>
       <p class="faint" style="margin:0">${up ? (up > 0 ? 'Up ' : 'Down ') + fmt(Math.abs(up)) + ' points over 30 days.' : 'Level on points over 30 days.'} It's decided again every night.</p></div></div>` : ''}
@@ -825,9 +835,10 @@ function crownsView(){
       <div class="cal">${cells}</div>
       <p class="faint" style="margin:0">You won ${wins} of the last 30 days. ${esc(m.name)} won ${losses}.</p></div>
     <button class="upsell" onclick="openGold('record')"><div class="ib" style="opacity:.7">${crown(26, 'pewter')}</div>
-      <div class="grow"><b style="font-size:17px">Who holds the all-time crown?</b><div class="faint">Find out with Dynasty</div></div><span class="chev">›</span></button>`;
+      <div class="grow"><b style="font-size:17px">Who holds the all-time crown?</b><div class="faint">Find out with Dynasty</div></div><span class="chev">›</span></button>
+    <p class="faint" style="text-align:center;margin-top:22px">To end this battle, go to Settings.</p>`;
 }
-// Day 30 note: shown once, the first time Crowns opens after 30 days of play.
+// Day 30 note: shown once, the first time a rival page opens after 30 days of play.
 function maybeDay30(){
   const first = S.matches.map(m => m.startDay).filter(Boolean).sort()[0];
   if (S.day30 || !first || diffDays(first, resultDay()) < 29) return;

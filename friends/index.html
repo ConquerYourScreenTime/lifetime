@@ -234,6 +234,7 @@ const ICON = {
   sliders:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
   info:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
   check:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d0d0f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>',
+  lock:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
   clock:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>',
   back:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4"/></svg>',
   battles:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M9 4l5 2v4.5c0 4-2.6 6.8-5 8-2.4-1.2-5-4-5-8V6z"/><path d="M15.5 5.2 20 7v4.5c0 4-2.6 6.8-5 8-.8-.4-1.6-1-2.3-1.7"/></svg>',
@@ -1141,18 +1142,33 @@ function pickCard(){
 const WLABEL = {wall:'Fortress', cease:'Ceasefire', banish:'Banish', treasury:'Treasury', sentry:'The Sentry'};
 // The rows of one list with Apps | Categories | Websites tabs; a tab with nothing in it is hidden. key: 'list' or 'list-<weapon>'.
 // The phone orders a list apps, then categories, then websites, so each tab's rows start after the ones before it.
-function guardRows(key, l){
+function guardRows(key, l, o){
+  o = o || {};
   const a = l.apps || 0, c = l.cats || 0, w = l.webs || 0;
   const kinds = [['apps', 'Apps', a, 0, 'apps'], ['cats', 'Categories', c, a, 'categories'], ['webs', 'Websites', w, a + c, 'websites']].filter(k => k[2] > 0);
   if (!kinds.length) return '';
   const cur = kinds.find(k => k[0] === pageState.gkind) || kinds[0], kind = cur[0], n = cur[2], base = cur[3];
-  const shown = pageState.guardAll ? n : Math.min(n, 5);
+  const shown = pageState.guardAll && !o.max ? n : Math.min(n, o.max || 5);
+  if (o.max) {   // My Armory (28d): rows sit in the card, and "Show all" counts every kind and opens the whole list
+    const total = a + c + w;
+    return seg2(kinds, kind) + `<div class="glist">${Array.from({length:shown}, (_, i) => guardRow(key, base + i)).join('')}</div>
+      ${total > shown ? `<button class="link" style="padding:12px 0 0;background:none;border:0;border-top:1px solid var(--line);border-radius:0;width:100%;text-align:center;color:var(--ink)" onclick="sharedListAll()">Show all ${total}</button>` : ''}`;
+  }
   const seg = `<div class="tabs gseg">${kinds.map(([k, t, m]) => [k, t + ' ' + m]).map(([k, t]) => `<button class="${k === kind ? 'on' : ''}" onclick="pageState.gkind='${k}';pageState.guardAll=false;repaint()">${t}</button>`).join('')}</div>`;
   const row = i => `<div class="grow-g">${guardBox(key, base + i, 'icon')}<div class="grow" style="min-width:0">${guardBox(key, base + i, 'title', 'height:22px')}</div></div>`;
   return seg + `<div class="card glist" style="padding:2px 14px">${Array.from({length:shown}, (_, i) => row(i)).join('')}
     ${n > shown ? `<button class="link" style="padding:12px 0;border-top:1px solid var(--line);width:100%;text-align:center;color:var(--ink)" onclick="pageState.guardAll=true;repaint()">Show all ${n} ${cur[4]}</button>` : ''}</div>`;
 }
 // A weapon's "What it locks" (handoff section 28b): the shared list it follows, or its own custom list.
+const guardRow = (key, i) => `<div class="grow-g">${guardBox(key, i, 'icon')}<div class="grow" style="min-width:0">${guardBox(key, i, 'title', 'height:22px')}</div></div>`;
+const seg2 = (kinds, kind) => `<div class="tabs gseg">${kinds.map(([k, t, m]) => `<button class="${k === kind ? 'on' : ''}" onclick="pageState.gkind='${k}';repaint()">${t} <b>${m}</b></button>`).join('')}</div>`;
+// The whole shared list, grouped by kind.
+function sharedListAll(){
+  const l = W.list, a = l.apps || 0, c = l.cats || 0, w = l.webs || 0;
+  const part = (t, n, base) => n ? `<p class="lbl" style="margin:14px 0 6px">${t}</p><div class="card glist" style="padding:2px 14px">${Array.from({length:n}, (_, i) => guardRow('list', base + i)).join('')}</div>` : '';
+  sheet(`<h2>Your shared list</h2>${part('Apps', a, 0)}${part('Categories', c, a)}${part('Websites', w, a + c)}
+    <button class="link" style="width:100%;margin-top:8px" onclick="closeSheet()">Done</button>`);
+}
 function guardList(title, opts){
   const wn = WNAME[(opts || {}).weapon];
   if (!hasList()) return `<p class="lbl" style="margin:18px 0 8px">${title}</p>` + pickCard();
@@ -1165,16 +1181,27 @@ function guardList(title, opts){
     <div class="twobtn"><button onclick="pickWeaponList()">Edit shared list</button><button onclick="pickWeaponList('${wn}')">Change for ${name} only</button></div>
     <p class="faint">Editing the shared list changes every weapon that uses it.</p>`;
 }
-// My Armory top: the shared list, and which weapons have their own.
+// My Armory top (handoff section 28d): the shared list, explained, then which list each weapon uses.
+const LIST_WEAPONS = [['sentry', 'sentry'], ['fortress', 'wall'], ['ceasefire', 'cease'], ['treasury', 'treasury'], ['banish', 'banish']];
+function listCount(l){
+  const parts = [[l.apps, 'app', 'apps'], [l.cats, 'category', 'categories'], [l.webs, 'website', 'websites']].filter(x => x[0] > 0);
+  if (parts.length === 1) return plural(parts[0][0], parts[0][1], parts[0][2]);
+  return plural(parts.reduce((t, x) => t + x[0], 0), 'item', 'items');
+}
 function sharedListCard(){
-  const l = W.list, a = l.apps || 0, c = l.cats || 0, w = l.webs || 0;
-  const own = Object.entries(W.lists || {}).filter(([, v]) => v.own).map(([k]) => WLABEL[k]);
-  const join = xs => xs.length < 2 ? xs.join('') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
-  const icons = Array.from({length:Math.min(a + c, 5)}, (_, i) => guardBox('list', i, 'icon', `margin-left:${i ? -8 : 0}px;box-shadow:0 0 0 2px var(--card)`)).join('');
-  return `<div class="spread" style="margin:18px 0 6px;align-items:baseline"><span class="lbl">Your shared list</span><button class="link" style="padding:0;color:var(--ink)" onclick="pickWeaponList()">Edit</button></div>
-    <div class="card row" style="gap:14px"><div class="row" style="gap:0">${icons}</div><div class="grow"><b class="s15">${[a && plural(a, 'app', 'apps'), c && plural(c, 'category', 'categories'), w && plural(w, 'website', 'websites')].filter(Boolean).join(' · ')}</b>
-      <div class="faint">Shared by every weapon${own.length ? ' except ' + join(own) : ''}</div></div></div>
-    ${own.length ? `<p class="faint">${join(own)} ${own.length === 1 ? 'has a custom list. Change it on the ' + own[0] + ' page.' : 'have custom lists. Change them on their own pages.'}</p>` : ''}`;
+  const dy = dynasty();
+  const rows = LIST_WEAPONS.map(([id, wn]) => {
+    const w = WEAPONS.find(x => x.id === id), l = (W.lists || {})[wn] || {}, open = w.free || dy;
+    const right = l.own ? `<span class="cpill">Custom</span><span class="faint" style="margin-left:8px">${listCount(l)}</span>` : `<span class="dim s15">Shared list</span>`;
+    return `<button class="grow-g rowbtn" style="padding-top:0;padding-bottom:0;min-height:52px" onclick="openWeapon('${id}')"><span style="color:var(--dim);display:flex;width:22px">${WICON[w.icon]}</span><span class="grow s15">${w.name}</span>
+      <span class="row" style="gap:0;align-items:center">${right}</span>${open ? '<span class="chev">›</span>' : `<span class="chev" style="font-size:14px">${ICON.lock}</span>`}</button>`;
+  }).join('');
+  return `<div class="card" style="padding:20px 18px 16px"><div class="spread" style="align-items:baseline"><h2 style="margin:0;font-size:22px">Your shared list</h2><button class="link" style="padding:0;color:var(--ink)" onclick="pickWeaponList()">Edit</button></div>
+    <p class="dim s15" style="margin:6px 0 12px">What your weapons lock when you use them. Your battle score still counts Red and Orange apps.</p>
+    ${guardRows('list', W.list, {max:3})}</div>
+    <p class="lbl" style="margin:18px 0 8px">Which list each weapon uses</p>
+    <div class="card glist" style="padding:2px 14px">${rows}</div>
+    <p class="faint">Tap a weapon to give it a custom list, or to switch it back.</p>`;
 }
 async function pickWeaponList(weapon){
   const r = await ST.weaponListPick(weapon ? {weapon} : {}).catch(() => ({picked:false}));

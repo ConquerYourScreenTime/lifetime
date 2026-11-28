@@ -1070,7 +1070,7 @@ function weaponLine(id){
   const today = WH && WH.days && WH.days[todayKey()] || {red:0};
   switch (id) {
     case 'sentry': return sen.mode === 'all' ? ['Guarding every app on your list', 'On', true]
-      : sen.mode === 'one' && sen.apps ? ['A 5-second pause before one app', 'On · 1 app', true] : ['A 5-second pause before one app', 'Off'];
+      : sen.mode === 'one' && sen.apps ? ['A 5-second pause before one app', 'On', true] : ['A 5-second pause before one app', 'Off'];
     case 'missions': { const m = missionsToday(); return ['Daily goals that earn medals', m.filter(x => x.state === 'done').length + ' of 3 today']; }
     case 'fortress': return s.fortress > nowSec() ? ['Your list is locked', 'Until ' + clock(s.fortress), true] : ['Lock your list for 1 to 4 hours', ''];
     case 'ceasefire': {

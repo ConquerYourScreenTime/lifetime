@@ -1260,7 +1260,7 @@ function weaponPage(id){
         + `<div class="picks">${[1, 2, 4].map(n => `<button class="${n === hrs ? 'on' : ''}" onclick="pageState.hrs=${n};repaint()"><b class="d">${n}</b><span>${n === 1 ? 'hour' : 'hours'}</span></button>`).join('')}</div>
         ${guardList('What the Fortress locks', {weapon:'fortress'})}
         <button class="main" style="margin-top:18px" onclick="raiseWall(${hrs})">Raise the walls for ${hrs} ${hrs === 1 ? 'hour' : 'hours'}</button>
-        ${foot('Texts, calls and Maps still work.')}`;
+        ${foot('Anything you didn\'t pick stays open. Emergency calls always work.')}`;
     }
     case 'ceasefire': {
       const list = s.cease && s.cease.length ? s.cease : CEASE_DEFAULT;
@@ -1274,12 +1274,12 @@ function weaponPage(id){
         ${list.length < 6 ? '<button class="link" style="color:var(--ink);padding-left:0" onclick="ceaseAdd()">+ Add a ceasefire</button>' : ''}
         ${s.ceasePending ? '<p class="faint">Your changes start tomorrow.</p>' : ''}
         ${guardList('What it locks', {weapon:'ceasefire'})}
-        ${foot('During a ceasefire, texts, calls and Maps still work. Changes start the next day.')}`;
+        ${foot('Anything you didn\'t pick stays open. Emergency calls always work. Changes start the next day.')}`;
     }
     case 'banish': {
       if (s.banish > nowSec()) return weaponHead('Banish', 'One tap, and the apps on your list are gone until morning.')
         + `<div class="card" style="text-align:center;padding:28px 18px"><div style="color:var(--dim)">${WICON.door}</div><h2 style="margin-top:10px">Banished until ${clock(s.banish)}</h2>
-          <p class="dim s15" style="margin:0">The apps on your list are locked. They come back in the morning.</p></div>${guardList('What it locks', {weapon:'banish'})}${foot('Texts, calls and Maps still work.')}`;
+          <p class="dim s15" style="margin:0">The apps on your list are locked. They come back in the morning.</p></div>${guardList('What it locks', {weapon:'banish'})}${foot('Anything you didn\'t pick stays open. Emergency calls always work.')}`;
       const mm = s.morning || 420;
       return weaponHead('Banish', 'One tap, and the apps on your list are gone until morning.')
         + `<div class="card" style="text-align:center;padding:28px 18px"><div style="color:var(--dim)">${WICON.door}</div><h2 style="margin-top:10px">Banish until ${hhmm(mm)}?</h2>
@@ -1288,7 +1288,7 @@ function weaponPage(id){
         <p class="lbl" style="margin:18px 0 8px">Morning starts at</p>
         <div class="card" style="padding:0 16px"><select class="selrow" onchange="banishMorning(+this.value)">${[300, 330, 360, 390, 420, 450, 480, 510, 540, 600].map(v => `<option value="${v}" ${v === mm ? 'selected' : ''}>${hhmm2(v)}</option>`).join('')}</select></div>
         <button class="main" style="margin-top:28px" onclick="banishNow()">Banish them</button>
-        <div style="text-align:center"><button class="link" onclick="armoryBack()">Not tonight</button></div>${foot('Texts, calls and Maps still work.')}`;
+        <div style="text-align:center"><button class="link" onclick="armoryBack()">Not tonight</button></div>${foot('Anything you didn\'t pick stays open. Emergency calls always work.')}`;
     }
     case 'treasury': {
       // Treasury counts the apps on the weapons list. The phone only says when the allowance runs out, not minutes so far.
@@ -1301,7 +1301,7 @@ function weaponPage(id){
         <div class="card" style="padding:4px 16px"><div class="setrow"><div class="grow"><b class="s15">Treasury on</b><div class="faint">Counts only the apps on your list</div></div>${swt(tm > 0, `treasurySet(this.checked ? ${tm || 60} : 0)`)}</div></div>
         ${tm !== now ? '<p class="faint">Your change starts tomorrow.</p>' : ''}
         ${guardList('What it locks', {weapon:'treasury'})}
-        ${foot('Texts, calls and Maps never count. Changes start the next day.')}`;
+        ${foot('Anything you didn\'t pick stays open. Emergency calls always work. Changes start the next day.')}`;
     }
     case 'advisor': return advisorPage();
     case 'herald': return weaponHead('Herald', "A short check-in at midday, so the afternoon doesn't get away from you.")

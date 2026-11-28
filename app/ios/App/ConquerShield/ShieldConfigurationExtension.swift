@@ -23,7 +23,7 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
     private func crown() -> UIImage? { UIImage(named: "SentryCrown") ?? UIImage(systemName: "crown.fill")?.withTintColor(gold, renderingMode: .alwaysOriginal) }
     private func locked(_ title: String, _ sub: String) -> ShieldConfiguration {
         ShieldConfiguration(backgroundBlurStyle: nil, backgroundColor: bg, icon: crown(),
-                            title: .init(text: title, color: ink), subtitle: .init(text: sub + " Texts, calls and Maps still work.", color: dim),
+                            title: .init(text: title, color: ink), subtitle: .init(text: sub + " Anything you didn't pick stays open. Emergency calls always work.", color: dim),
                             primaryButtonLabel: .init(text: "Close", color: btnInk), primaryButtonBackgroundColor: ink)
     }
     private func points() -> Int {

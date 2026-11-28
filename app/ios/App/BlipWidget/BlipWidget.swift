@@ -353,8 +353,9 @@ struct LockRect: View {
 struct LockLine: View {
     let e: ConquerEntry
     var body: some View {
-        if e.gold { Text(Image(systemName: "crown.fill")) + Text(" \(e.held) of \(e.of) crowns yesterday") }
-        else if e.weekOf > 0 { Text(Image(systemName: "crown.fill")) + Text(e.weekLead > 0 ? " Leading \(e.weekLead) of \(e.weekOf) this week" : " Chasing \(e.weekOf) this week") }
+        // No crown glyph here: the one-line widget can only draw Apple's SF Symbol crown, which isn't the approved icon crown.
+        if e.gold { Text("\(e.held) of \(e.of) crowns yesterday") }
+        else if e.weekOf > 0 { Text(e.weekLead > 0 ? "Leading \(e.weekLead) of \(e.weekOf) this week" : "Chasing \(e.weekOf) this week") }
         else { Text("\(fmt(e.left)) points left") }
     }
 }

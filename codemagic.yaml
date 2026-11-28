@@ -26,7 +26,9 @@ workflows:
         script: |
           sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*;/CURRENT_PROJECT_VERSION = $((BUILD_NUMBER + 1));/" app/ios/App/App.xcodeproj/project.pbxproj
       - name: Build the iPhone app
-        script: xcode-project build-ipa --project app/ios/App/App.xcodeproj --scheme App
+        script: |
+          # If the build fails, print the compiler's error lines here too (the short log hides them).
+          xcode-project build-ipa --project app/ios/App/App.xcodeproj --scheme App || { grep -h -A4 -E "error:|fatal error" /tmp/xcodebuild_logs/*.log | head -120; exit 1; }
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
